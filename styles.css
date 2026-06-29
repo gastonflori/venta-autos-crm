@@ -53,16 +53,17 @@ input:focus, select:focus, textarea:focus { border-color: var(--red); box-shadow
 .btn.ghost { background: transparent; border-color: var(--border); }
 .icon-btn { width: 34px; height: 34px; display: inline-grid; place-items: center; border: 1px solid var(--border); border-radius: 8px; color: var(--fg); background: var(--panel-2); }
 
-.app-shell { min-height: 100vh; display: grid; grid-template-columns: 260px minmax(0, 1fr); background: var(--bg); }
+.app-shell { min-height: 100vh; display: grid; grid-template-columns: 292px minmax(0, 1fr); background: var(--bg); }
 .sidebar { position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; border-right: 1px solid var(--border); background: color-mix(in srgb, var(--panel-2) 94%, transparent); }
 .brand { min-height: 76px; display: flex; align-items: center; gap: 12px; padding: 16px; border-bottom: 1px solid var(--border); }
 .brand .logo-tile { width: 44px; height: 44px; margin: 0; border-radius: 12px; font-size: 9px; }
 .brand strong, .brand span { display: block; }
 .brand span { color: var(--muted); font-size: 12px; }
-.nav { display: grid; gap: 4px; padding: 12px; }
-.nav button { min-height: 40px; display: flex; align-items: center; gap: 10px; border: 0; border-radius: 8px; padding: 9px 12px; color: var(--muted); background: transparent; text-align: left; }
+.nav { display: grid; gap: 4px; padding: 12px; overflow-y: auto; min-height: 0; align-content: start; }
+.nav button { min-height: 38px; display: flex; align-items: center; gap: 10px; border: 0; border-radius: 8px; padding: 8px 10px; color: var(--muted); background: transparent; text-align: left; }
 .nav button.active, .nav button:hover { color: var(--fg); background: var(--soft); }
-.nav .ico { width: 22px; color: var(--red); text-align: center; }
+.nav .ico { width: 30px; flex: 0 0 30px; color: var(--red); text-align: center; font-size: 11px; font-weight: 800; }
+.nav .label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .side-bottom { margin-top: auto; display: grid; gap: 8px; padding: 12px; border-top: 1px solid var(--border); }
 .content { min-width: 0; }
 .topbar { position: sticky; top: 0; z-index: 5; min-height: 76px; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 24px; border-bottom: 1px solid var(--border); background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(16px); }
@@ -123,7 +124,7 @@ tr:last-child td { border-bottom: 0; }
   .brand { height: auto; }
   .nav { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .nav button { justify-content: center; }
-  .nav .label { display: none; }
+  .nav .label { display: inline; }
   .side-bottom { display: none; }
   .stats, .two-col { grid-template-columns: 1fr; }
 }
