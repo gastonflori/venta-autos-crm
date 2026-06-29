@@ -116,6 +116,54 @@ const sectionData = {
   taller: { key: "workshop", title: "Taller", item: "trabajo", fields: [["vehiculo", "Vehiculo"], ["trabajo", "Trabajo"], ["responsable", "Responsable"], ["costo", "Costo", "number"], ["estado", "Estado"]], columns: [["vehiculo", "Vehiculo"], ["trabajo", "Trabajo"], ["responsable", "Responsable"], ["costo", "Costo"], ["estado", "Estado"]] }
 };
 
+const moduleEnhancements = {
+  alertas: { fields: [["titulo", "Titulo"], ["tipo", "Tipo"], ["prioridad", "Prioridad"], ["area", "Area"], ["cliente", "Cliente"], ["vehiculo", "Vehiculo"], ["vence", "Vence", "date"], ["responsable", "Responsable"], ["estado", "Estado"], ["detalle", "Detalle", "textarea"]], columns: [["titulo", "Titulo"], ["prioridad", "Prioridad"], ["area", "Area"], ["cliente", "Cliente"], ["vence", "Vence"], ["estado", "Estado"]] },
+  stock: { fields: [["dominio", "Dominio"], ["marca", "Marca"], ["modelo", "Modelo"], ["version", "Version"], ["anio", "Anio", "number"], ["km", "Kilometros", "number"], ["precio", "Precio", "number"], ["moneda", "Moneda"], ["estado", "Estado"], ["ubicacion", "Ubicacion"], ["origen", "Origen"], ["margen", "Margen", "number"], ["notas", "Notas", "textarea"]] },
+  clientes: { fields: [["nombre", "Nombre"], ["telefono", "Telefono"], ["email", "Email", "email"], ["dni", "DNI/CUIT"], ["interes", "Interes"], ["origen", "Origen"], ["vendedor", "Vendedor"], ["proximo", "Proximo contacto"], ["estado", "Estado"], ["notas", "Notas", "textarea"]] },
+  ventas: { fields: [["cliente", "Cliente"], ["vehiculo", "Vehiculo"], ["etapa", "Etapa"], ["monto", "Monto", "number"], ["moneda", "Moneda"], ["sena", "Sena", "number"], ["vendedor", "Vendedor"], ["proximo", "Proximo paso"], ["estado", "Estado"], ["notas", "Notas", "textarea"]] },
+  cotizaciones: { fields: [["cliente", "Cliente"], ["telefono", "Telefono"], ["vehiculo", "Vehiculo"], ["precioLista", "Precio lista", "number"], ["bonificacion", "Bonificacion", "number"], ["monto", "Monto final", "number"], ["moneda", "Moneda"], ["validez", "Validez hasta", "date"], ["vendedor", "Vendedor"], ["estado", "Estado"], ["notas", "Condiciones", "textarea"]], columns: [["cliente", "Cliente"], ["vehiculo", "Vehiculo"], ["monto", "Monto"], ["moneda", "Moneda"], ["validez", "Validez"], ["estado", "Estado"]] },
+  gestoria: { fields: [["tramite", "Tramite"], ["cliente", "Cliente"], ["vehiculo", "Vehiculo"], ["dominio", "Dominio"], ["gestor", "Gestor"], ["vence", "Vence", "date"], ["costo", "Costo", "number"], ["estado", "Estado"], ["notas", "Observaciones", "textarea"]] },
+  expedientes: { fields: [["numero", "Numero"], ["cliente", "Cliente"], ["telefono", "Telefono"], ["vehiculo", "Vehiculo"], ["dominio", "Dominio"], ["tramite", "Tramite"], ["responsable", "Responsable"], ["fechaAlta", "Fecha alta", "date"], ["vence", "Vence", "date"], ["estado", "Estado"], ["detalle", "Documentacion", "textarea"]], columns: [["numero", "Numero"], ["cliente", "Cliente"], ["vehiculo", "Vehiculo"], ["tramite", "Tramite"], ["responsable", "Responsable"], ["estado", "Estado"]] },
+  reclamos: { fields: [["cliente", "Cliente"], ["telefono", "Telefono"], ["vehiculo", "Vehiculo"], ["motivo", "Motivo"], ["canal", "Canal"], ["prioridad", "Prioridad"], ["responsable", "Responsable"], ["proximo", "Proximo paso"], ["estado", "Estado"], ["detalle", "Detalle", "textarea"]], columns: [["cliente", "Cliente"], ["motivo", "Motivo"], ["canal", "Canal"], ["prioridad", "Prioridad"], ["responsable", "Responsable"], ["estado", "Estado"]] },
+  tesoreria: { fields: [["cuenta", "Cuenta"], ["tipo", "Tipo"], ["concepto", "Concepto"], ["cliente", "Cliente"], ["vehiculo", "Vehiculo"], ["monto", "Monto", "number"], ["moneda", "Moneda"], ["medio", "Medio de pago"], ["fecha", "Fecha", "date"], ["estado", "Estado"], ["notas", "Notas", "textarea"]], columns: [["cuenta", "Cuenta"], ["tipo", "Tipo"], ["concepto", "Concepto"], ["monto", "Monto"], ["moneda", "Moneda"], ["estado", "Estado"]] },
+  consignaciones: { fields: [["titular", "Titular"], ["telefono", "Telefono"], ["vehiculo", "Vehiculo"], ["dominio", "Dominio"], ["anio", "Anio", "number"], ["km", "Kilometros", "number"], ["precioPretendido", "Precio pretendido", "number"], ["comision", "Comision", "number"], ["vence", "Vence", "date"], ["estado", "Estado"], ["notas", "Condiciones", "textarea"]], columns: [["titular", "Titular"], ["vehiculo", "Vehiculo"], ["precioPretendido", "Precio pretendido"], ["comision", "Comision"], ["vence", "Vence"], ["estado", "Estado"]] },
+  pedidos: { fields: [["cliente", "Cliente"], ["telefono", "Telefono"], ["marca", "Marca"], ["modelo", "Modelo"], ["anioDesde", "Anio desde", "number"], ["anioHasta", "Anio hasta", "number"], ["presupuesto", "Presupuesto maximo", "number"], ["moneda", "Moneda"], ["vendedor", "Vendedor"], ["estado", "Estado"], ["notas", "Notas", "textarea"]], columns: [["cliente", "Cliente"], ["telefono", "Telefono"], ["marca", "Marca"], ["modelo", "Modelo"], ["presupuesto", "Presupuesto"], ["moneda", "Moneda"], ["estado", "Estado"]] },
+  liquidaciones: { fields: [["beneficiario", "Beneficiario"], ["operacion", "Operacion"], ["cliente", "Cliente"], ["vehiculo", "Vehiculo"], ["concepto", "Concepto"], ["monto", "Monto", "number"], ["moneda", "Moneda"], ["fecha", "Fecha", "date"], ["estado", "Estado"], ["notas", "Detalle", "textarea"]], columns: [["beneficiario", "Beneficiario"], ["operacion", "Operacion"], ["concepto", "Concepto"], ["monto", "Monto"], ["fecha", "Fecha"], ["estado", "Estado"]] },
+  infracciones: { fields: [["dominio", "Dominio"], ["vehiculo", "Vehiculo"], ["detalle", "Detalle"], ["monto", "Monto", "number"], ["moneda", "Moneda"], ["vence", "Vence", "date"], ["responsable", "Responsable"], ["estado", "Estado"], ["notas", "Notas", "textarea"]], columns: [["dominio", "Dominio"], ["vehiculo", "Vehiculo"], ["detalle", "Detalle"], ["monto", "Monto"], ["vence", "Vence"], ["estado", "Estado"]] },
+  finanzas: { fields: [["concepto", "Concepto"], ["tipo", "Tipo"], ["categoria", "Categoria"], ["cliente", "Cliente"], ["vehiculo", "Vehiculo"], ["monto", "Monto", "number"], ["moneda", "Moneda"], ["fecha", "Fecha", "date"], ["medio", "Medio de pago"], ["estado", "Estado"], ["notas", "Notas", "textarea"]] },
+  reportes: { fields: [["nombre", "Nombre"], ["periodo", "Periodo"], ["area", "Area"], ["indicador", "Indicador"], ["valor", "Valor"], ["responsable", "Responsable"], ["fecha", "Fecha", "date"], ["estado", "Estado"], ["detalle", "Detalle", "textarea"]], columns: [["nombre", "Nombre"], ["periodo", "Periodo"], ["area", "Area"], ["indicador", "Indicador"], ["valor", "Valor"], ["estado", "Estado"]] },
+  mensajes: { fields: [["cliente", "Cliente"], ["telefono", "Telefono"], ["canal", "Canal"], ["plantilla", "Plantilla"], ["mensaje", "Mensaje", "textarea"], ["hora", "Hora"], ["responsable", "Responsable"], ["estado", "Estado"]], columns: [["cliente", "Cliente"], ["canal", "Canal"], ["plantilla", "Plantilla"], ["hora", "Hora"], ["responsable", "Responsable"], ["estado", "Estado"]] },
+  conversaciones: { fields: [["cliente", "Cliente"], ["telefono", "Telefono"], ["canal", "Canal"], ["ultimoMensaje", "Ultimo mensaje"], ["responsable", "Responsable"], ["proximo", "Proximo paso"], ["estado", "Estado"], ["notas", "Notas", "textarea"]], columns: [["cliente", "Cliente"], ["canal", "Canal"], ["ultimoMensaje", "Ultimo mensaje"], ["responsable", "Responsable"], ["estado", "Estado"]] },
+  correos: { fields: [["para", "Para"], ["cliente", "Cliente"], ["asunto", "Asunto"], ["plantilla", "Plantilla"], ["mensaje", "Mensaje", "textarea"], ["fecha", "Fecha", "date"], ["responsable", "Responsable"], ["estado", "Estado"]], columns: [["para", "Para"], ["asunto", "Asunto"], ["plantilla", "Plantilla"], ["fecha", "Fecha"], ["responsable", "Responsable"], ["estado", "Estado"]] },
+  misventas: { fields: [["cliente", "Cliente"], ["vehiculo", "Vehiculo"], ["etapa", "Etapa"], ["monto", "Monto", "number"], ["moneda", "Moneda"], ["sena", "Sena", "number"], ["proximo", "Proximo paso"], ["estado", "Estado"], ["notas", "Notas", "textarea"]], columns: [["cliente", "Cliente"], ["vehiculo", "Vehiculo"], ["etapa", "Etapa"], ["monto", "Monto"], ["proximo", "Proximo paso"], ["estado", "Estado"]] },
+  postventa: { fields: [["cliente", "Cliente"], ["telefono", "Telefono"], ["vehiculo", "Vehiculo"], ["entrega", "Entrega", "date"], ["control", "Control"], ["responsable", "Responsable"], ["proximo", "Proximo paso"], ["estado", "Estado"], ["notas", "Notas", "textarea"]], columns: [["cliente", "Cliente"], ["vehiculo", "Vehiculo"], ["entrega", "Entrega"], ["control", "Control"], ["responsable", "Responsable"], ["estado", "Estado"]] },
+  miscomisiones: { fields: [["operacion", "Operacion"], ["cliente", "Cliente"], ["vehiculo", "Vehiculo"], ["monto", "Monto", "number"], ["moneda", "Moneda"], ["porcentaje", "Porcentaje", "number"], ["fecha", "Fecha", "date"], ["estado", "Estado"], ["notas", "Notas", "textarea"]], columns: [["operacion", "Operacion"], ["cliente", "Cliente"], ["monto", "Monto"], ["fecha", "Fecha"], ["estado", "Estado"]] },
+  cobros: { fields: [["cliente", "Cliente"], ["telefono", "Telefono"], ["concepto", "Concepto"], ["vehiculo", "Vehiculo"], ["monto", "Monto", "number"], ["moneda", "Moneda"], ["medio", "Medio"], ["vence", "Vence", "date"], ["estado", "Estado"], ["notas", "Notas", "textarea"]], columns: [["cliente", "Cliente"], ["concepto", "Concepto"], ["monto", "Monto"], ["vence", "Vence"], ["estado", "Estado"]] },
+  sugerencias: { fields: [["titulo", "Titulo"], ["area", "Area"], ["detalle", "Detalle", "textarea"], ["autor", "Autor"], ["prioridad", "Prioridad"], ["fecha", "Fecha", "date"], ["estado", "Estado"]], columns: [["titulo", "Titulo"], ["area", "Area"], ["autor", "Autor"], ["prioridad", "Prioridad"], ["estado", "Estado"]] },
+  autorizaciones: { fields: [["solicitud", "Solicitud"], ["solicitante", "Solicitante"], ["area", "Area"], ["monto", "Monto", "number"], ["moneda", "Moneda"], ["prioridad", "Prioridad"], ["vence", "Vence", "date"], ["estado", "Estado"], ["detalle", "Detalle", "textarea"]], columns: [["solicitud", "Solicitud"], ["solicitante", "Solicitante"], ["monto", "Monto"], ["prioridad", "Prioridad"], ["estado", "Estado"]] },
+  dormidos: { fields: [["cliente", "Cliente"], ["telefono", "Telefono"], ["interes", "Interes"], ["ultimoContacto", "Ultimo contacto", "date"], ["dias", "Dias", "number"], ["responsable", "Responsable"], ["accion", "Accion"], ["estado", "Estado"], ["notas", "Notas", "textarea"]], columns: [["cliente", "Cliente"], ["interes", "Interes"], ["ultimoContacto", "Ultimo contacto"], ["dias", "Dias"], ["accion", "Accion"], ["estado", "Estado"]] },
+  miespacio: { fields: [["tarea", "Tarea"], ["area", "Area"], ["prioridad", "Prioridad"], ["vence", "Vence", "date"], ["responsable", "Responsable"], ["estado", "Estado"], ["notas", "Notas", "textarea"]], columns: [["tarea", "Tarea"], ["area", "Area"], ["prioridad", "Prioridad"], ["vence", "Vence"], ["estado", "Estado"]] },
+  wishlist: { fields: [["cliente", "Cliente"], ["telefono", "Telefono"], ["vehiculo", "Vehiculo buscado"], ["marca", "Marca"], ["modelo", "Modelo"], ["presupuesto", "Presupuesto", "number"], ["moneda", "Moneda"], ["match", "Match"], ["estado", "Estado"], ["notas", "Notas", "textarea"]], columns: [["cliente", "Cliente"], ["vehiculo", "Vehiculo buscado"], ["presupuesto", "Presupuesto"], ["match", "Match"], ["estado", "Estado"]] },
+  nps: { fields: [["cliente", "Cliente"], ["telefono", "Telefono"], ["puntaje", "Puntaje", "number"], ["comentario", "Comentario", "textarea"], ["fecha", "Fecha", "date"], ["responsable", "Responsable"], ["estado", "Estado"]], columns: [["cliente", "Cliente"], ["puntaje", "Puntaje"], ["fecha", "Fecha"], ["responsable", "Responsable"], ["estado", "Estado"]] },
+  papelera: { fields: [["origen", "Origen"], ["detalle", "Detalle", "textarea"], ["eliminadoPor", "Eliminado por"], ["fecha", "Fecha", "date"], ["estado", "Estado"]], columns: [["origen", "Origen"], ["detalle", "Detalle"], ["eliminadoPor", "Eliminado por"], ["fecha", "Fecha"], ["estado", "Estado"]] },
+  telefonos: { fields: [["nombre", "Nombre"], ["area", "Area"], ["telefono", "Telefono"], ["email", "Email", "email"], ["rol", "Rol"], ["horario", "Horario"], ["estado", "Estado"], ["notas", "Notas", "textarea"]], columns: [["nombre", "Nombre"], ["area", "Area"], ["telefono", "Telefono"], ["email", "Email"], ["rol", "Rol"], ["estado", "Estado"]] },
+  oportunidades: { fields: [["cliente", "Cliente"], ["telefono", "Telefono"], ["interes", "Interes"], ["vehiculo", "Vehiculo"], ["probabilidad", "Probabilidad"], ["monto", "Monto", "number"], ["moneda", "Moneda"], ["responsable", "Responsable"], ["proximo", "Proximo paso"], ["estado", "Estado"], ["notas", "Notas", "textarea"]], columns: [["cliente", "Cliente"], ["interes", "Interes"], ["probabilidad", "Probabilidad"], ["monto", "Monto"], ["responsable", "Responsable"], ["estado", "Estado"]] },
+  taller: { fields: [["vehiculo", "Vehiculo"], ["dominio", "Dominio"], ["trabajo", "Trabajo"], ["responsable", "Responsable"], ["proveedor", "Proveedor"], ["costo", "Costo", "number"], ["fechaIngreso", "Fecha ingreso", "date"], ["vence", "Entrega estimada", "date"], ["estado", "Estado"], ["notas", "Notas", "textarea"]], columns: [["vehiculo", "Vehiculo"], ["trabajo", "Trabajo"], ["responsable", "Responsable"], ["costo", "Costo"], ["vence", "Entrega"], ["estado", "Estado"]] }
+};
+
+const coreModuleData = {
+  stock: { key: "vehicles", title: "Stock", item: "vehiculo" },
+  clientes: { key: "clients", title: "Clientes", item: "cliente" },
+  ventas: { key: "sales", title: "Ventas", item: "oportunidad" },
+  gestoria: { key: "paperwork", title: "Gestoria", item: "tramite" },
+  finanzas: { key: "finance", title: "Finanzas", item: "movimiento" }
+};
+
+Object.entries(moduleEnhancements).forEach(([id, patch]) => {
+  if (!sectionData[id] && coreModuleData[id]) sectionData[id] = coreModuleData[id];
+  if (sectionData[id]) sectionData[id] = { ...sectionData[id], ...patch };
+});
+
 const sectionDefaults = {
   calendarItems: [{ id: "cal-1", fecha: "2026-06-30", hora: "10:30", tipo: "Test drive", cliente: "Martina Quiroga", vehiculo: "Toyota Corolla XEI", estado: "Programado" }],
   alerts: [{ id: "al-1", titulo: "Transferencia por vencer", prioridad: "Alta", area: "Gestoria", vence: "2026-07-02", estado: "Pendiente" }],
@@ -179,6 +227,10 @@ function normalizeState(next = {}) {
       merged[key] = rows.map(row => ({ ...row }));
     }
   });
+  Object.values(sectionData).forEach(def => {
+    if (!Array.isArray(merged[def.key])) merged[def.key] = [];
+    merged[def.key] = merged[def.key].map(row => enrichRow(def.key, def.fields, row));
+  });
   merged.orders = (merged.orders || []).map(order => ({
     telefono: "",
     anioDesde: "",
@@ -190,6 +242,23 @@ function normalizeState(next = {}) {
   }));
   if (!merged.settings.sectionsSeeded) merged.settings.sectionsSeeded = true;
   return merged;
+}
+
+function enrichRow(key, fields = [], row = {}) {
+  const enriched = { ...row };
+  fields.forEach(([name, , type = "text"]) => {
+    if (enriched[name] === undefined) enriched[name] = defaultFieldValue(name, type, key);
+  });
+  return enriched;
+}
+
+function defaultFieldValue(name, type, key) {
+  if (type === "number") return 0;
+  if (type === "date") return "";
+  if (name === "moneda") return "ARS";
+  if (name === "estado") return statusOptions(key)[0] || "Pendiente";
+  if (/vendedor|responsable|gestor|autor|solicitante/i.test(name)) return authUser?.name || "";
+  return "";
 }
 
 function toast(message) {
@@ -386,6 +455,7 @@ function genericSectionPage(moduleId) {
             <button class="btn ghost" data-section-action="complete:${def.key}">Resolver pendiente</button>
             <button class="btn ghost" data-section-action="duplicate:${def.key}">Duplicar primero</button>
             <button class="btn ghost" data-action="export">Exportar CSV</button>
+            ${moduleFlowButtons(moduleId, def.key)}
           </div>
           <div class="detail-box">
             <h3>${first ? "Ultimo registro" : "Sin registros"}</h3>
@@ -399,6 +469,25 @@ function genericSectionPage(moduleId) {
       </section>
     </div>
   `;
+}
+
+function moduleFlowButtons(moduleId, key) {
+  const buttons = {
+    pedidos: [["order-opportunity", "Crear oportunidad"], ["order-calendar", "Agendar busqueda"]],
+    wishlist: [["order-opportunity", "Crear oportunidad"], ["order-calendar", "Agendar busqueda"]],
+    oportunidades: [["opportunity-sale", "Pasar a venta"], ["opportunity-calendar", "Agendar seguimiento"]],
+    cotizaciones: [["quote-message", "Preparar mensaje"], ["quote-sale", "Crear venta"]],
+    reclamos: [["claim-calendar", "Agendar reclamo"], ["claim-message", "Avisar cliente"]],
+    postventa: [["after-calendar", "Agendar control"], ["after-message", "Mensaje postventa"]],
+    cobros: [["collection-alert", "Crear alerta"], ["collection-message", "Avisar cobro"]],
+    taller: [["workshop-alert", "Alerta taller"], ["workshop-calendar", "Agendar entrega"]],
+    expedientes: [["file-alert", "Alerta tramite"], ["file-calendar", "Agendar gestion"]],
+    infracciones: [["ticket-alert", "Alerta multa"]],
+    autorizaciones: [["authorization-alert", "Alerta aprobacion"]],
+    dormidos: [["sleeping-message", "Reactivar lead"], ["sleeping-calendar", "Agendar llamada"]],
+    nps: [["nps-message", "Responder encuesta"]]
+  }[moduleId] || [];
+  return buttons.map(([flow, label]) => `<button class="btn ghost" data-module-flow="${flow}:${key}">${label}</button>`).join("");
 }
 
 function pendingRows(rows) {
@@ -899,6 +988,21 @@ function fieldConfig(name, moduleKey = "") {
     match: { type: "select", options: ["Sin match", "Posible", "Exacto", "Enviado"] },
     probabilidad: { type: "select", options: ["Alta", "Media", "Baja"] }
   };
+  const relationFields = {
+    cliente: { type: "datalist", options: clientNames() },
+    beneficiario: { type: "datalist", options: clientNames() },
+    titular: { type: "datalist", options: clientNames() },
+    solicitante: { type: "datalist", options: staffNames() },
+    autor: { type: "datalist", options: staffNames() },
+    vendedor: { type: "datalist", options: staffNames() },
+    responsable: { type: "datalist", options: staffNames() },
+    gestor: { type: "datalist", options: staffNames() },
+    vehiculo: { type: "datalist", options: vehicleNames() },
+    dominio: { type: "datalist", options: vehicleDomains() },
+    telefono: { type: "datalist", options: (state?.clients || []).map(client => client.telefono).filter(Boolean) },
+    email: { type: "datalist", options: (state?.clients || []).map(client => client.email).filter(Boolean) },
+    para: { type: "datalist", options: (state?.clients || []).map(client => client.email).filter(Boolean) }
+  };
   const placeholders = {
     cliente: "Nombre y apellido",
     telefono: "+54 11 5555 5555",
@@ -914,7 +1018,23 @@ function fieldConfig(name, moduleKey = "") {
     comentario: "Comentario o respuesta del cliente.",
     mensaje: "Texto del mensaje."
   };
-  return { ...(common[name] || {}), placeholder: placeholders[name] || "" };
+  return { ...(relationFields[name] || {}), ...(common[name] || {}), placeholder: placeholders[name] || "" };
+}
+
+function clientNames() {
+  return (state?.clients || []).map(client => client.nombre).filter(Boolean);
+}
+
+function vehicleNames() {
+  return (state?.vehicles || []).map(vehicle => `${vehicle.marca || ""} ${vehicle.modelo || ""}`.trim()).filter(Boolean);
+}
+
+function vehicleDomains() {
+  return (state?.vehicles || []).map(vehicle => vehicle.dominio).filter(Boolean);
+}
+
+function staffNames() {
+  return [...new Set([authUser?.name, "Gastoonfloori", "Gaston", "Mica", "Leo", ...(state?.sales || []).map(sale => sale.vendedor)].filter(Boolean))];
 }
 
 function statusOptions(moduleKey) {
@@ -938,6 +1058,10 @@ function fieldControl(field) {
   const value = field.value ?? "";
   if (field.type === "select") {
     return `<div class="field${wide}"><label>${escapeHtml(field.label)}${field.required ? " *" : ""}</label><select name="${escapeHtml(field.name)}"${required}>${(field.options || []).map(option => `<option value="${escapeHtml(option)}" ${String(value) === String(option) ? "selected" : ""}>${escapeHtml(option)}</option>`).join("")}</select></div>`;
+  }
+  if (field.type === "datalist") {
+    const listId = `list-${field.name}-${Math.random().toString(36).slice(2)}`;
+    return `<div class="field${wide}"><label>${escapeHtml(field.label)}${field.required ? " *" : ""}</label><input name="${escapeHtml(field.name)}" list="${listId}" value="${escapeHtml(value)}"${placeholder}${required}><datalist id="${listId}">${(field.options || []).map(option => `<option value="${escapeHtml(option)}"></option>`).join("")}</datalist></div>`;
   }
   if (field.type === "textarea") {
     return `<div class="field${wide}"><label>${escapeHtml(field.label)}${field.required ? " *" : ""}</label><textarea name="${escapeHtml(field.name)}"${placeholder}${required}>${escapeHtml(value)}</textarea></div>`;
@@ -986,10 +1110,11 @@ function bind() {
 
   document.querySelectorAll("[data-add]").forEach(btn => btn.addEventListener("click", () => openModal(btn.dataset.add)));
   document.querySelectorAll("[data-section-action]").forEach(btn => btn.addEventListener("click", () => handleSectionAction(btn.dataset.sectionAction)));
+  document.querySelectorAll("[data-module-flow]").forEach(btn => btn.addEventListener("click", () => handleModuleFlow(btn.dataset.moduleFlow)));
   document.querySelector("[data-action='quick-add']")?.addEventListener("click", () => {
-    const map = { calendario: "calendar", stock: "vehicles", clientes: "clients", ventas: "sales", gestoria: "paperwork", finanzas: "finance", whatsapp: "messages", mensajes: "messages" };
+    const map = moduleKeyMap();
     const dynamicDef = sectionData[currentModule];
-    openModal(dynamicDef?.key || map[currentModule] || "clients");
+    openModal(map[currentModule] || dynamicDef?.key || "clients");
   });
 
   document.querySelectorAll("[data-edit]").forEach(btn => btn.addEventListener("click", () => {
@@ -1146,6 +1271,102 @@ async function handleSectionAction(action) {
   }
 }
 
+async function handleModuleFlow(action) {
+  const [flow, key] = String(action || "").split(":");
+  const source = filtered(state[key] || [])[0] || (state[key] || [])[0];
+  if (!source) return toast("No hay registros para usar.");
+  const nowId = Date.now();
+  if (/opportunity/.test(flow)) {
+    state.opportunities = state.opportunities || [];
+    state.opportunities.unshift({
+      id: `op-${nowId}`,
+      cliente: source.cliente || source.titular || "",
+      telefono: source.telefono || "",
+      interes: source.interes || source.vehiculo || `${source.marca || ""} ${source.modelo || ""}`.trim(),
+      vehiculo: source.vehiculo || `${source.marca || ""} ${source.modelo || ""}`.trim(),
+      probabilidad: "Media",
+      monto: source.presupuesto || source.monto || 0,
+      moneda: source.moneda || "ARS",
+      responsable: source.vendedor || authUser?.name || "",
+      proximo: "Contactar hoy",
+      estado: "Abierta",
+      notas: source.notas || source.detalle || ""
+    });
+    return persistFlow("Oportunidad creada");
+  }
+  if (/sale/.test(flow)) {
+    state.sales = state.sales || [];
+    state.sales.unshift({
+      id: `sales-${nowId}`,
+      cliente: source.cliente || "",
+      vehiculo: source.vehiculo || source.interes || "",
+      etapa: "Contacto",
+      monto: Number(source.monto || source.presupuesto || 0),
+      moneda: source.moneda || "ARS",
+      sena: 0,
+      vendedor: source.vendedor || source.responsable || authUser?.name || "",
+      proximo: "Contactar hoy",
+      estado: "Contacto",
+      notas: source.notas || ""
+    });
+    return persistFlow("Venta creada");
+  }
+  if (/calendar/.test(flow)) {
+    state.calendar = state.calendar || [];
+    state.calendar.unshift({
+      id: `cal-${nowId}`,
+      fecha: todayKey(),
+      hora: "10:00",
+      tipo: "Llamado",
+      titulo: source.titulo || source.solicitud || source.trabajo || "Seguimiento",
+      cliente: source.cliente || source.titular || "",
+      vehiculo: source.vehiculo || source.interes || "",
+      vendedor: source.vendedor || source.responsable || authUser?.name || "",
+      estado: "Programado",
+      notas: source.notas || source.detalle || ""
+    });
+    return persistFlow("Evento creado");
+  }
+  if (/message/.test(flow)) {
+    state.messages = state.messages || [];
+    state.messages.unshift({
+      id: `msg-${nowId}`,
+      cliente: source.cliente || "",
+      telefono: source.telefono || "",
+      canal: "WhatsApp",
+      plantilla: "Seguimiento",
+      mensaje: source.mensaje || source.notas || source.detalle || "Hola, te contactamos por tu consulta.",
+      hora: "Ahora",
+      responsable: source.responsable || source.vendedor || authUser?.name || "",
+      estado: "Listo para enviar"
+    });
+    return persistFlow("Mensaje preparado");
+  }
+  if (/alert/.test(flow)) {
+    state.alerts = state.alerts || [];
+    state.alerts.unshift({
+      id: `al-${nowId}`,
+      titulo: source.titulo || source.concepto || source.trabajo || "Alerta operativa",
+      tipo: "Operativa",
+      prioridad: source.prioridad || "Alta",
+      area: source.area || currentModule,
+      cliente: source.cliente || "",
+      vehiculo: source.vehiculo || "",
+      vence: source.vence || todayKey(),
+      responsable: source.responsable || authUser?.name || "",
+      estado: "Pendiente",
+      detalle: source.detalle || source.notas || ""
+    });
+    return persistFlow("Alerta creada");
+  }
+}
+
+async function persistFlow(message) {
+  addAudit(message);
+  await saveState(message);
+  render();
+}
+
 async function advanceSale() {
   const order = ["Contacto", "Tasacion", "Reserva", "Cierre"];
   const sale = state.sales.find(s => s.etapa !== "Cierre");
@@ -1162,8 +1383,8 @@ function addAudit(text) {
 }
 
 function exportCurrent() {
-  const map = { calendario: "calendar", stock: "vehicles", clientes: "clients", gestoria: "paperwork", finanzas: "finance", mensajes: "messages", whatsapp: "messages" };
-  const key = sectionData[currentModule]?.key || map[currentModule];
+  const map = moduleKeyMap();
+  const key = map[currentModule] || sectionData[currentModule]?.key;
   if (!key) return toast("Este modulo no tiene exportacion tabular.");
   const rows = filtered(state[key] || []);
   const headers = Object.keys(rows[0] || {});
@@ -1175,6 +1396,10 @@ function exportCurrent() {
   a.download = 'sote-' + (key || currentModule) + '.csv';
   a.click();
   URL.revokeObjectURL(a.href);
+}
+
+function moduleKeyMap() {
+  return { calendario: "calendar", stock: "vehicles", clientes: "clients", ventas: "sales", gestoria: "paperwork", finanzas: "finance", whatsapp: "messages", mensajes: "messages" };
 }
 
 function escapeHtml(value) {
