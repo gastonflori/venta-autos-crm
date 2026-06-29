@@ -85,7 +85,7 @@ const sectionDefaults = {
   claims: [{ id: "re-1", cliente: "Nicolas Paz", motivo: "Detalle postventa", canal: "WhatsApp", prioridad: "Media", estado: "Abierto", proximo: "Llamar hoy" }],
   treasury: [{ id: "te-1", cuenta: "Caja principal", tipo: "Ingreso", monto: 850000, moneda: "ARS", fecha: "2026-06-29", estado: "Confirmado" }],
   consignments: [{ id: "cs-1", titular: "Laura Gomez", vehiculo: "Peugeot 208", precioPretendido: 17500000, comision: 900000, estado: "Activa", vence: "2026-07-20" }],
-  orders: [{ id: "pe-1", cliente: "Marcos Diaz", marca: "Toyota", modelo: "Hilux", presupuesto: 38000000, urgencia: "Alta", estado: "Buscando" }],
+  orders: [{ id: "pe-1", cliente: "Marcos Diaz", telefono: "+54 11 5555 5555", marca: "Toyota", modelo: "Hilux", anioDesde: 2020, anioHasta: 2024, presupuesto: 38000000, moneda: "ARS", vendedor: "Gastoonfloori", estado: "Activo", notas: "Busca Hilux 4x4, buen estado, preferentemente blanca o gris." }],
   settlements: [{ id: "li-1", beneficiario: "Gaston", concepto: "Comision Corolla", monto: 320000, fecha: "2026-06-29", estado: "Pendiente" }],
   tickets: [{ id: "in-1", dominio: "AE482QL", detalle: "Patente municipal", monto: 42000, vence: "2026-07-10", estado: "Revisar" }],
   reports: [{ id: "rp-1", nombre: "Ventas junio", periodo: "2026-06", indicador: "Operaciones", valor: "4", estado: "Disponible" }],
@@ -119,6 +119,15 @@ function normalizeState(value) {
       normalized[key] = rows;
     }
   }
+  normalized.orders = (normalized.orders || []).map(order => ({
+    telefono: "",
+    anioDesde: "",
+    anioHasta: "",
+    moneda: "ARS",
+    vendedor: "Gastoonfloori",
+    notas: "",
+    ...order
+  }));
   if (!normalized.settings.sectionsSeeded) normalized.settings.sectionsSeeded = true;
   if (!normalized.settings.calendarSeeded && (!Array.isArray(source.calendar) || source.calendar.length === 0)) {
     normalized.calendar = seedState.calendar;

@@ -93,7 +93,7 @@ const sectionData = {
   reclamos: { key: "claims", title: "Reclamos", item: "reclamo", fields: [["cliente", "Cliente"], ["motivo", "Motivo"], ["canal", "Canal"], ["prioridad", "Prioridad"], ["estado", "Estado"], ["proximo", "Proximo paso"]], columns: [["cliente", "Cliente"], ["motivo", "Motivo"], ["canal", "Canal"], ["prioridad", "Prioridad"], ["estado", "Estado"], ["proximo", "Proximo paso"]] },
   tesoreria: { key: "treasury", title: "Tesoreria", item: "movimiento de caja", fields: [["cuenta", "Cuenta"], ["tipo", "Tipo"], ["monto", "Monto", "number"], ["moneda", "Moneda"], ["fecha", "Fecha", "date"], ["estado", "Estado"]], columns: [["cuenta", "Cuenta"], ["tipo", "Tipo"], ["monto", "Monto"], ["moneda", "Moneda"], ["fecha", "Fecha"], ["estado", "Estado"]] },
   consignaciones: { key: "consignments", title: "Consignaciones", item: "consignacion", fields: [["titular", "Titular"], ["vehiculo", "Vehiculo"], ["precioPretendido", "Precio pretendido", "number"], ["comision", "Comision", "number"], ["estado", "Estado"], ["vence", "Vence", "date"]], columns: [["titular", "Titular"], ["vehiculo", "Vehiculo"], ["precioPretendido", "Precio pretendido"], ["comision", "Comision"], ["estado", "Estado"], ["vence", "Vence"]] },
-  pedidos: { key: "orders", title: "Pedidos", item: "pedido", fields: [["cliente", "Cliente"], ["marca", "Marca"], ["modelo", "Modelo"], ["presupuesto", "Presupuesto", "number"], ["urgencia", "Urgencia"], ["estado", "Estado"]], columns: [["cliente", "Cliente"], ["marca", "Marca"], ["modelo", "Modelo"], ["presupuesto", "Presupuesto"], ["urgencia", "Urgencia"], ["estado", "Estado"]] },
+  pedidos: { key: "orders", title: "Pedidos", item: "pedido", fields: [["cliente", "Cliente"], ["telefono", "Telefono"], ["marca", "Marca"], ["modelo", "Modelo"], ["anioDesde", "Anio desde", "number"], ["anioHasta", "Anio hasta", "number"], ["presupuesto", "Presupuesto maximo", "number"], ["moneda", "Moneda"], ["vendedor", "Vendedor"], ["estado", "Estado"], ["notas", "Notas", "textarea"]], columns: [["cliente", "Cliente"], ["telefono", "Telefono"], ["marca", "Marca"], ["modelo", "Modelo"], ["presupuesto", "Presupuesto"], ["moneda", "Moneda"], ["estado", "Estado"]] },
   liquidaciones: { key: "settlements", title: "Liquidaciones", item: "liquidacion", fields: [["beneficiario", "Beneficiario"], ["concepto", "Concepto"], ["monto", "Monto", "number"], ["fecha", "Fecha", "date"], ["estado", "Estado"]], columns: [["beneficiario", "Beneficiario"], ["concepto", "Concepto"], ["monto", "Monto"], ["fecha", "Fecha"], ["estado", "Estado"]] },
   infracciones: { key: "tickets", title: "Infracciones", item: "infraccion", fields: [["dominio", "Dominio"], ["detalle", "Detalle"], ["monto", "Monto", "number"], ["vence", "Vence", "date"], ["estado", "Estado"]], columns: [["dominio", "Dominio"], ["detalle", "Detalle"], ["monto", "Monto"], ["vence", "Vence"], ["estado", "Estado"]] },
   reportes: { key: "reports", title: "Reportes", item: "reporte", fields: [["nombre", "Nombre"], ["periodo", "Periodo"], ["indicador", "Indicador"], ["valor", "Valor"], ["estado", "Estado"]], columns: [["nombre", "Nombre"], ["periodo", "Periodo"], ["indicador", "Indicador"], ["valor", "Valor"], ["estado", "Estado"]] },
@@ -124,7 +124,7 @@ const sectionDefaults = {
   claims: [{ id: "re-1", cliente: "Nicolas Paz", motivo: "Detalle postventa", canal: "WhatsApp", prioridad: "Media", estado: "Abierto", proximo: "Llamar hoy" }],
   treasury: [{ id: "te-1", cuenta: "Caja principal", tipo: "Ingreso", monto: 850000, moneda: "ARS", fecha: "2026-06-29", estado: "Confirmado" }],
   consignments: [{ id: "cs-1", titular: "Laura Gomez", vehiculo: "Peugeot 208", precioPretendido: 17500000, comision: 900000, estado: "Activa", vence: "2026-07-20" }],
-  orders: [{ id: "pe-1", cliente: "Marcos Diaz", marca: "Toyota", modelo: "Hilux", presupuesto: 38000000, urgencia: "Alta", estado: "Buscando" }],
+  orders: [{ id: "pe-1", cliente: "Marcos Diaz", telefono: "+54 11 5555 5555", marca: "Toyota", modelo: "Hilux", anioDesde: 2020, anioHasta: 2024, presupuesto: 38000000, moneda: "ARS", vendedor: "Gastoonfloori", estado: "Activo", notas: "Busca Hilux 4x4, buen estado, preferentemente blanca o gris." }],
   settlements: [{ id: "li-1", beneficiario: "Gaston", concepto: "Comision Corolla", monto: 320000, fecha: "2026-06-29", estado: "Pendiente" }],
   tickets: [{ id: "in-1", dominio: "AE482QL", detalle: "Patente municipal", monto: 42000, vence: "2026-07-10", estado: "Revisar" }],
   reports: [{ id: "rp-1", nombre: "Ventas junio", periodo: "2026-06", indicador: "Operaciones", valor: "4", estado: "Disponible" }],
@@ -179,6 +179,15 @@ function normalizeState(next = {}) {
       merged[key] = rows.map(row => ({ ...row }));
     }
   });
+  merged.orders = (merged.orders || []).map(order => ({
+    telefono: "",
+    anioDesde: "",
+    anioHasta: "",
+    moneda: "ARS",
+    vendedor: authUser?.name || "Gastoonfloori",
+    notas: "",
+    ...order
+  }));
   if (!merged.settings.sectionsSeeded) merged.settings.sectionsSeeded = true;
   return merged;
 }
@@ -735,7 +744,7 @@ function configPage() {
 }
 
 function input(name, label, value, type = "text") {
-  return `<div class="field"><label>${label}</label><input name="${name}" type="${type}" value="${escapeHtml(value)}"></div>`;
+  return fieldControl({ name, label, type, value });
 }
 
 function logoMarkup(className) {
@@ -747,35 +756,193 @@ function logoMarkup(className) {
 function formFor(key, row = {}) {
   const dynamicDef = Object.values(sectionData).find(def => def.key === key);
   const forms = {
-    vehicles: [["dominio", "Dominio"], ["marca", "Marca"], ["modelo", "Modelo"], ["anio", "Anio", "number"], ["km", "Kilometros", "number"], ["precio", "Precio", "number"], ["estado", "Estado"], ["ubicacion", "Ubicacion"], ["margen", "Margen", "number"]],
-    clients: [["nombre", "Nombre"], ["telefono", "Telefono"], ["email", "Email", "email"], ["interes", "Interes"], ["origen", "Origen"], ["estado", "Estado"]],
-    sales: [["cliente", "Cliente"], ["vehiculo", "Vehiculo"], ["etapa", "Etapa"], ["monto", "Monto", "number"], ["vendedor", "Vendedor"], ["proximo", "Proximo contacto"]],
-    paperwork: [["tramite", "Tramite"], ["cliente", "Cliente"], ["vehiculo", "Vehiculo"], ["estado", "Estado"], ["vence", "Vence", "date"]],
-    finance: [["concepto", "Concepto"], ["tipo", "Tipo"], ["monto", "Monto", "number"], ["fecha", "Fecha", "date"], ["estado", "Estado"]],
-    messages: [["cliente", "Cliente"], ["plantilla", "Plantilla"], ["estado", "Estado"], ["hora", "Hora"]],
-    calendar: [["fecha", "Fecha", "date"], ["hora", "Hora", "time"], ["tipo", "Tipo"], ["titulo", "Titulo"], ["cliente", "Cliente"], ["vehiculo", "Vehiculo"], ["vendedor", "Vendedor"], ["estado", "Estado"], ["notas", "Notas"]]
+    vehicles: [["dominio", "Dominio"], ["marca", "Marca"], ["modelo", "Modelo"], ["anio", "Anio", "number"], ["km", "Kilometros", "number"], ["precio", "Precio", "number"], ["estado", "Estado"], ["ubicacion", "Ubicacion"], ["margen", "Margen", "number"], ["notas", "Notas", "textarea"]],
+    clients: [["nombre", "Nombre"], ["telefono", "Telefono"], ["email", "Email", "email"], ["interes", "Interes"], ["origen", "Origen"], ["estado", "Estado"], ["notas", "Notas", "textarea"]],
+    sales: [["cliente", "Cliente"], ["vehiculo", "Vehiculo"], ["etapa", "Etapa"], ["monto", "Monto", "number"], ["vendedor", "Vendedor"], ["proximo", "Proximo contacto"], ["notas", "Notas", "textarea"]],
+    paperwork: [["tramite", "Tramite"], ["cliente", "Cliente"], ["vehiculo", "Vehiculo"], ["estado", "Estado"], ["vence", "Vence", "date"], ["notas", "Notas", "textarea"]],
+    finance: [["concepto", "Concepto"], ["tipo", "Tipo"], ["monto", "Monto", "number"], ["fecha", "Fecha", "date"], ["estado", "Estado"], ["notas", "Notas", "textarea"]],
+    messages: [["cliente", "Cliente"], ["plantilla", "Plantilla"], ["estado", "Estado"], ["hora", "Hora"], ["mensaje", "Mensaje", "textarea"]],
+    calendar: [["fecha", "Fecha", "date"], ["hora", "Hora", "time"], ["tipo", "Tipo"], ["titulo", "Titulo"], ["cliente", "Cliente"], ["vehiculo", "Vehiculo"], ["vendedor", "Vendedor"], ["estado", "Estado"], ["notas", "Notas", "textarea"]]
   };
   const fields = dynamicDef?.fields || forms[key] || forms.clients;
-  return '<div class="form-grid">' + fields.map(([name, label, type = "text"]) => input(name, label, row[name] ?? "", type)).join("") + '</div>';
+  if (key === "orders") return orderForm(row);
+  return groupedForm(key, fields, row);
 }
 
 function openModal(key, row = {}) {
-  const title = `${row.id ? "Editar" : "Nuevo"} ${labelForKey(key)}`;
+  const meta = modalMeta(key, row);
   document.body.insertAdjacentHTML("beforeend", `
     <div class="modal-backdrop" data-modal>
       <section class="modal">
-        <div class="card-head"><h2>${title}</h2><button class="icon-btn" data-close>X</button></div>
+        <div class="modal-head"><div><h2>${meta.title}</h2><p>${meta.subtitle}</p></div><button class="icon-btn" data-close>X</button></div>
         <form data-save="${key}" data-id="${row.id || ""}">
           ${formFor(key, row)}
           <div class="modal-actions">
             <button class="btn ghost" type="button" data-close>Cancelar</button>
-            <button class="btn" type="submit">Guardar</button>
+            <button class="btn primary-action" type="submit">${meta.submit}</button>
           </div>
         </form>
       </section>
     </div>
   `);
   bindModal();
+}
+
+function modalMeta(key, row = {}) {
+  const editing = Boolean(row.id);
+  const label = labelForKey(key);
+  const dynamicDef = Object.values(sectionData).find(def => def.key === key);
+  const subtitles = {
+    orders: "Cliente que vino preguntando por algo que todavia no tenemos en stock.",
+    vehicles: "Unidad disponible, reservada, publicada o en preparacion.",
+    clients: "Datos comerciales y seguimiento del cliente.",
+    sales: "Operacion activa dentro del pipeline.",
+    calendar: "Agenda de test drives, entregas, llamados y vencimientos.",
+    paperwork: "Tramite administrativo vinculado a cliente y vehiculo.",
+    finance: "Movimiento de caja, banco, ingreso o egreso.",
+    messages: "Plantilla o mensaje operativo para enviar."
+  };
+  return {
+    title: `${editing ? "Editar" : "Nuevo"} ${key === "orders" ? "pedido del cliente" : label}`,
+    subtitle: subtitles[key] || `Carga y administracion de ${dynamicDef?.title || label}.`,
+    submit: editing ? "Guardar cambios" : (key === "orders" ? "Cargar pedido" : `Cargar ${label}`)
+  };
+}
+
+function groupedForm(key, fields, row = {}) {
+  const sections = splitFields(key, fields, row);
+  return sections.map(section => `
+    <fieldset class="form-section">
+      <legend>${section.icon ? `<span>${section.icon}</span>` : ""}${escapeHtml(section.title)}</legend>
+      ${section.note ? `<p>${escapeHtml(section.note)}</p>` : ""}
+      <div class="form-grid">${section.fields.map(field => fieldControl(normalizeField(field, row, key))).join("")}</div>
+    </fieldset>
+  `).join("");
+}
+
+function orderForm(row = {}) {
+  const clientValue = row.clienteId || "";
+  const clientOptions = [`<option value="">— Cliente nuevo / no vinculado —</option>`]
+    .concat((state.clients || []).map(client => `<option value="${escapeHtml(client.id)}" ${client.id === clientValue ? "selected" : ""} data-name="${escapeHtml(client.nombre)}" data-phone="${escapeHtml(client.telefono)}">${escapeHtml(client.nombre)} · ${escapeHtml(client.telefono)}</option>`))
+    .join("");
+  return `
+    <fieldset class="form-section">
+      <legend><span>+</span>CLIENTE</legend>
+      <div class="field full"><label>Cliente vinculado (opcional)</label><select name="clienteId" data-client-link>${clientOptions}</select><small>Autocompleta nombre + telefono</small></div>
+      <div class="form-grid">
+        ${fieldControl({ name: "cliente", label: "Nombre cliente", required: true, placeholder: "Nombre y apellido", value: row.cliente || "" })}
+        ${fieldControl({ name: "telefono", label: "Telefono", placeholder: "+54 11 5555 5555", value: row.telefono || "" })}
+      </div>
+    </fieldset>
+    <fieldset class="form-section">
+      <legend><span>*</span>AUTO BUSCADO</legend>
+      <div class="form-grid">
+        ${fieldControl({ name: "marca", label: "Marca", required: true, placeholder: "Ej. BMW, Toyota, Audi", value: row.marca || "" })}
+        ${fieldControl({ name: "modelo", label: "Modelo", placeholder: "Ej. X3, Hilux, Q5", value: row.modelo || "" })}
+        ${fieldControl({ name: "anioDesde", label: "Anio desde", type: "number", placeholder: "2020", value: row.anioDesde || "" })}
+        ${fieldControl({ name: "anioHasta", label: "Anio hasta", type: "number", placeholder: "2024", value: row.anioHasta || "" })}
+        ${fieldControl({ name: "presupuesto", label: "Presupuesto maximo", type: "number", placeholder: "50000", value: row.presupuesto || "" })}
+        ${fieldControl({ name: "moneda", label: "Moneda", type: "select", options: ["USD", "ARS"], value: row.moneda || "USD" })}
+        ${fieldControl({ name: "vendedor", label: "Vendedor que tomo el pedido", placeholder: "Gastoonfloori", value: row.vendedor || authUser?.name || "Gastoonfloori" })}
+        ${fieldControl({ name: "estado", label: "Estado", type: "select", options: ["Activo", "Buscando", "Pausado", "Con match", "Cerrado"], value: row.estado || "Activo" })}
+        ${fieldControl({ name: "notas", label: "Notas", type: "textarea", placeholder: "Color preferido, equipamiento, urgencia, etc.", value: row.notas || "", wide: true })}
+      </div>
+    </fieldset>
+  `;
+}
+
+function splitFields(key, fields, row = {}) {
+  const normalized = fields.map(field => normalizeField(field, row, key));
+  if (["vehicles", "clients", "sales", "calendar", "paperwork", "finance", "messages"].includes(key)) {
+    return [{ title: sectionTitleForKey(key), icon: iconForKey(key), fields: normalized }];
+  }
+  const main = normalized.filter(field => !/notas|detalle|comentario|mensaje/i.test(field.name));
+  const notes = normalized.filter(field => /notas|detalle|comentario|mensaje/i.test(field.name));
+  return [
+    { title: sectionTitleForKey(key), icon: iconForKey(key), fields: main },
+    ...(notes.length ? [{ title: "OBSERVACIONES", icon: "-", fields: notes }] : [])
+  ];
+}
+
+function sectionTitleForKey(key) {
+  return ({
+    vehicles: "VEHICULO",
+    clients: "CLIENTE",
+    sales: "OPERACION",
+    calendar: "AGENDA",
+    paperwork: "GESTORIA",
+    finance: "MOVIMIENTO",
+    messages: "MENSAJE"
+  }[key] || "DATOS");
+}
+
+function iconForKey(key) {
+  return ({ vehicles: "A", clients: "+", sales: "$", calendar: "CL", paperwork: "G", finance: "$", messages: "M" }[key] || "*");
+}
+
+function normalizeField(field, row = {}, moduleKey = "") {
+  const [name, label, type = "text"] = field;
+  const config = fieldConfig(name, moduleKey);
+  return { name, label, type, value: row[name] ?? config.value ?? "", ...config };
+}
+
+function fieldConfig(name, moduleKey = "") {
+  const common = {
+    estado: { type: "select", options: statusOptions(moduleKey) },
+    prioridad: { type: "select", options: ["Alta", "Media", "Baja", "Urgente"] },
+    tipo: { type: "select", options: ["Ingreso", "Egreso", "Test drive", "Entrega", "Llamado", "Gestoria", "Tasacion"] },
+    moneda: { type: "select", options: ["ARS", "USD"] },
+    etapa: { type: "select", options: ["Contacto", "Tasacion", "Reserva", "Cierre"] },
+    canal: { type: "select", options: ["WhatsApp", "Telefono", "Email", "Salon", "Instagram", "MercadoLibre"] },
+    origen: { type: "select", options: ["WhatsApp", "Instagram", "MercadoLibre", "Salon", "Referido", "Web"] },
+    urgencia: { type: "select", options: ["Alta", "Media", "Baja"] },
+    match: { type: "select", options: ["Sin match", "Posible", "Exacto", "Enviado"] },
+    probabilidad: { type: "select", options: ["Alta", "Media", "Baja"] }
+  };
+  const placeholders = {
+    cliente: "Nombre y apellido",
+    telefono: "+54 11 5555 5555",
+    email: "cliente@email.com",
+    vehiculo: "Marca, modelo y version",
+    dominio: "AE000AA",
+    marca: "Ej. Toyota",
+    modelo: "Ej. Corolla XEI",
+    monto: "0",
+    presupuesto: "0",
+    notas: "Notas internas, condiciones, urgencia o proximo paso.",
+    detalle: "Detalle completo.",
+    comentario: "Comentario o respuesta del cliente.",
+    mensaje: "Texto del mensaje."
+  };
+  return { ...(common[name] || {}), placeholder: placeholders[name] || "" };
+}
+
+function statusOptions(moduleKey) {
+  const map = {
+    vehicles: ["Disponible", "Publicado", "Reservado", "Preparacion", "Vendido"],
+    clients: ["Nuevo", "Seguimiento", "Caliente", "Dormido", "Cerrado"],
+    sales: ["Contacto", "Tasacion", "Reserva", "Cierre", "Perdida"],
+    calendar: ["Programado", "Confirmado", "Pendiente", "Hecho", "Cancelado"],
+    finance: ["Pendiente", "Confirmado", "Pagado", "Rechazado"],
+    paperwork: ["Pendiente", "En curso", "Listo", "Observado"],
+    messages: ["Borrador", "Listo para enviar", "Programado", "Enviado"],
+    orders: ["Activo", "Buscando", "Pausado", "Con match", "Cerrado"]
+  };
+  return map[moduleKey] || ["Pendiente", "Activo", "En curso", "Hecho", "Cancelado"];
+}
+
+function fieldControl(field) {
+  const required = field.required ? " required" : "";
+  const wide = field.wide || field.type === "textarea" ? " full" : "";
+  const placeholder = field.placeholder ? ` placeholder="${escapeHtml(field.placeholder)}"` : "";
+  const value = field.value ?? "";
+  if (field.type === "select") {
+    return `<div class="field${wide}"><label>${escapeHtml(field.label)}${field.required ? " *" : ""}</label><select name="${escapeHtml(field.name)}"${required}>${(field.options || []).map(option => `<option value="${escapeHtml(option)}" ${String(value) === String(option) ? "selected" : ""}>${escapeHtml(option)}</option>`).join("")}</select></div>`;
+  }
+  if (field.type === "textarea") {
+    return `<div class="field${wide}"><label>${escapeHtml(field.label)}${field.required ? " *" : ""}</label><textarea name="${escapeHtml(field.name)}"${placeholder}${required}>${escapeHtml(value)}</textarea></div>`;
+  }
+  return `<div class="field${wide}"><label>${escapeHtml(field.label)}${field.required ? " *" : ""}</label><input name="${escapeHtml(field.name)}" type="${escapeHtml(field.type || "text")}" value="${escapeHtml(value)}"${placeholder}${required}></div>`;
 }
 
 function labelForKey(key) {
@@ -927,7 +1094,7 @@ function bindModal() {
       const id = e.target.dataset.id;
       const item = Object.fromEntries(new FormData(e.target).entries());
       Object.keys(item).forEach(k => {
-        if (/^(anio|km|precio|margen|monto|precioPretendido|comision|costo|presupuesto|puntaje|dias)$/.test(k)) item[k] = Number(item[k]);
+        if (/^(anio|anioDesde|anioHasta|km|precio|margen|monto|precioPretendido|comision|costo|presupuesto|puntaje|dias)$/.test(k)) item[k] = Number(item[k]);
       });
       if (id) {
         state[key] = state[key].map(x => x.id === id ? { ...x, ...item, id } : x);
@@ -938,6 +1105,18 @@ function bindModal() {
       await saveState("Datos guardados");
       document.querySelector("[data-modal]")?.remove();
       render();
+    });
+  });
+  document.querySelectorAll("[data-client-link]").forEach(select => {
+    if (select.dataset.bound) return;
+    select.dataset.bound = "true";
+    select.addEventListener("change", () => {
+      const option = select.selectedOptions[0];
+      const form = select.closest("form");
+      const name = option?.dataset.name || "";
+      const phone = option?.dataset.phone || "";
+      if (name && form?.elements.cliente) form.elements.cliente.value = name;
+      if (phone && form?.elements.telefono) form.elements.telefono.value = phone;
     });
   });
 }

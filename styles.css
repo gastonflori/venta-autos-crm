@@ -154,10 +154,21 @@ tr:last-child td { border-bottom: 0; }
 .detail-list dd { min-width: 0; margin: 0; overflow-wrap: anywhere; font-size: 13px; }
 
 .modal-backdrop { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; padding: 18px; background: rgba(0,0,0,.58); }
-.modal { width: min(760px, 100%); max-height: calc(100vh - 36px); overflow: auto; border: 1px solid var(--border); border-radius: 8px; background: var(--panel); box-shadow: 0 24px 90px rgba(0,0,0,.55); }
-.modal form { display: grid; gap: 14px; padding: 16px; }
+.modal { width: min(820px, 100%); max-height: calc(100vh - 36px); overflow: auto; border: 1px solid var(--border); border-radius: 14px; background: var(--panel); box-shadow: 0 24px 90px rgba(0,0,0,.55); }
+.modal-head { min-height: 72px; display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 18px 20px; border-bottom: 1px solid var(--border); }
+.modal-head h2 { margin: 0 0 4px; font-size: 16px; }
+.modal-head p { margin: 0; color: var(--muted); font-size: 13px; }
+.modal form { display: grid; gap: 14px; padding: 18px 20px; }
 .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
-.modal-actions { display: flex; justify-content: flex-end; gap: 10px; padding-top: 4px; }
+.field.full { grid-column: 1 / -1; }
+.field small { margin-top: 2px; color: var(--muted); font-size: 12px; }
+.form-section { display: grid; gap: 14px; margin: 0; padding: 0 0 16px; border: 0; border-bottom: 1px solid var(--border); }
+.form-section:last-of-type { border-bottom: 0; }
+.form-section legend { display: flex; align-items: center; gap: 8px; margin-bottom: 2px; color: var(--muted); font-size: 12px; font-weight: 800; letter-spacing: .04em; }
+.form-section legend span { color: var(--red); font-size: 13px; }
+.form-section p { margin: 0; color: var(--muted); font-size: 12px; }
+.modal-actions { display: flex; justify-content: flex-end; gap: 10px; padding-top: 2px; }
+.primary-action { color: #fff; background: linear-gradient(135deg, #ff4b45, #d91120); box-shadow: 0 12px 30px rgba(239,51,41,.24); }
 .empty { padding: 40px 16px; color: var(--muted); text-align: center; }
 .logo-config { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 16px; padding: 14px; border: 1px solid var(--border); border-radius: 8px; background: var(--panel-2); }
 .logo-config p { margin: 4px 0 0; font-size: 12px; }
