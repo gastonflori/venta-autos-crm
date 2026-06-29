@@ -77,9 +77,13 @@ async function boot() {
 
 async function loadState() {
   const data = await api("/api/state");
-  state = normalizeState(data.state);
+  const normalized = normalizeState(data.state);
+  const changed = JSON.stringify(data.state || {}) !== JSON.stringify(normalized);
+  state = normalized;
   authUser = data.user;
-  normalizeState();
+  if (changed) {
+    await api("/api/state", { method: "PUT", body: JSON.stringify({ state }) }).catch(() => {});
+  }
 }
 const sectionData = {
   calendario: { key: "calendarItems", title: "Calendario", item: "evento", fields: [["fecha", "Fecha", "date"], ["hora", "Hora"], ["tipo", "Tipo"], ["cliente", "Cliente"], ["vehiculo", "Vehiculo"], ["estado", "Estado"]], columns: [["fecha", "Fecha"], ["hora", "Hora"], ["tipo", "Tipo"], ["cliente", "Cliente"], ["vehiculo", "Vehiculo"], ["estado", "Estado"]] },
@@ -142,16 +146,6 @@ const sectionDefaults = {
   workshop: [{ id: "ta-1", vehiculo: "Ford Ranger XLS", trabajo: "Service y lavado", responsable: "Taller", costo: 280000, estado: "En proceso" }]
 };
 
-function normalizeState() {
-  if (!state) state = {};
-  Object.entries(sectionDefaults).forEach(([key, rows]) => {
-    if (!Array.isArray(state[key])) state[key] = rows;
-  });
-  if (!Array.isArray(state.messages)) state.messages = [];
-  if (!state.settings) state.settings = { businessName: "Sote Auto", currency: "ARS" };
-}
-
-
 async function saveState(message = "Datos guardados") {
   await api("/api/state", { method: "PUT", body: JSON.stringify({ state }) });
   toast(message);
@@ -179,7 +173,14 @@ function normalizeState(next = {}) {
     audit: [],
     settings: {}
   };
-  return { ...defaults, ...next, settings: { ...defaults.settings, ...(next.settings || {}) } };
+  const merged = { ...defaults, ...next, settings: { ...defaults.settings, ...(next.settings || {}) } };
+  Object.entries(sectionDefaults).forEach(([key, rows]) => {
+    if (!Array.isArray(merged[key]) || (!merged.settings.sectionsSeeded && merged[key].length === 0)) {
+      merged[key] = rows.map(row => ({ ...row }));
+    }
+  });
+  if (!merged.settings.sectionsSeeded) merged.settings.sectionsSeeded = true;
+  return merged;
 }
 
 function toast(message) {
@@ -354,7 +355,68 @@ function genericSectionPage(moduleId) {
   if (!def) {
     return '<section class="card"><div class="card-head"><h2>Modulo en preparacion</h2></div><div class="card-body"><p class="muted">Esta seccion esta lista para conectarse.</p></div></section>';
   }
-  return tablePage(def.key, def.title, genericColumns(moduleId));
+  const rows = filtered(state[def.key] || []);
+  const allRows = state[def.key] || [];
+  const moneyTotal = totalForRows(allRows);
+  const next = nextDatedRow(allRows);
+  const first = rows[0] || allRows[0];
+  return `
+    <div class="grid stats module-stats">
+      ${stat("Registros", allRows.length, "Total del modulo")}
+      ${stat("Visibles", rows.length, query ? "Resultado filtrado" : "Sin filtro activo")}
+      ${stat("Pendientes", pendingRows(allRows), "Requieren seguimiento")}
+      ${stat("Monto", moneyTotal ? money(moneyTotal) : "-", "Valores asociados")}
+    </div>
+    <div class="grid two-col module-grid" style="margin-top:16px">
+      ${tablePage(def.key, def.title, genericColumns(moduleId))}
+      <section class="card module-panel">
+        <div class="card-head"><h2>Gestion</h2><span class="pill info">${escapeHtml(def.title)}</span></div>
+        <div class="card-body">
+          <div class="module-actions">
+            <button class="btn" data-section-action="new:${def.key}">Nuevo</button>
+            <button class="btn ghost" data-section-action="complete:${def.key}">Resolver pendiente</button>
+            <button class="btn ghost" data-section-action="duplicate:${def.key}">Duplicar primero</button>
+            <button class="btn ghost" data-action="export">Exportar CSV</button>
+          </div>
+          <div class="detail-box">
+            <h3>${first ? "Ultimo registro" : "Sin registros"}</h3>
+            ${first ? detailList(first, def.columns) : `<p class="muted">Carga un registro para administrar esta seccion.</p>`}
+          </div>
+          <div class="detail-box">
+            <h3>Proximo vencimiento</h3>
+            ${next ? detailList(next, def.columns.slice(0, 4)) : `<p class="muted">No hay fechas pendientes.</p>`}
+          </div>
+        </div>
+      </section>
+    </div>
+  `;
+}
+
+function pendingRows(rows) {
+  return rows.filter(row => /Pendiente|Abierto|Revisar|Buscando|Activo|Nueva|En proceso|Llamar|Alta|Media/i.test(Object.values(row).join(" "))).length;
+}
+
+function totalForRows(rows) {
+  return rows.reduce((total, row) => total + Object.entries(row).reduce((sum, [key, value]) => /monto|precio|comision|costo|presupuesto/i.test(key) ? sum + Number(value || 0) : sum, 0), 0);
+}
+
+function nextDatedRow(rows) {
+  const dateKeys = ["vence", "fecha", "entrega", "ultimoContacto"];
+  const today = todayKey();
+  return rows
+    .map(row => ({ row, date: dateKeys.map(key => row[key]).find(value => /^\d{4}-\d{2}-\d{2}$/.test(String(value || ""))) }))
+    .filter(item => item.date && item.date >= today)
+    .sort((a, b) => a.date.localeCompare(b.date))[0]?.row || null;
+}
+
+function detailList(row, columns) {
+  return `<dl class="detail-list">${columns.map(([key, label]) => `<div><dt>${escapeHtml(label)}</dt><dd>${renderDetailValue(key, row[key])}</dd></div>`).join("")}</dl>`;
+}
+
+function renderDetailValue(key, value) {
+  if (/monto|precio|comision|costo|presupuesto/i.test(key)) return money(value);
+  if (/estado|prioridad|tipo/i.test(key)) return pill(value);
+  return escapeHtml(value);
 }
 
 
@@ -756,6 +818,7 @@ function bind() {
   }));
 
   document.querySelectorAll("[data-add]").forEach(btn => btn.addEventListener("click", () => openModal(btn.dataset.add)));
+  document.querySelectorAll("[data-section-action]").forEach(btn => btn.addEventListener("click", () => handleSectionAction(btn.dataset.sectionAction)));
   document.querySelector("[data-action='quick-add']")?.addEventListener("click", () => {
     const map = { calendario: "calendar", stock: "vehicles", clientes: "clients", ventas: "sales", gestoria: "paperwork", finanzas: "finance", whatsapp: "messages", mensajes: "messages" };
     const dynamicDef = sectionData[currentModule];
@@ -877,6 +940,31 @@ function bindModal() {
       render();
     });
   });
+}
+
+async function handleSectionAction(action) {
+  const [type, key] = String(action || "").split(":");
+  if (!key) return;
+  if (type === "new") return openModal(key);
+  state[key] = state[key] || [];
+  if (type === "duplicate") {
+    const source = filtered(state[key])[0] || state[key][0];
+    if (!source) return toast("No hay registros para duplicar.");
+    const copy = { ...source, id: `${key}-${Date.now()}` };
+    state[key].unshift(copy);
+    addAudit(`Duplicado ${labelForKey(key)}`);
+    await saveState("Registro duplicado");
+    render();
+    return;
+  }
+  if (type === "complete") {
+    const record = state[key].find(row => !/Hecho|Listo|Confirmado|Pagado|Cerrado|Aprobado|Enviado|Disponible|Recibida|Cancelado/i.test(String(row.estado || "")));
+    if (!record) return toast("No hay pendientes para resolver.");
+    record.estado = "Hecho";
+    addAudit(`Resuelto ${labelForKey(key)}`);
+    await saveState("Pendiente resuelto");
+    render();
+  }
 }
 
 async function advanceSale() {

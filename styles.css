@@ -142,6 +142,16 @@ tr:last-child td { border-bottom: 0; }
 .event-time { color: var(--red); font-size: 12px; font-weight: 800; }
 .event-side { display: grid; justify-items: end; align-content: start; gap: 9px; }
 .empty.small { padding: 14px; }
+.module-grid { align-items: start; }
+.module-panel .card-body { display: grid; gap: 14px; }
+.module-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.module-actions .btn { width: 100%; }
+.detail-box { border: 1px solid var(--border); border-radius: 8px; background: var(--panel-2); padding: 12px; }
+.detail-box h3 { margin: 0 0 10px; font-size: 13px; }
+.detail-list { display: grid; gap: 8px; margin: 0; }
+.detail-list div { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 10px; align-items: center; }
+.detail-list dt { color: var(--muted); font-size: 11px; font-weight: 800; text-transform: uppercase; }
+.detail-list dd { min-width: 0; margin: 0; overflow-wrap: anywhere; font-size: 13px; }
 
 .modal-backdrop { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; padding: 18px; background: rgba(0,0,0,.58); }
 .modal { width: min(760px, 100%); max-height: calc(100vh - 36px); overflow: auto; border: 1px solid var(--border); border-radius: 8px; background: var(--panel); box-shadow: 0 24px 90px rgba(0,0,0,.55); }
@@ -172,6 +182,8 @@ tr:last-child td { border-bottom: 0; }
   .calendar-grid { grid-template-columns: repeat(7, minmax(96px, 1fr)); }
   .week-day, .calendar-event { grid-template-columns: 1fr; }
   .event-side { justify-items: start; }
+  .module-actions { grid-template-columns: 1fr; }
+  .detail-list div { grid-template-columns: 1fr; gap: 3px; }
 }
 
 @media (max-width: 720px) {
