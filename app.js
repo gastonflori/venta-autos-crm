@@ -5,6 +5,8 @@ let authUser = null;
 let currentModule = "dashboard";
 let query = "";
 let publicConfig = {};
+let calendarView = "month";
+let calendarCursor = new Date().toISOString().slice(0, 10);
 
 const modules = [
   { id: "dashboard", label: "Dashboard", icon: "D", subtitle: "Resumen operativo de la agencia" },
@@ -75,7 +77,7 @@ async function boot() {
 
 async function loadState() {
   const data = await api("/api/state");
-  state = data.state;
+  state = normalizeState(data.state);
   authUser = data.user;
   normalizeState();
 }
@@ -165,6 +167,21 @@ function money(value) {
   return new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 }).format(Number(value || 0));
 }
 
+function normalizeState(next = {}) {
+  const defaults = {
+    vehicles: [],
+    clients: [],
+    sales: [],
+    paperwork: [],
+    finance: [],
+    messages: [],
+    calendar: [],
+    audit: [],
+    settings: {}
+  };
+  return { ...defaults, ...next, settings: { ...defaults.settings, ...(next.settings || {}) } };
+}
+
 function toast(message) {
   const el = document.getElementById("toast");
   el.textContent = message;
@@ -249,6 +266,7 @@ function shell() {
 
 function page() {
   if (currentModule === "dashboard") return dashboard();
+  if (currentModule === "calendario") return calendarPage();
   if (currentModule === "stock") return tablePage("vehicles", "Vehiculo", vehicleColumns());
   if (currentModule === "clientes") return tablePage("clients", "Cliente", clientColumns());
   if (currentModule === "ventas") return salesPage();
@@ -266,6 +284,7 @@ function dashboard() {
     <div class="grid stats">
       ${stat("Unidades en stock", state.vehicles.length, "Inventario activo")}
       ${stat("Leads activos", state.clients.length, "Consultas y compradores")}
+      ${stat("Agenda hoy", calendarForDay(todayKey()).length, "Test drives y tareas")}
       ${stat("Pipeline", money(state.sales.reduce((a, x) => a + Number(x.monto), 0)), "Oportunidades abiertas")}
       ${stat("Caja neta", money(ingresos - egresos), "Ingresos menos egresos")}
     </div>
@@ -278,6 +297,12 @@ function dashboard() {
         <div class="card-head"><h2>Actividad reciente</h2><span class="pill info">SQLite</span></div>
         <div class="card-body timeline">
           ${(state.audit || []).slice(0, 6).map((x, i) => `<div class="event"><time>${i + 9}:0${i}</time><div>${escapeHtml(x)}</div></div>`).join("")}
+        </div>
+      </section>
+      <section class="card">
+        <div class="card-head"><h2>Proxima agenda</h2><button class="btn" data-module="calendario">Abrir calendario</button></div>
+        <div class="card-body timeline">
+          ${upcomingCalendar(5).map(event => `<div class="event"><time>${escapeHtml(event.fecha)} ${escapeHtml(event.hora)}</time><div><strong>${escapeHtml(event.titulo)}</strong><br><span class="muted">${escapeHtml(event.cliente)} - ${escapeHtml(event.vehiculo)}</span></div></div>`).join("") || `<div class="empty">Sin eventos proximos.</div>`}
         </div>
       </section>
     </div>
@@ -372,6 +397,189 @@ function financeColumns() {
     { key: "fecha", label: "Fecha" },
     { key: "estado", label: "Estado", render: v => pill(v) }
   ];
+}
+
+function calendarPage() {
+  const items = filteredCalendar();
+  const today = todayKey();
+  const pending = (state.calendar || []).filter(x => /Pendiente|Programado/i.test(x.estado || "")).length;
+  const confirmed = (state.calendar || []).filter(x => /Confirmado|Listo/i.test(x.estado || "")).length;
+  const overdue = (state.calendar || []).filter(x => x.fecha < today && !/Hecho|Cancelado|Listo/i.test(x.estado || "")).length;
+  return `
+    <div class="grid stats calendar-stats">
+      ${stat("Eventos cargados", state.calendar.length, "Agenda total")}
+      ${stat("Hoy", calendarForDay(today).length, "Compromisos del dia")}
+      ${stat("Pendientes", pending, "A coordinar o resolver")}
+      ${stat("Confirmados", confirmed, "Listos para atender")}
+      ${stat("Vencidos", overdue, "Requieren accion")}
+    </div>
+    <section class="card calendar-card">
+      <div class="card-head calendar-head">
+        <div>
+          <h2>${calendarTitle()}</h2>
+          <p class="muted">${items.length} eventos visibles</p>
+        </div>
+        <div class="toolbar compact">
+          <button class="btn ghost" data-action="calendar-prev">Anterior</button>
+          <button class="btn ghost" data-action="calendar-today">Hoy</button>
+          <button class="btn ghost" data-action="calendar-next">Siguiente</button>
+          <div class="segmented">
+            ${["month", "week", "list"].map(view => `<button class="${calendarView === view ? "active" : ""}" data-calendar-view="${view}">${viewLabel(view)}</button>`).join("")}
+          </div>
+          <button class="btn" data-add="calendar">Nuevo evento</button>
+        </div>
+      </div>
+      <div class="card-body toolbar">
+        <input class="grow" data-action="search" value="${escapeHtml(query)}" placeholder="Buscar cliente, auto, vendedor o estado">
+        <button class="btn ghost" data-action="export">Exportar CSV</button>
+      </div>
+      <div class="card-body calendar-wrap">
+        ${calendarView === "month" ? monthCalendar(items) : calendarView === "week" ? weekCalendar(items) : listCalendar(items)}
+      </div>
+    </section>
+  `;
+}
+
+function calendarTitle() {
+  const date = localDate(calendarCursor);
+  if (calendarView === "week") {
+    const start = startOfWeek(date);
+    const end = addDays(start, 6);
+    return `${formatDate(start)} al ${formatDate(end)}`;
+  }
+  if (calendarView === "list") return "Listado de agenda";
+  return date.toLocaleDateString("es-AR", { month: "long", year: "numeric" });
+}
+
+function monthCalendar(items) {
+  const cursor = localDate(calendarCursor);
+  const first = new Date(cursor.getFullYear(), cursor.getMonth(), 1);
+  const start = startOfWeek(first);
+  const days = Array.from({ length: 42 }, (_, i) => addDays(start, i));
+  return `
+    <div class="calendar-grid calendar-weekdays">${["Lun", "Mar", "Mie", "Jue", "Vie", "Sab", "Dom"].map(day => `<div>${day}</div>`).join("")}</div>
+    <div class="calendar-grid">
+      ${days.map(day => {
+        const key = dateKey(day);
+        const dayItems = items.filter(event => event.fecha === key);
+        const outside = day.getMonth() !== cursor.getMonth() ? "outside" : "";
+        const today = key === todayKey() ? "today" : "";
+        return `<article class="calendar-day ${outside} ${today}">
+          <div class="day-number">${day.getDate()}</div>
+          <div class="day-events">${dayItems.slice(0, 3).map(calendarChip).join("")}${dayItems.length > 3 ? `<span class="more">+${dayItems.length - 3} mas</span>` : ""}</div>
+        </article>`;
+      }).join("")}
+    </div>
+  `;
+}
+
+function weekCalendar(items) {
+  const start = startOfWeek(localDate(calendarCursor));
+  const days = Array.from({ length: 7 }, (_, i) => addDays(start, i));
+  return `<div class="week-list">
+    ${days.map(day => {
+      const key = dateKey(day);
+      const dayItems = items.filter(event => event.fecha === key);
+      return `<section class="week-day">
+        <div class="week-date"><strong>${day.toLocaleDateString("es-AR", { weekday: "long" })}</strong><span>${formatDate(day)}</span></div>
+        <div class="week-events">${dayItems.map(calendarEventCard).join("") || `<div class="empty small">Sin agenda.</div>`}</div>
+      </section>`;
+    }).join("")}
+  </div>`;
+}
+
+function listCalendar(items) {
+  const rows = [...items].sort((a, b) => `${a.fecha} ${a.hora}`.localeCompare(`${b.fecha} ${b.hora}`));
+  return `<div class="calendar-list">${rows.map(calendarEventCard).join("") || `<div class="empty">No hay eventos para mostrar.</div>`}</div>`;
+}
+
+function calendarChip(event) {
+  return `<button class="calendar-chip" data-edit="calendar:${event.id}" title="${escapeHtml(event.titulo)}"><span>${escapeHtml(event.hora)}</span>${escapeHtml(event.titulo)}</button>`;
+}
+
+function calendarEventCard(event) {
+  return `<article class="calendar-event">
+    <div class="event-main">
+      <span class="event-time">${escapeHtml(event.fecha)} ${escapeHtml(event.hora)}</span>
+      <strong>${escapeHtml(event.titulo)}</strong>
+      <p>${escapeHtml(event.tipo)} - ${escapeHtml(event.cliente)} - ${escapeHtml(event.vehiculo)}</p>
+      ${event.notas ? `<small>${escapeHtml(event.notas)}</small>` : ""}
+    </div>
+    <div class="event-side">
+      ${pill(event.estado)}
+      <span class="muted">${escapeHtml(event.vendedor)}</span>
+      <div class="record-actions"><button class="icon-btn" data-edit="calendar:${event.id}" title="Editar">E</button><button class="icon-btn" data-delete="calendar:${event.id}" title="Eliminar">X</button></div>
+    </div>
+  </article>`;
+}
+
+function filteredCalendar() {
+  const rows = filtered(state.calendar || []);
+  if (calendarView === "list") return rows;
+  const cursor = localDate(calendarCursor);
+  if (calendarView === "week") {
+    const start = dateKey(startOfWeek(cursor));
+    const end = dateKey(addDays(startOfWeek(cursor), 6));
+    return rows.filter(event => event.fecha >= start && event.fecha <= end);
+  }
+  const month = calendarCursor.slice(0, 7);
+  return rows.filter(event => event.fecha?.slice(0, 7) === month);
+}
+
+function calendarForDay(key) {
+  return (state.calendar || []).filter(event => event.fecha === key);
+}
+
+function upcomingCalendar(limit = 5) {
+  const today = todayKey();
+  return (state.calendar || [])
+    .filter(event => event.fecha >= today && !/Cancelado/i.test(event.estado || ""))
+    .sort((a, b) => `${a.fecha} ${a.hora}`.localeCompare(`${b.fecha} ${b.hora}`))
+    .slice(0, limit);
+}
+
+function shiftCalendar(step) {
+  const cursor = localDate(calendarCursor);
+  if (calendarView === "week") calendarCursor = dateKey(addDays(cursor, step * 7));
+  else if (calendarView === "month") calendarCursor = dateKey(new Date(cursor.getFullYear(), cursor.getMonth() + step, 1));
+  else calendarCursor = dateKey(addDays(cursor, step * 14));
+}
+
+function viewLabel(view) {
+  return ({ month: "Mes", week: "Semana", list: "Lista" }[view] || view);
+}
+
+function localDate(key) {
+  const [year, month, day] = String(key || todayKey()).split("-").map(Number);
+  return new Date(year, month - 1, day || 1);
+}
+
+function dateKey(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+function todayKey() {
+  return dateKey(new Date());
+}
+
+function startOfWeek(date) {
+  const copy = new Date(date);
+  const day = (copy.getDay() + 6) % 7;
+  copy.setDate(copy.getDate() - day);
+  return copy;
+}
+
+function addDays(date, amount) {
+  const copy = new Date(date);
+  copy.setDate(copy.getDate() + amount);
+  return copy;
+}
+
+function formatDate(date) {
+  return date.toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit" });
 }
 
 function salesPage() {
@@ -482,7 +690,8 @@ function formFor(key, row = {}) {
     sales: [["cliente", "Cliente"], ["vehiculo", "Vehiculo"], ["etapa", "Etapa"], ["monto", "Monto", "number"], ["vendedor", "Vendedor"], ["proximo", "Proximo contacto"]],
     paperwork: [["tramite", "Tramite"], ["cliente", "Cliente"], ["vehiculo", "Vehiculo"], ["estado", "Estado"], ["vence", "Vence", "date"]],
     finance: [["concepto", "Concepto"], ["tipo", "Tipo"], ["monto", "Monto", "number"], ["fecha", "Fecha", "date"], ["estado", "Estado"]],
-    messages: [["cliente", "Cliente"], ["plantilla", "Plantilla"], ["estado", "Estado"], ["hora", "Hora"]]
+    messages: [["cliente", "Cliente"], ["plantilla", "Plantilla"], ["estado", "Estado"], ["hora", "Hora"]],
+    calendar: [["fecha", "Fecha", "date"], ["hora", "Hora", "time"], ["tipo", "Tipo"], ["titulo", "Titulo"], ["cliente", "Cliente"], ["vehiculo", "Vehiculo"], ["vendedor", "Vendedor"], ["estado", "Estado"], ["notas", "Notas"]]
   };
   const fields = dynamicDef?.fields || forms[key] || forms.clients;
   return '<div class="form-grid">' + fields.map(([name, label, type = "text"]) => input(name, label, row[name] ?? "", type)).join("") + '</div>';
@@ -509,12 +718,12 @@ function openModal(key, row = {}) {
 
 function labelForKey(key) {
   const dynamicDef = Object.values(sectionData).find(def => def.key === key);
-  return dynamicDef?.item || ({ vehicles: "vehiculo", clients: "cliente", sales: "oportunidad", paperwork: "tramite", finance: "movimiento", messages: "mensaje" }[key] || "registro");
+  return dynamicDef?.item || ({ vehicles: "vehiculo", clients: "cliente", sales: "oportunidad", paperwork: "tramite", finance: "movimiento", messages: "mensaje", calendar: "evento" }[key] || "registro");
 }
 
 function pill(value) {
   const s = String(value);
-  const cls = /Disponible|Listo|Confirmado|Ingreso|Enviado|Pagado/.test(s) ? "ok" : /Pendiente|Reservado|Programado|Tasacion/.test(s) ? "warn" : /Caliente|Egreso|Preparacion/.test(s) ? "hot" : "info";
+  const cls = /Disponible|Listo|Confirmado|Ingreso|Enviado|Pagado|Hecho/.test(s) ? "ok" : /Pendiente|Reservado|Programado|Tasacion/.test(s) ? "warn" : /Caliente|Egreso|Preparacion|Cancelado/.test(s) ? "hot" : "info";
   return `<span class="pill ${cls}">${escapeHtml(s)}</span>`;
 }
 
@@ -548,7 +757,7 @@ function bind() {
 
   document.querySelectorAll("[data-add]").forEach(btn => btn.addEventListener("click", () => openModal(btn.dataset.add)));
   document.querySelector("[data-action='quick-add']")?.addEventListener("click", () => {
-    const map = { stock: "vehicles", clientes: "clients", ventas: "sales", gestoria: "paperwork", finanzas: "finance", whatsapp: "messages" };
+    const map = { calendario: "calendar", stock: "vehicles", clientes: "clients", ventas: "sales", gestoria: "paperwork", finanzas: "finance", whatsapp: "messages", mensajes: "messages" };
     const dynamicDef = sectionData[currentModule];
     openModal(dynamicDef?.key || map[currentModule] || "clients");
   });
@@ -580,6 +789,22 @@ function bind() {
 
   document.querySelector("[data-action='export']")?.addEventListener("click", exportCurrent);
   document.querySelector("[data-action='advance']")?.addEventListener("click", advanceSale);
+  document.querySelectorAll("[data-calendar-view]").forEach(btn => btn.addEventListener("click", () => {
+    calendarView = btn.dataset.calendarView;
+    render();
+  }));
+  document.querySelector("[data-action='calendar-prev']")?.addEventListener("click", () => {
+    shiftCalendar(-1);
+    render();
+  });
+  document.querySelector("[data-action='calendar-next']")?.addEventListener("click", () => {
+    shiftCalendar(1);
+    render();
+  });
+  document.querySelector("[data-action='calendar-today']")?.addEventListener("click", () => {
+    calendarCursor = todayKey();
+    render();
+  });
   document.querySelector("[data-action='simulate-wa']")?.addEventListener("click", () => {
     const text = encodeURIComponent(document.getElementById("wa-text").value);
     navigator.clipboard?.writeText(`https://wa.me/?text=${text}`);
@@ -670,7 +895,7 @@ function addAudit(text) {
 }
 
 function exportCurrent() {
-  const map = { stock: "vehicles", clientes: "clients", gestoria: "paperwork", finanzas: "finance", mensajes: "messages" };
+  const map = { calendario: "calendar", stock: "vehicles", clientes: "clients", gestoria: "paperwork", finanzas: "finance", mensajes: "messages", whatsapp: "messages" };
   const key = sectionData[currentModule]?.key || map[currentModule];
   if (!key) return toast("Este modulo no tiene exportacion tabular.");
   const rows = filtered(state[key] || []);

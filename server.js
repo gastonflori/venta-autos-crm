@@ -54,6 +54,12 @@ const seedState = {
     { id: "w2", cliente: "Sergio Calvo", plantilla: "Documentacion reserva", estado: "Programado", hora: "18:00" },
     { id: "w3", cliente: "Ana Rivas", plantilla: "Gracias por tu consulta", estado: "Enviado", hora: "11:08" }
   ],
+  calendar: [
+    { id: "cal1", fecha: "2026-06-29", hora: "17:00", tipo: "Test drive", titulo: "Prueba Corolla XEI", cliente: "Martina Quiroga", vehiculo: "Toyota Corolla XEI", vendedor: "Gaston", estado: "Confirmado", notas: "Trae registro y DNI. Salida desde showroom." },
+    { id: "cal2", fecha: "2026-06-30", hora: "10:30", tipo: "Tasacion", titulo: "Tasacion usado en parte de pago", cliente: "Sergio Calvo", vehiculo: "Volkswagen Amarok", vendedor: "Mica", estado: "Pendiente", notas: "Revisar cubiertas, service y papeles." },
+    { id: "cal3", fecha: "2026-07-02", hora: "12:00", tipo: "Gestoria", titulo: "Vence 08 + denuncia venta", cliente: "Ana Rivas", vehiculo: "Fiat Cronos Precision", vendedor: "Leo", estado: "Pendiente", notas: "Enviar recordatorio a cliente." },
+    { id: "cal4", fecha: "2026-07-03", hora: "16:00", tipo: "Entrega", titulo: "Entrega Ranger XLS", cliente: "Nicolas Paz", vehiculo: "Ford Ranger XLS", vendedor: "Gaston", estado: "Programado", notas: "Confirmar transferencia antes de entregar." }
+  ],
   audit: [
     "Sesion iniciada en Sote CRM",
     "Reserva cargada para Toyota Corolla",
@@ -70,6 +76,20 @@ const seedState = {
     logoDataUrl: ""
   }
 };
+
+function normalizeState(value) {
+  const source = value && typeof value === "object" && !Array.isArray(value) ? value : {};
+  const normalized = { ...seedState, ...source };
+  for (const key of ["vehicles", "clients", "sales", "paperwork", "finance", "messages", "calendar", "audit"]) {
+    normalized[key] = Array.isArray(source[key]) ? source[key] : seedState[key];
+  }
+  normalized.settings = { ...seedState.settings, ...(source.settings && typeof source.settings === "object" ? source.settings : {}) };
+  if (!normalized.settings.calendarSeeded && (!Array.isArray(source.calendar) || source.calendar.length === 0)) {
+    normalized.calendar = seedState.calendar;
+    normalized.settings.calendarSeeded = true;
+  }
+  return normalized;
+}
 
 database.exec(`
   CREATE TABLE IF NOT EXISTS app_state (
@@ -172,14 +192,14 @@ function requireUser(req, res) {
 function readState() {
   const row = database.prepare("SELECT data FROM app_state WHERE id = 1").get();
   try {
-    return JSON.parse(row?.data || "{}");
+    return normalizeState(JSON.parse(row?.data || "{}"));
   } catch {
-    return seedState;
+    return normalizeState(seedState);
   }
 }
 
 function writeState(state) {
-  database.prepare("UPDATE app_state SET data = ?, updated_at = ? WHERE id = 1").run(JSON.stringify(state), new Date().toISOString());
+  database.prepare("UPDATE app_state SET data = ?, updated_at = ? WHERE id = 1").run(JSON.stringify(normalizeState(state)), new Date().toISOString());
 }
 
 function sendJson(res, status, data, headers = {}) {
