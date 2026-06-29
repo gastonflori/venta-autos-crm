@@ -66,7 +66,8 @@ const seedState = {
     phone: "",
     email: "",
     address: "",
-    currency: "ARS"
+    currency: "ARS",
+    logoDataUrl: ""
   }
 };
 
@@ -214,6 +215,14 @@ async function handleApi(req, res, pathname) {
 
   if (pathname === "/api/auth/me") {
     return sendJson(res, 200, { user: publicUser(currentUser(req)) });
+  }
+
+  if (pathname === "/api/public-config") {
+    const settings = readState().settings || {};
+    return sendJson(res, 200, {
+      businessName: settings.businessName || "",
+      logoDataUrl: settings.logoDataUrl || ""
+    });
   }
 
   if (pathname === "/api/auth/login" && req.method === "POST") {

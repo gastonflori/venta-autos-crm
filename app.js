@@ -4,6 +4,7 @@ let state = null;
 let authUser = null;
 let currentModule = "dashboard";
 let query = "";
+let publicConfig = {};
 
 const modules = [
   { id: "dashboard", label: "Dashboard", icon: "D", subtitle: "Resumen operativo de la agencia" },
@@ -57,6 +58,11 @@ async function api(path, options = {}) {
 
 async function boot() {
   setTheme();
+  try {
+    publicConfig = await api("/api/public-config");
+  } catch {
+    publicConfig = {};
+  }
   try {
     const me = await api("/api/auth/me");
     authUser = me.user;
@@ -174,12 +180,13 @@ function render() {
 }
 
 function login() {
+  const logo = logoMarkup("login-logo");
   return `
     <main class="login-page">
       <section class="login-card">
         <div class="login-head">
-          <div class="logo-tile">SOTE</div>
-          <div class="eyebrow">Sote CRM</div>
+          ${logo}
+          <div class="eyebrow">CRM Autos</div>
           <h1>Iniciar sesion</h1>
           <p class="muted">Usa tus credenciales del CRM para entrar.</p>
         </div>
@@ -205,11 +212,12 @@ function login() {
 
 function shell() {
   const active = modules.find(m => m.id === currentModule) || modules[0];
+  const logo = logoMarkup("brand-logo");
   return `
     <div class="app-shell">
       <aside class="sidebar">
         <div class="brand">
-          <div class="logo-tile">SOTE</div>
+          ${logo}
           <div><strong>${escapeHtml(state.settings?.businessName || "Sote CRM")}</strong><span>Agencia automotor</span></div>
         </div>
         <nav class="nav">
@@ -417,11 +425,26 @@ function whatsappPage() {
 
 function configPage() {
   const s = state.settings || {};
+  const logo = logoMarkup("settings-logo");
   return `
     <section class="card">
       <div class="card-head"><h2>Configuracion</h2><a class="btn ghost" href="/api/backup" download>Descargar backup</a></div>
       <div class="card-body">
         <form class="form-stack" data-action="settings">
+          <div class="logo-config">
+            <div>
+              <label>Logo de la agencia</label>
+              <p class="muted">Si no cargas un logo, la app queda sin logo.</p>
+            </div>
+            <div class="logo-config-preview">${logo || `<span class="muted">Sin logo</span>`}</div>
+            <div class="toolbar" style="margin:0">
+              <label class="btn ghost file-btn">
+                Cargar logo
+                <input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" data-action="logo-upload">
+              </label>
+              ${s.logoDataUrl ? `<button class="btn ghost" type="button" data-action="logo-remove">Quitar logo</button>` : ""}
+            </div>
+          </div>
           <div class="form-grid">
             ${input("businessName", "Nombre de agencia", s.businessName || "Sote Auto")}
             ${input("ownerName", "Responsable", s.ownerName || "")}
@@ -443,6 +466,12 @@ function configPage() {
 
 function input(name, label, value, type = "text") {
   return `<div class="field"><label>${label}</label><input name="${name}" type="${type}" value="${escapeHtml(value)}"></div>`;
+}
+
+function logoMarkup(className) {
+  const src = state?.settings?.logoDataUrl || publicConfig.logoDataUrl;
+  if (!src) return "";
+  return `<img class="${className}" src="${escapeHtml(src)}" alt="Logo de la agencia">`;
 }
 
 function formFor(key, row = {}) {
@@ -556,9 +585,37 @@ function bind() {
     navigator.clipboard?.writeText(`https://wa.me/?text=${text}`);
     toast("Enlace de WhatsApp copiado");
   });
+  document.querySelector("[data-action='logo-upload']")?.addEventListener("change", async e => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) return toast("Selecciona una imagen valida.");
+    if (file.size > 750 * 1024) return toast("El logo debe pesar menos de 750 KB.");
+    const reader = new FileReader();
+    reader.onload = async () => {
+      state.settings = { ...(state.settings || {}), logoDataUrl: String(reader.result || "") };
+      publicConfig = { ...publicConfig, logoDataUrl: state.settings.logoDataUrl, businessName: state.settings.businessName || publicConfig.businessName || "" };
+      addAudit("Logo actualizado");
+      await saveState("Logo guardado");
+      render();
+    };
+    reader.onerror = () => toast("No se pudo leer el logo.");
+    reader.readAsDataURL(file);
+  });
+  document.querySelector("[data-action='logo-remove']")?.addEventListener("click", async () => {
+    state.settings = { ...(state.settings || {}), logoDataUrl: "" };
+    publicConfig = { ...publicConfig, logoDataUrl: "" };
+    addAudit("Logo eliminado");
+    await saveState("Logo eliminado");
+    render();
+  });
   document.querySelector("[data-action='settings']")?.addEventListener("submit", async e => {
     e.preventDefault();
     state.settings = { ...(state.settings || {}), ...Object.fromEntries(new FormData(e.target).entries()) };
+    publicConfig = {
+      ...publicConfig,
+      businessName: state.settings.businessName || "",
+      logoDataUrl: state.settings.logoDataUrl || ""
+    };
     addAudit("Configuracion actualizada");
     await saveState("Configuracion guardada");
     render();
