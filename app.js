@@ -346,11 +346,7 @@ function shell() {
 function page() {
   if (currentModule === "dashboard") return dashboard();
   if (currentModule === "calendario") return calendarPage();
-  if (currentModule === "stock") return tablePage("vehicles", "Vehiculo", vehicleColumns());
-  if (currentModule === "clientes") return tablePage("clients", "Cliente", clientColumns());
   if (currentModule === "ventas") return salesPage();
-  if (currentModule === "gestoria") return tablePage("paperwork", "Tramite", paperworkColumns());
-  if (currentModule === "finanzas") return tablePage("finance", "Movimiento", financeColumns());
   if (currentModule === "whatsapp") return whatsappPage();
   if (currentModule === "config" || currentModule === "configuracion") return configPage();
   return genericSectionPage(currentModule);
@@ -748,7 +744,28 @@ function salesPage() {
       <button class="btn" data-add="sales">Nueva oportunidad</button>
       <button class="btn ghost" data-action="advance">Avanzar primera venta</button>
     </div>
-    ${kanban()}
+    <div class="grid two-col module-grid">
+      <section class="card">
+        <div class="card-head"><h2>Pipeline comercial</h2><span class="pill info">${state.sales.length} operaciones</span></div>
+        <div class="card-body">${kanban()}</div>
+      </section>
+      <section class="card module-panel">
+        <div class="card-head"><h2>Gestion</h2><span class="pill info">Ventas</span></div>
+        <div class="card-body">
+          <div class="module-actions">
+            <button class="btn" data-section-action="new:sales">Nuevo</button>
+            <button class="btn ghost" data-section-action="complete:sales">Marcar hecho</button>
+            <button class="btn ghost" data-section-action="duplicate:sales">Duplicar primero</button>
+            <button class="btn ghost" data-action="export">Exportar CSV</button>
+          </div>
+          <div class="detail-box">
+            <h3>Ultima operacion</h3>
+            ${state.sales[0] ? detailList(state.sales[0], [["cliente", "Cliente"], ["vehiculo", "Vehiculo"], ["etapa", "Etapa"], ["monto", "Monto"], ["vendedor", "Vendedor"], ["proximo", "Proximo"]]) : `<p class="muted">Sin ventas cargadas.</p>`}
+          </div>
+        </div>
+      </section>
+    </div>
+    <div style="margin-top:16px">${tablePage("sales", "Operaciones", genericColumns("ventas"), true)}</div>
   `;
 }
 
