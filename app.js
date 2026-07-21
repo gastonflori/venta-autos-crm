@@ -435,7 +435,7 @@ function tablePage(key, title, columns, embedded = false, moduleId = "") {
         <table>
           <thead><tr>${columns.map(c => `<th>${c.label}</th>`).join("")}<th></th></tr></thead>
           <tbody>
-            ${rows.length ? rows.map(row => `<tr${key === "clients" ? ` data-client-row="${escapeHtml(row.id)}" class="clickable-row"` : ""}>${columns.map(c => `<td>${c.render ? c.render(row[c.key], row) : escapeHtml(row[c.key])}</td>`).join("")}<td class="record-actions">${flows.map(([flow, label]) => `<button class="icon-btn" data-module-flow="${flow}:${key}:${row.id}" title="${escapeHtml(label)}">${escapeHtml(label.split(" ").map(w => w[0]).join("").slice(0,2).toUpperCase())}</button>`).join("")}<button class="icon-btn" data-edit="${key}:${row.id}" title="Editar">E</button><button class="icon-btn" data-delete="${key}:${row.id}" title="Eliminar">X</button></td></tr>`).join("") : `<tr><td colspan="${columns.length + 1}" class="empty">No hay registros para mostrar.</td></tr>`}
+            ${rows.length ? rows.map(row => `<tr${key === "clients" ? ` data-client-row="${escapeHtml(row.id)}" class="clickable-row"` : key === "vehicles" ? ` data-vehicle-row="${escapeHtml(row.id)}" class="clickable-row"` : ""}>${columns.map(c => `<td>${c.render ? c.render(row[c.key], row) : escapeHtml(row[c.key])}</td>`).join("")}<td class="record-actions">${flows.map(([flow, label]) => `<button class="icon-btn" data-module-flow="${flow}:${key}:${row.id}" title="${escapeHtml(label)}">${escapeHtml(label.split(" ").map(w => w[0]).join("").slice(0,2).toUpperCase())}</button>`).join("")}<button class="icon-btn" data-edit="${key}:${row.id}" title="Editar">E</button><button class="icon-btn" data-delete="${key}:${row.id}" title="Eliminar">X</button></td></tr>`).join("") : `<tr><td colspan="${columns.length + 1}" class="empty">No hay registros para mostrar.</td></tr>`}
           </tbody>
         </table>
       </div>
@@ -881,6 +881,116 @@ function updatePhotoPreview() {
       updatePhotoPreview();
     });
   });
+}
+
+function openVehiclePreview(id) {
+  const v = (state.vehicles || []).find(x => x.id === id);
+  if (!v) return;
+  const photos = v.fotos || [];
+  const galleryHtml = photos.length
+    ? `<div class="vp-gallery">${photos.map((src, i) => `<img src="${escapeHtml(src)}" alt="Foto ${i+1}">`).join("")}</div>`
+    : `<div class="vp-no-photo"><span>Sin fotos</span></div>`;
+  const spec = (label, val) => val ? `<div class="vp-spec"><span>${escapeHtml(label)}</span><strong>${escapeHtml(String(val))}</strong></div>` : "";
+  document.body.insertAdjacentHTML("beforeend", `
+    <div class="modal-backdrop" data-modal>
+      <section class="modal vp-modal">
+        <div class="modal-head">
+          <div>
+            <h2>${escapeHtml(v.marca || "")} ${escapeHtml(v.modelo || "")}</h2>
+            <p>${v.anio || ""} &middot; ${Number(v.km || 0).toLocaleString("es-AR")} km &middot; ${escapeHtml(v.dominio || "")}</p>
+          </div>
+          <button class="icon-btn" data-close>X</button>
+        </div>
+        ${galleryHtml}
+        <div class="vp-body">
+          <div class="vp-specs">
+            <div class="vp-spec price-spec"><span>Precio</span><strong>${money(v.precio)}</strong></div>
+            <div class="vp-spec"><span>Estado</span><strong>${pill(v.estado || "—")}</strong></div>
+            ${spec("Dominio", v.dominio)}
+            ${spec("Kilometros", v.km ? Number(v.km).toLocaleString("es-AR") + " km" : "")}
+            ${spec("Ubicacion", v.ubicacion)}
+            ${spec("Margen", v.margen ? money(v.margen) : "")}
+            ${v.notas ? `<div class="vp-spec vp-spec-full"><span>Notas</span><strong>${escapeHtml(v.notas)}</strong></div>` : ""}
+          </div>
+          <div class="modal-actions">
+            <button class="btn ghost" data-close>Cerrar</button>
+            <button class="btn ghost" data-vp-edit="${escapeHtml(id)}">Editar</button>
+            <button class="btn primary-action" data-vp-send="${escapeHtml(id)}">Enviar a cliente</button>
+          </div>
+        </div>
+      </section>
+    </div>
+  `);
+  bindModal();
+  document.querySelector(`[data-vp-edit="${id}"]`)?.addEventListener("click", () => {
+    document.querySelector("[data-modal]")?.remove();
+    openModal("vehicles", v);
+  });
+  document.querySelector(`[data-vp-send="${id}"]`)?.addEventListener("click", () => sendVehicleToClient(v));
+}
+
+function sendVehicleToClient(v) {
+  const photos = v.fotos || [];
+  const photosHtml = photos.map(src => `<img src="${src}" style="width:100%;border-radius:14px;margin-bottom:14px;display:block;box-shadow:0 4px 20px rgba(0,0,0,.15)">`).join("");
+  const rows = [
+    ["Dominio", v.dominio], ["Año", v.anio], ["Kilometros", v.km ? Number(v.km).toLocaleString("es-AR") + " km" : ""],
+    ["Estado", v.estado], ["Ubicacion", v.ubicacion]
+  ].filter(([, val]) => val);
+  const specsHtml = rows.map(([label, val]) => `
+    <tr>
+      <td style="padding:11px 14px;color:#6b7280;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;border-bottom:1px solid #f0f2f8;">${label}</td>
+      <td style="padding:11px 14px;font-weight:600;font-size:14px;border-bottom:1px solid #f0f2f8;">${val}</td>
+    </tr>`).join("");
+  const agencyName = publicConfig.businessName || state?.settings?.businessName || "Sote CRM";
+  const agencyLogo = publicConfig.logoDataUrl || state?.settings?.logoDataUrl || "";
+  const html = `<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${v.marca || ""} ${v.modelo || ""} - ${v.dominio || ""}</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f0f3fa;color:#111;padding:24px 16px}
+  .wrap{max-width:560px;margin:0 auto}
+  .header{background:linear-gradient(135deg,#0f1523 0%,#1a2540 100%);color:#fff;padding:28px 28px 24px;border-radius:18px;margin-bottom:20px}
+  .logo-wrap{margin-bottom:16px}
+  .logo-wrap img{max-height:44px;max-width:160px;object-fit:contain;opacity:.9}
+  .agency{font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.5);margin-bottom:14px}
+  h1{font-size:28px;font-weight:900;letter-spacing:-.02em;margin-bottom:6px}
+  .subtitle{color:rgba(255,255,255,.6);font-size:14px;margin-bottom:18px}
+  .price{font-size:34px;font-weight:900;color:#4ade80;letter-spacing:-.02em}
+  .photos{margin-bottom:20px}
+  .card{background:#fff;border-radius:16px;overflow:hidden;margin-bottom:16px;box-shadow:0 2px 16px rgba(0,0,0,.07)}
+  table{width:100%;border-collapse:collapse}
+  .footer{text-align:center;color:#aaa;font-size:11px;padding:16px 0 8px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="header">
+    ${agencyLogo ? `<div class="logo-wrap"><img src="${agencyLogo}" alt="${agencyName}"></div>` : `<div class="agency">${agencyName}</div>`}
+    <h1>${v.marca || ""} ${v.modelo || ""}</h1>
+    <div class="subtitle">${v.anio || ""} &middot; ${v.km ? Number(v.km).toLocaleString("es-AR") + " km" : ""} &middot; ${v.dominio || ""}</div>
+    <div class="price">${money(v.precio)}</div>
+  </div>
+  ${photosHtml ? `<div class="photos">${photosHtml}</div>` : ""}
+  <div class="card"><table>${specsHtml}</table></div>
+  ${v.notas ? `<div class="card" style="padding:18px 20px"><p style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;margin-bottom:8px">Notas</p><p style="font-size:14px;line-height:1.6;color:#374151">${escapeHtml(v.notas)}</p></div>` : ""}
+  <div class="footer">Informacion enviada por ${escapeHtml(agencyName)}</div>
+</div>
+</body>
+</html>`;
+  const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${(v.marca || "vehiculo").replace(/\s+/g, "-")}-${(v.modelo || "").replace(/\s+/g, "-")}-${v.dominio || "info"}.html`.toLowerCase();
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  toast("Ficha descargada — podés enviarla por WhatsApp o email.");
 }
 
 function clientColumns() {
@@ -1557,6 +1667,13 @@ function bind() {
       clientProfileId = tr.dataset.clientRow;
       clientProfileTab = "resumen";
       render();
+    });
+  });
+
+  document.querySelectorAll("[data-vehicle-row]").forEach(tr => {
+    tr.addEventListener("click", e => {
+      if (e.target.closest("button, a")) return;
+      openVehiclePreview(tr.dataset.vehicleRow);
     });
   });
 
