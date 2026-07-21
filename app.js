@@ -360,7 +360,7 @@ function dashboard() {
       ${stat("Unidades en stock", state.vehicles.length, "Inventario activo")}
       ${stat("Leads activos", state.clients.length, "Consultas y compradores")}
       ${stat("Agenda hoy", calendarForDay(todayKey()).length, "Test drives y tareas")}
-      ${stat("Pipeline", money(state.sales.reduce((a, x) => a + Number(x.monto), 0)), "Oportunidades abiertas")}
+      ${stat("Pipeline", money(state.sales.filter(x => x.etapa !== "Cierre" && x.etapa !== "Perdida").reduce((a, x) => a + Number(x.monto), 0)), "Oportunidades abiertas")}
       ${stat("Caja neta", money(ingresos - egresos), "Ingresos menos egresos")}
     </div>
     <div class="grid two-col" style="margin-top:16px">
@@ -389,8 +389,9 @@ function stat(label, value, note) {
   return `<section class="card stat"><span>${label}</span><strong>${value}</strong><small>${note}</small></section>`;
 }
 
-function tablePage(key, title, columns, embedded = false) {
+function tablePage(key, title, columns, embedded = false, moduleId = "") {
   const rows = filtered(state[key] || []);
+  const flows = flowsForModule(moduleId);
   return `
     <section class="card">
       <div class="card-head">
@@ -402,7 +403,7 @@ function tablePage(key, title, columns, embedded = false) {
         <table>
           <thead><tr>${columns.map(c => `<th>${c.label}</th>`).join("")}<th></th></tr></thead>
           <tbody>
-            ${rows.length ? rows.map(row => `<tr>${columns.map(c => `<td>${c.render ? c.render(row[c.key], row) : escapeHtml(row[c.key])}</td>`).join("")}<td class="record-actions"><button class="icon-btn" data-edit="${key}:${row.id}" title="Editar">E</button><button class="icon-btn" data-delete="${key}:${row.id}" title="Eliminar">X</button></td></tr>`).join("") : `<tr><td colspan="${columns.length + 1}" class="empty">No hay registros para mostrar.</td></tr>`}
+            ${rows.length ? rows.map(row => `<tr>${columns.map(c => `<td>${c.render ? c.render(row[c.key], row) : escapeHtml(row[c.key])}</td>`).join("")}<td class="record-actions">${flows.map(([flow, label]) => `<button class="icon-btn" data-module-flow="${flow}:${key}:${row.id}" title="${escapeHtml(label)}">${escapeHtml(label.split(" ").map(w => w[0]).join("").slice(0,2).toUpperCase())}</button>`).join("")}<button class="icon-btn" data-edit="${key}:${row.id}" title="Editar">E</button><button class="icon-btn" data-delete="${key}:${row.id}" title="Eliminar">X</button></td></tr>`).join("") : `<tr><td colspan="${columns.length + 1}" class="empty">No hay registros para mostrar.</td></tr>`}
           </tbody>
         </table>
       </div>
@@ -442,7 +443,7 @@ function genericSectionPage(moduleId) {
       ${stat("Monto", moneyTotal ? money(moneyTotal) : "-", "Valores asociados")}
     </div>
     <div class="grid two-col module-grid" style="margin-top:16px">
-      ${tablePage(def.key, def.title, genericColumns(moduleId))}
+      ${tablePage(def.key, def.title, genericColumns(moduleId), false, moduleId)}
       <section class="card module-panel">
         <div class="card-head"><h2>Gestion</h2><span class="pill info">${escapeHtml(def.title)}</span></div>
         <div class="card-body">
@@ -467,8 +468,8 @@ function genericSectionPage(moduleId) {
   `;
 }
 
-function moduleFlowButtons(moduleId, key) {
-  const buttons = {
+function flowsForModule(moduleId) {
+  return {
     pedidos: [["order-opportunity", "Crear oportunidad"], ["order-calendar", "Agendar busqueda"]],
     wishlist: [["order-opportunity", "Crear oportunidad"], ["order-calendar", "Agendar busqueda"]],
     oportunidades: [["opportunity-sale", "Pasar a venta"], ["opportunity-calendar", "Agendar seguimiento"]],
@@ -481,9 +482,16 @@ function moduleFlowButtons(moduleId, key) {
     infracciones: [["ticket-alert", "Alerta multa"]],
     autorizaciones: [["authorization-alert", "Alerta aprobacion"]],
     dormidos: [["sleeping-message", "Reactivar lead"], ["sleeping-calendar", "Agendar llamada"]],
-    nps: [["nps-message", "Responder encuesta"]]
+    nps: [["nps-message", "Responder encuesta"]],
+    clientes: [["client-opportunity", "Crear oportunidad"], ["client-calendar", "Agendar contacto"]],
+    stock: [["stock-quote", "Crear cotizacion"]],
+    ventas: [["sale-file", "Generar expediente"]],
+    consignaciones: [["consignment-stock", "Pasar a Stock"]]
   }[moduleId] || [];
-  return buttons.map(([flow, label]) => `<button class="btn ghost" data-module-flow="${flow}:${key}">${label}</button>`).join("");
+}
+
+function moduleFlowButtons(moduleId, key) {
+  return flowsForModule(moduleId).map(([flow, label]) => `<button class="btn ghost" data-module-flow="${flow}:${key}">${label}</button>`).join("");
 }
 
 function pendingRows(rows) {
@@ -765,7 +773,7 @@ function salesPage() {
         </div>
       </section>
     </div>
-    <div style="margin-top:16px">${tablePage("sales", "Operaciones", genericColumns("ventas"), true)}</div>
+    <div style="margin-top:16px">${tablePage("sales", "Operaciones", genericColumns("ventas"), true, "ventas")}</div>
   `;
 }
 
@@ -872,7 +880,11 @@ function formFor(key, row = {}) {
   };
   const fields = dynamicDef?.fields || forms[key] || forms.clients;
   if (key === "orders") return orderForm(row);
-  return groupedForm(key, fields, row);
+  const linkedKeys = ["sales", "paperwork", "calendar", "quotes", "files", "consignments"];
+  const linkedHtml = linkedKeys.includes(key)
+    ? `<fieldset class="form-section"><legend><span>+</span>VINCULOS</legend><div class="form-grid">${linkedClientVehicleFields(row)}</div></fieldset>`
+    : "";
+  return linkedHtml + groupedForm(key, fields, row);
 }
 
 function openModal(key, row = {}) {
@@ -924,6 +936,19 @@ function groupedForm(key, fields, row = {}) {
       <div class="form-grid">${section.fields.map(field => fieldControl(normalizeField(field, row, key))).join("")}</div>
     </fieldset>
   `).join("");
+}
+
+function linkedClientVehicleFields(row = {}) {
+  const clientOptions = [`<option value="">— Sin vincular —</option>`]
+    .concat((state.clients || []).map(c => `<option value="${escapeHtml(c.id)}" ${c.id === (row.clienteId || "") ? "selected" : ""} data-name="${escapeHtml(c.nombre)}" data-phone="${escapeHtml(c.telefono)}">${escapeHtml(c.nombre)} · ${escapeHtml(c.telefono)}</option>`))
+    .join("");
+  const vehicleOptions = [`<option value="">— Sin vincular —</option>`]
+    .concat((state.vehicles || []).map(v => {
+      const label = `${v.marca || ""} ${v.modelo || ""}${v.dominio ? ` (${v.dominio})` : ""}`.trim();
+      return `<option value="${escapeHtml(v.id)}" ${v.id === (row.vehiculoId || "") ? "selected" : ""} data-nombre="${escapeHtml(`${v.marca || ""} ${v.modelo || ""}`.trim())}" data-dominio="${escapeHtml(v.dominio || "")}">${escapeHtml(label)}</option>`;
+    }))
+    .join("");
+  return `<div class="field"><label>Cliente vinculado</label><select name="clienteId" data-client-link>${clientOptions}</select><small>Autocompleta nombre y telefono</small></div><div class="field"><label>Vehiculo vinculado</label><select name="vehiculoId" data-vehicle-link>${vehicleOptions}</select><small>Autocompleta nombre del vehiculo</small></div>`;
 }
 
 function orderForm(row = {}) {
@@ -1238,10 +1263,16 @@ function bindModal() {
       Object.keys(item).forEach(k => {
         if (/^(anio|anioDesde|anioHasta|km|precio|margen|monto|precioPretendido|comision|costo|presupuesto|puntaje|dias)$/.test(k)) item[k] = Number(item[k]);
       });
+      const prevEtapa = (id && key === "sales") ? (state[key].find(x => x.id === id)?.etapa) : null;
       if (id) {
         state[key] = state[key].map(x => x.id === id ? { ...x, ...item, id } : x);
       } else {
         state[key].unshift({ ...item, id: `${key}-${Date.now()}` });
+      }
+      if (key === "sales" && item.etapa === "Cierre" && prevEtapa !== "Cierre") {
+        const savedId = id || state[key][0]?.id;
+        const saved = state[key].find(x => x.id === savedId);
+        if (saved) closeSaleEffects(saved);
       }
       addAudit(`${id ? "Actualizado" : "Creado"} ${labelForKey(key)}`);
       await saveState("Datos guardados");
@@ -1259,6 +1290,18 @@ function bindModal() {
       const phone = option?.dataset.phone || "";
       if (name && form?.elements.cliente) form.elements.cliente.value = name;
       if (phone && form?.elements.telefono) form.elements.telefono.value = phone;
+    });
+  });
+  document.querySelectorAll("[data-vehicle-link]").forEach(select => {
+    if (select.dataset.bound) return;
+    select.dataset.bound = "true";
+    select.addEventListener("change", () => {
+      const option = select.selectedOptions[0];
+      const form = select.closest("form");
+      const nombre = option?.dataset.nombre || "";
+      const dominio = option?.dataset.dominio || "";
+      if (nombre && form?.elements.vehiculo) form.elements.vehiculo.value = nombre;
+      if (dominio && form?.elements.dominio) form.elements.dominio.value = dominio;
     });
   });
 }
@@ -1289,91 +1332,68 @@ async function handleSectionAction(action) {
 }
 
 async function handleModuleFlow(action) {
-  const [flow, key] = String(action || "").split(":");
-  const source = filtered(state[key] || [])[0] || (state[key] || [])[0];
+  const parts = String(action || "").split(":");
+  const flow = parts[0];
+  const key = parts[1];
+  const rowId = parts[2];
+  let source = rowId ? (state[key] || []).find(x => x.id === rowId) : null;
+  if (!source) source = filtered(state[key] || [])[0] || (state[key] || [])[0];
   if (!source) return toast("No hay registros para usar.");
   const nowId = Date.now();
+
+  // Specific flows (checked before generic regex matches)
+  if (flow === "client-opportunity") {
+    state.opportunities = state.opportunities || [];
+    state.opportunities.unshift({ id: `op-${nowId}`, cliente: source.nombre || source.cliente || "", clienteId: source.id || source.clienteId || "", telefono: source.telefono || "", interes: source.interes || "", vehiculo: "", probabilidad: "Media", monto: 0, moneda: "ARS", responsable: authUser?.name || "", proximo: "Contactar hoy", estado: "Abierta", notas: source.notas || "" });
+    return persistFlow("Oportunidad creada");
+  }
+  if (flow === "client-calendar") {
+    state.calendar = state.calendar || [];
+    state.calendar.unshift({ id: `cal-${nowId}`, fecha: todayKey(), hora: "10:00", tipo: "Llamado", titulo: `Contacto con ${source.nombre || source.cliente || "cliente"}`, cliente: source.nombre || source.cliente || "", clienteId: source.id || source.clienteId || "", vehiculo: "", vendedor: authUser?.name || "", estado: "Programado", notas: source.notas || "" });
+    return persistFlow("Evento creado");
+  }
+  if (flow === "stock-quote") {
+    state.quotes = state.quotes || [];
+    state.quotes.unshift({ id: `co-${nowId}`, cliente: "", telefono: "", vehiculo: `${source.marca || ""} ${source.modelo || ""}`.trim() || source.vehiculo || "", vehiculoId: source.id, precioLista: source.precio || 0, bonificacion: 0, monto: source.precio || 0, moneda: source.moneda || "ARS", validez: "", vendedor: authUser?.name || "", estado: "Borrador", notas: `Dom: ${source.dominio || ""}`.trim() });
+    return persistFlow("Cotizacion creada");
+  }
+  if (flow === "sale-file") {
+    state.files = state.files || [];
+    state.files.unshift({ id: `ex-${nowId}`, numero: `EXP-${nowId}`, cliente: source.cliente || "", clienteId: source.clienteId || "", telefono: source.telefono || "", vehiculo: source.vehiculo || "", vehiculoId: source.vehiculoId || "", dominio: "", tramite: "Transferencia", responsable: "Gestoria", fechaAlta: todayKey(), vence: "", estado: "Pendiente", detalle: "" });
+    return persistFlow("Expediente generado");
+  }
+  if (flow === "consignment-stock") {
+    state.vehicles = state.vehicles || [];
+    const parts2 = (source.vehiculo || "").split(" ");
+    state.vehicles.unshift({ id: `vehicles-${nowId}`, dominio: source.dominio || "", marca: parts2[0] || "", modelo: parts2.slice(1).join(" ") || source.vehiculo || "", anio: source.anio || 0, km: source.km || 0, precio: source.precioPretendido || 0, moneda: "ARS", estado: "Disponible", ubicacion: "", origen: "Consignacion", margen: 0, notas: `Consignado de ${source.titular || ""}` });
+    source.estado = "Ingresado a Stock";
+    return persistFlow("Vehiculo ingresado al stock");
+  }
+
+  // Generic pattern flows
   if (/opportunity/.test(flow)) {
     state.opportunities = state.opportunities || [];
-    state.opportunities.unshift({
-      id: `op-${nowId}`,
-      cliente: source.cliente || source.titular || "",
-      telefono: source.telefono || "",
-      interes: source.interes || source.vehiculo || `${source.marca || ""} ${source.modelo || ""}`.trim(),
-      vehiculo: source.vehiculo || `${source.marca || ""} ${source.modelo || ""}`.trim(),
-      probabilidad: "Media",
-      monto: source.presupuesto || source.monto || 0,
-      moneda: source.moneda || "ARS",
-      responsable: source.vendedor || authUser?.name || "",
-      proximo: "Contactar hoy",
-      estado: "Abierta",
-      notas: source.notas || source.detalle || ""
-    });
+    state.opportunities.unshift({ id: `op-${nowId}`, cliente: source.cliente || source.titular || "", telefono: source.telefono || "", interes: source.interes || source.vehiculo || `${source.marca || ""} ${source.modelo || ""}`.trim(), vehiculo: source.vehiculo || `${source.marca || ""} ${source.modelo || ""}`.trim(), probabilidad: "Media", monto: source.presupuesto || source.monto || 0, moneda: source.moneda || "ARS", responsable: source.vendedor || authUser?.name || "", proximo: "Contactar hoy", estado: "Abierta", notas: source.notas || source.detalle || "" });
     return persistFlow("Oportunidad creada");
   }
   if (/sale/.test(flow)) {
     state.sales = state.sales || [];
-    state.sales.unshift({
-      id: `sales-${nowId}`,
-      cliente: source.cliente || "",
-      vehiculo: source.vehiculo || source.interes || "",
-      etapa: "Contacto",
-      monto: Number(source.monto || source.presupuesto || 0),
-      moneda: source.moneda || "ARS",
-      sena: 0,
-      vendedor: source.vendedor || source.responsable || authUser?.name || "",
-      proximo: "Contactar hoy",
-      estado: "Contacto",
-      notas: source.notas || ""
-    });
+    state.sales.unshift({ id: `sales-${nowId}`, cliente: source.cliente || "", vehiculo: source.vehiculo || source.interes || "", etapa: "Contacto", monto: Number(source.monto || source.presupuesto || 0), moneda: source.moneda || "ARS", sena: 0, vendedor: source.vendedor || source.responsable || authUser?.name || "", proximo: "Contactar hoy", estado: "Contacto", notas: source.notas || "" });
     return persistFlow("Venta creada");
   }
   if (/calendar/.test(flow)) {
     state.calendar = state.calendar || [];
-    state.calendar.unshift({
-      id: `cal-${nowId}`,
-      fecha: todayKey(),
-      hora: "10:00",
-      tipo: "Llamado",
-      titulo: source.titulo || source.solicitud || source.trabajo || "Seguimiento",
-      cliente: source.cliente || source.titular || "",
-      vehiculo: source.vehiculo || source.interes || "",
-      vendedor: source.vendedor || source.responsable || authUser?.name || "",
-      estado: "Programado",
-      notas: source.notas || source.detalle || ""
-    });
+    state.calendar.unshift({ id: `cal-${nowId}`, fecha: todayKey(), hora: "10:00", tipo: "Llamado", titulo: source.titulo || source.solicitud || source.trabajo || "Seguimiento", cliente: source.cliente || source.titular || "", vehiculo: source.vehiculo || source.interes || "", vendedor: source.vendedor || source.responsable || authUser?.name || "", estado: "Programado", notas: source.notas || source.detalle || "" });
     return persistFlow("Evento creado");
   }
   if (/message/.test(flow)) {
     state.messages = state.messages || [];
-    state.messages.unshift({
-      id: `msg-${nowId}`,
-      cliente: source.cliente || "",
-      telefono: source.telefono || "",
-      canal: "WhatsApp",
-      plantilla: "Seguimiento",
-      mensaje: source.mensaje || source.notas || source.detalle || "Hola, te contactamos por tu consulta.",
-      hora: "Ahora",
-      responsable: source.responsable || source.vendedor || authUser?.name || "",
-      estado: "Listo para enviar"
-    });
+    state.messages.unshift({ id: `msg-${nowId}`, cliente: source.cliente || "", telefono: source.telefono || "", canal: "WhatsApp", plantilla: "Seguimiento", mensaje: source.mensaje || source.notas || source.detalle || "Hola, te contactamos por tu consulta.", hora: "Ahora", responsable: source.responsable || source.vendedor || authUser?.name || "", estado: "Listo para enviar" });
     return persistFlow("Mensaje preparado");
   }
   if (/alert/.test(flow)) {
     state.alerts = state.alerts || [];
-    state.alerts.unshift({
-      id: `al-${nowId}`,
-      titulo: source.titulo || source.concepto || source.trabajo || "Alerta operativa",
-      tipo: "Operativa",
-      prioridad: source.prioridad || "Alta",
-      area: source.area || currentModule,
-      cliente: source.cliente || "",
-      vehiculo: source.vehiculo || "",
-      vence: source.vence || todayKey(),
-      responsable: source.responsable || authUser?.name || "",
-      estado: "Pendiente",
-      detalle: source.detalle || source.notas || ""
-    });
+    state.alerts.unshift({ id: `al-${nowId}`, titulo: source.titulo || source.concepto || source.trabajo || "Alerta operativa", tipo: "Operativa", prioridad: source.prioridad || "Alta", area: source.area || currentModule, cliente: source.cliente || "", vehiculo: source.vehiculo || "", vence: source.vence || todayKey(), responsable: source.responsable || authUser?.name || "", estado: "Pendiente", detalle: source.detalle || source.notas || "" });
     return persistFlow("Alerta creada");
   }
 }
@@ -1389,9 +1409,40 @@ async function advanceSale() {
   const sale = state.sales.find(s => s.etapa !== "Cierre");
   if (!sale) return toast("Todas las ventas estan en cierre.");
   sale.etapa = order[order.indexOf(sale.etapa) + 1];
+  if (sale.etapa === "Cierre") closeSaleEffects(sale);
   addAudit(`Venta de ${sale.cliente} avanzo a ${sale.etapa}`);
   await saveState("Venta avanzada");
   render();
+}
+
+function closeSaleEffects(sale) {
+  if (sale.vehiculoId) {
+    const v = state.vehicles.find(x => x.id === sale.vehiculoId);
+    if (v) v.estado = "Vendido";
+  }
+  const vLabel = sale.vehiculo || "";
+  if (!state.finance.some(f => f.saleRef === sale.id)) {
+    state.finance.unshift({
+      id: `fin-${Date.now()}`,
+      saleRef: sale.id,
+      concepto: `Venta ${vLabel}`,
+      tipo: "Ingreso",
+      categoria: "Venta",
+      cliente: sale.cliente || "",
+      vehiculo: vLabel,
+      monto: Number(sale.monto || 0),
+      moneda: sale.moneda || "ARS",
+      fecha: todayKey(),
+      medio: "",
+      estado: "Confirmado",
+      notas: ""
+    });
+  }
+  if (sale.clienteId) {
+    const c = state.clients.find(x => x.id === sale.clienteId);
+    if (c) c.estado = "Cerrado";
+  }
+  addAudit(`Cierre: ${sale.cliente || "cliente"} — ${vLabel}`);
 }
 
 function addAudit(text) {
