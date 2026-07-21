@@ -8,6 +8,8 @@ let publicConfig = {};
 let calendarView = "month";
 let calendarCursor = new Date().toISOString().slice(0, 10);
 let _vehiclePhotosBuf = [];
+let clientProfileId = null;
+let clientProfileTab = "resumen";
 
 const modules = [
   { id: "dashboard", label: "Dashboard", icon: "D", subtitle: "Resumen operativo de la agencia" },
@@ -380,6 +382,7 @@ function page() {
   if (currentModule === "ventas") return salesPage();
   if (currentModule === "whatsapp") return whatsappPage();
   if (currentModule === "config" || currentModule === "configuracion") return configPage();
+  if (currentModule === "clientes" && clientProfileId) return clientProfilePage(clientProfileId);
   return genericSectionPage(currentModule);
 }
 
@@ -434,7 +437,7 @@ function tablePage(key, title, columns, embedded = false, moduleId = "") {
         <table>
           <thead><tr>${columns.map(c => `<th>${c.label}</th>`).join("")}<th></th></tr></thead>
           <tbody>
-            ${rows.length ? rows.map(row => `<tr>${columns.map(c => `<td>${c.render ? c.render(row[c.key], row) : escapeHtml(row[c.key])}</td>`).join("")}<td class="record-actions">${flows.map(([flow, label]) => `<button class="icon-btn" data-module-flow="${flow}:${key}:${row.id}" title="${escapeHtml(label)}">${escapeHtml(label.split(" ").map(w => w[0]).join("").slice(0,2).toUpperCase())}</button>`).join("")}<button class="icon-btn" data-edit="${key}:${row.id}" title="Editar">E</button><button class="icon-btn" data-delete="${key}:${row.id}" title="Eliminar">X</button></td></tr>`).join("") : `<tr><td colspan="${columns.length + 1}" class="empty">No hay registros para mostrar.</td></tr>`}
+            ${rows.length ? rows.map(row => `<tr${key === "clients" ? ` data-client-row="${escapeHtml(row.id)}" class="clickable-row"` : ""}>${columns.map(c => `<td>${c.render ? c.render(row[c.key], row) : escapeHtml(row[c.key])}</td>`).join("")}<td class="record-actions">${flows.map(([flow, label]) => `<button class="icon-btn" data-module-flow="${flow}:${key}:${row.id}" title="${escapeHtml(label)}">${escapeHtml(label.split(" ").map(w => w[0]).join("").slice(0,2).toUpperCase())}</button>`).join("")}<button class="icon-btn" data-edit="${key}:${row.id}" title="Editar">E</button><button class="icon-btn" data-delete="${key}:${row.id}" title="Eliminar">X</button></td></tr>`).join("") : `<tr><td colspan="${columns.length + 1}" class="empty">No hay registros para mostrar.</td></tr>`}
           </tbody>
         </table>
       </div>
@@ -501,6 +504,268 @@ function genericSectionPage(moduleId) {
       </section>
     </div>
   `;
+}
+
+// ── Matching helpers ──────────────────────────────────────────────────────────
+function clientMatchesRecord(r, client) {
+  if (client.id && r.clienteId) return r.clienteId === client.id;
+  const rName = (r.cliente || r.beneficiario || r.titular || "").toLowerCase().trim();
+  const cName = (client.nombre || "").toLowerCase().trim();
+  return cName.length > 0 && rName === cName;
+}
+
+function clientMatchesItem(item, client) {
+  if (client.id && item.clienteId) return item.clienteId === client.id;
+  const iName = (item.cliente || "").toLowerCase().trim();
+  const cName = (client.nombre || "").toLowerCase().trim();
+  return cName.length > 0 && iName === cName;
+}
+
+function clientRelated(key, client) {
+  return (state[key] || []).filter(r => clientMatchesRecord(r, client));
+}
+
+// ── Client Profile ────────────────────────────────────────────────────────────
+function profileMiniTable(rows, cols, emptyMsg = "Sin registros.") {
+  if (!rows.length) return `<p class="muted">${escapeHtml(emptyMsg)}</p>`;
+  return `<div style="overflow:auto"><table><thead><tr>${cols.map(c => `<th>${escapeHtml(c.label)}</th>`).join("")}</tr></thead><tbody>${rows.map(row => `<tr>${cols.map(c => `<td>${c.render ? c.render(row[c.key], row) : escapeHtml(row[c.key] ?? "")}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
+}
+
+function clientProfilePage(clientId) {
+  const client = (state.clients || []).find(c => c.id === clientId);
+  if (!client) { clientProfileId = null; return genericSectionPage("clientes"); }
+  const tabs = [
+    { id: "resumen", label: "Resumen" },
+    { id: "cuenta", label: "Cuenta corriente" },
+    { id: "compras", label: "Compras" },
+    { id: "documentos", label: "Documentos" },
+    { id: "agenda", label: "Agenda" }
+  ];
+  return `
+    <div class="profile-back">
+      <button class="btn ghost" data-back-profile>← Volver a Clientes</button>
+    </div>
+    <section class="card profile-header">
+      <div class="profile-identity">
+        <div class="profile-avatar">${escapeHtml((client.nombre || "?").slice(0, 2).toUpperCase())}</div>
+        <div class="profile-info">
+          <h1>${escapeHtml(client.nombre)}</h1>
+          <div class="profile-meta">
+            ${client.telefono ? `<span>${escapeHtml(client.telefono)}</span>` : ""}
+            ${client.email ? `<span>${escapeHtml(client.email)}</span>` : ""}
+            ${client.origen ? `<span>Origen: ${escapeHtml(client.origen)}</span>` : ""}
+            ${client.vendedor ? `<span>Vendedor: ${escapeHtml(client.vendedor)}</span>` : ""}
+          </div>
+          <div class="profile-pills">
+            ${pill(client.estado || "Nuevo")}
+            ${client.interes ? `<span class="pill info">Interes: ${escapeHtml(client.interes)}</span>` : ""}
+          </div>
+        </div>
+      </div>
+      <div class="profile-actions">
+        <button class="btn" data-quick-action="edit-client:${escapeHtml(client.id)}">Editar cliente</button>
+        <button class="btn ghost" data-quick-action="new-sale:${escapeHtml(client.id)}">Nueva venta</button>
+        <button class="btn ghost" data-quick-action="new-quote:${escapeHtml(client.id)}">Nueva cotizacion</button>
+        <button class="btn ghost" data-quick-action="new-calendar:${escapeHtml(client.id)}">Agendar</button>
+        <button class="btn ghost" data-quick-action="new-message:${escapeHtml(client.id)}">Mensaje</button>
+      </div>
+    </section>
+    <div class="profile-tabs">
+      <div class="segmented profile-tab-nav">
+        ${tabs.map(t => `<button class="${clientProfileTab === t.id ? "active" : ""}" data-profile-tab="${t.id}">${t.label}</button>`).join("")}
+      </div>
+      <div class="profile-tab-content">
+        ${clientProfileTab === "resumen"    ? clientProfileResumen(client)    : ""}
+        ${clientProfileTab === "cuenta"     ? clientProfileCuenta(client)     : ""}
+        ${clientProfileTab === "compras"    ? clientProfileCompras(client)    : ""}
+        ${clientProfileTab === "documentos" ? clientProfileDocumentos(client) : ""}
+        ${clientProfileTab === "agenda"     ? clientProfileAgenda(client)     : ""}
+      </div>
+    </div>
+  `;
+}
+
+function clientProfileResumen(client) {
+  const sales = clientRelated("sales", client);
+  const quotes = clientRelated("quotes", client);
+  const agendaItems = aggregatedAgendaItems().filter(e => clientMatchesItem(e, client));
+  const upcoming = agendaItems.filter(e => e.fecha >= todayKey() && !/Cancelado/i.test(e.estado)).sort((a, b) => a.fecha.localeCompare(b.fecha));
+  const totalVentas = sales.reduce((s, r) => s + Number(r.monto || 0), 0);
+  const lastSale = sales[0];
+  return `
+    <div class="grid stats" style="margin:0 0 16px">
+      ${stat("Ventas", sales.length, "Operaciones registradas")}
+      ${stat("Pipeline", money(totalVentas), "Monto acumulado")}
+      ${stat("Cotizaciones", quotes.length, "Presupuestos enviados")}
+      ${stat("Agenda", upcoming.length, "Compromisos pendientes")}
+    </div>
+    <div class="grid two-col">
+      <section class="card profile-section">
+        <div class="card-head"><h2>Ultima operacion</h2></div>
+        <div class="card-body">
+          ${lastSale ? detailList(lastSale, [["vehiculo", "Vehiculo"], ["etapa", "Etapa"], ["monto", "Monto"], ["vendedor", "Vendedor"], ["proximo", "Proximo paso"]]) : `<p class="muted">Sin ventas registradas todavia.</p>`}
+        </div>
+      </section>
+      <section class="card profile-section">
+        <div class="card-head"><h2>Proximos compromisos</h2></div>
+        <div class="card-body timeline">
+          ${upcoming.slice(0, 5).map(e => `<div class="event"><time>${escapeHtml(e.fecha)}${e.hora ? " " + escapeHtml(e.hora) : ""}</time><div><strong>${escapeHtml(e.titulo)}</strong><span class="pill info">${escapeHtml(e.tipo)}</span></div></div>`).join("") || `<p class="muted">Sin eventos proximos.</p>`}
+        </div>
+      </section>
+    </div>
+    ${client.notas ? `<section class="card profile-section" style="margin-top:16px"><div class="card-head"><h2>Notas</h2></div><div class="card-body"><p>${escapeHtml(client.notas)}</p></div></section>` : ""}
+  `;
+}
+
+function clientProfileCuenta(client) {
+  const financeRows = clientRelated("finance", client).map(r => ({ fecha: r.fecha || "", concepto: r.concepto, tipo: r.tipo, monto: Number(r.monto || 0), origen: "Finanzas" }));
+  const treasuryRows = clientRelated("treasury", client).map(r => ({ fecha: r.fecha || "", concepto: r.concepto, tipo: r.tipo, monto: Number(r.monto || 0), origen: "Tesoreria" }));
+  const collectionRows = clientRelated("collections", client).map(r => ({ fecha: r.vence || "", concepto: r.concepto || "Cobro", tipo: "Cobro pendiente", monto: Number(r.monto || 0), origen: "Cobros" }));
+  const all = [...financeRows, ...treasuryRows, ...collectionRows].sort((a, b) => a.fecha.localeCompare(b.fecha));
+  if (!all.length) return `<section class="card profile-section"><div class="card-head"><h2>Cuenta corriente</h2></div><div class="card-body"><p class="muted">Sin movimientos registrados para este cliente.</p></div></section>`;
+  let balance = 0;
+  const rows = all.map(r => {
+    balance += /Ingreso/i.test(r.tipo) ? r.monto : /Egreso/i.test(r.tipo) ? -r.monto : 0;
+    return { ...r, balance };
+  });
+  const total = rows[rows.length - 1]?.balance || 0;
+  return `
+    <section class="card profile-section">
+      <div class="card-head">
+        <h2>Cuenta corriente</h2>
+        <span class="pill ${total >= 0 ? "ok" : "hot"}">Saldo: ${money(Math.abs(total))} ${total >= 0 ? "a favor" : "a cargo"}</span>
+      </div>
+      <div style="overflow:auto">
+        <table>
+          <thead><tr><th>Fecha</th><th>Concepto</th><th>Tipo</th><th>Monto</th><th>Origen</th><th>Saldo</th></tr></thead>
+          <tbody>
+            ${rows.map(r => `<tr>
+              <td>${escapeHtml(r.fecha)}</td>
+              <td>${escapeHtml(r.concepto)}</td>
+              <td>${pill(r.tipo)}</td>
+              <td class="${/Ingreso/i.test(r.tipo) ? "cuenta-ingreso" : "cuenta-egreso"}">${money(r.monto)}</td>
+              <td><span class="pill info">${escapeHtml(r.origen)}</span></td>
+              <td class="${r.balance >= 0 ? "saldo-ok" : "saldo-neg"}">${money(Math.abs(r.balance))} ${r.balance >= 0 ? "+" : "-"}</td>
+            </tr>`).join("")}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  `;
+}
+
+function clientProfileCompras(client) {
+  const sales = clientRelated("sales", client);
+  const quotes = clientRelated("quotes", client);
+  return `
+    <section class="card profile-section">
+      <div class="card-head"><h2>Historial de compras</h2><span class="pill info">${sales.length}</span></div>
+      <div class="card-body">
+        ${sales.length ? `<div style="overflow:auto"><table><thead><tr><th></th><th>Vehiculo</th><th>Monto</th><th>Etapa</th><th>Vendedor</th></tr></thead><tbody>
+          ${sales.map(s => {
+            const v = s.vehiculoId ? (state.vehicles || []).find(x => x.id === s.vehiculoId) : null;
+            const thumb = v?.fotos?.[0] ? `<img class="row-thumb" src="${escapeHtml(v.fotos[0])}" alt="foto">` : `<div class="row-thumb-placeholder"></div>`;
+            return `<tr><td style="width:60px">${thumb}</td><td><strong>${escapeHtml(s.vehiculo)}</strong></td><td>${money(s.monto)}</td><td>${pill(s.etapa)}</td><td>${escapeHtml(s.vendedor)}</td></tr>`;
+          }).join("")}
+        </tbody></table></div>` : `<p class="muted">Sin compras registradas todavia.</p>`}
+      </div>
+    </section>
+    <section class="card profile-section" style="margin-top:16px">
+      <div class="card-head"><h2>Cotizaciones enviadas</h2><span class="pill info">${quotes.length}</span></div>
+      <div class="card-body">
+        ${profileMiniTable(quotes, [
+          { key: "vehiculo", label: "Vehiculo" },
+          { key: "monto", label: "Monto", render: v => money(v) },
+          { key: "fecha", label: "Fecha" },
+          { key: "estado", label: "Estado", render: v => pill(v) }
+        ], "Sin cotizaciones registradas.")}
+      </div>
+    </section>
+  `;
+}
+
+function clientProfileDocumentos(client) {
+  const paperwork = clientRelated("paperwork", client);
+  const files = clientRelated("files", client);
+  return `
+    <section class="card profile-section">
+      <div class="card-head"><h2>Gestoria</h2><span class="pill info">${paperwork.length}</span></div>
+      <div class="card-body">
+        ${profileMiniTable(paperwork, [
+          { key: "tramite", label: "Tramite" },
+          { key: "vehiculo", label: "Vehiculo" },
+          { key: "vence", label: "Vence" },
+          { key: "estado", label: "Estado", render: v => pill(v) }
+        ], "Sin tramites de gestoria registrados.")}
+      </div>
+    </section>
+    <section class="card profile-section" style="margin-top:16px">
+      <div class="card-head"><h2>Expedientes</h2><span class="pill info">${files.length}</span></div>
+      <div class="card-body">
+        ${profileMiniTable(files, [
+          { key: "numero", label: "Numero" },
+          { key: "tramite", label: "Tramite" },
+          { key: "responsable", label: "Responsable" },
+          { key: "estado", label: "Estado", render: v => pill(v) }
+        ], "Sin expedientes registrados.")}
+      </div>
+    </section>
+  `;
+}
+
+function clientProfileAgenda(client) {
+  const agendaItems = aggregatedAgendaItems().filter(e => clientMatchesItem(e, client));
+  const today = todayKey();
+  const upcoming = agendaItems.filter(e => e.fecha >= today).sort((a, b) => a.fecha.localeCompare(b.fecha));
+  const past = agendaItems.filter(e => e.fecha < today).sort((a, b) => b.fecha.localeCompare(a.fecha)).slice(0, 10);
+  const claims = clientRelated("claims", client);
+  const afterSales = clientRelated("afterSales", client);
+  const agendaRow = e => `<div class="event"><time>${escapeHtml(e.fecha)}${e.hora ? " " + escapeHtml(e.hora) : ""}</time><div><strong>${escapeHtml(e.titulo)}</strong><span class="pill info">${escapeHtml(e.tipo)}</span>${pill(e.estado)}</div></div>`;
+  return `
+    <section class="card profile-section">
+      <div class="card-head"><h2>Proximos eventos</h2><span class="pill info">${upcoming.length}</span></div>
+      <div class="card-body timeline">
+        ${upcoming.slice(0, 10).map(agendaRow).join("") || `<p class="muted">Sin eventos proximos.</p>`}
+      </div>
+    </section>
+    <section class="card profile-section" style="margin-top:16px">
+      <div class="card-head"><h2>Historial de agenda</h2></div>
+      <div class="card-body timeline">
+        ${past.map(agendaRow).join("") || `<p class="muted">Sin historial de agenda.</p>`}
+      </div>
+    </section>
+    <section class="card profile-section" style="margin-top:16px">
+      <div class="card-head"><h2>Reclamos y postventa</h2></div>
+      <div class="card-body">
+        ${(claims.length || afterSales.length) ? `
+          ${claims.length ? profileMiniTable(claims, [
+            { key: "motivo", label: "Motivo" },
+            { key: "canal", label: "Canal" },
+            { key: "prioridad", label: "Prioridad" },
+            { key: "estado", label: "Estado", render: v => pill(v) }
+          ]) : ""}
+          ${afterSales.length ? `<div style="margin-top:12px">${profileMiniTable(afterSales, [
+            { key: "vehiculo", label: "Vehiculo" },
+            { key: "entrega", label: "Entrega" },
+            { key: "control", label: "Control" },
+            { key: "estado", label: "Estado", render: v => pill(v) }
+          ])}</div>` : ""}
+        ` : `<p class="muted">Sin reclamos ni postventa registrados.</p>`}
+      </div>
+    </section>
+  `;
+}
+
+function handleQuickAction(action) {
+  const [type, clientId] = action.split(":");
+  const client = (state.clients || []).find(c => c.id === clientId);
+  if (!client) return;
+  const prefill = { clienteId: client.id, cliente: client.nombre, telefono: client.telefono || "" };
+  if (type === "edit-client")   return openModal("clients", client);
+  if (type === "new-sale")      return openModal("sales",    { ...prefill, etapa: "Contacto", vehiculo: client.interes || "" });
+  if (type === "new-quote")     return openModal("quotes",   { ...prefill, vehiculo: client.interes || "" });
+  if (type === "new-calendar")  return openModal("calendar", { ...prefill, titulo: `Contacto con ${client.nombre}`, tipo: "Llamado", hora: "10:00", fecha: todayKey() });
+  if (type === "new-message")   return openModal("messages", { ...prefill, canal: "WhatsApp", plantilla: "Seguimiento" });
 }
 
 function flowsForModule(moduleId) {
@@ -787,6 +1052,44 @@ function upcomingCalendar(limit = 5) {
     .filter(event => event.fecha >= today && !/Cancelado/i.test(event.estado || ""))
     .sort((a, b) => `${a.fecha} ${a.hora}`.localeCompare(`${b.fecha} ${b.hora}`))
     .slice(0, limit);
+}
+
+function aggregatedAgendaItems() {
+  const sources = [
+    { moduleId: "alertas",       key: "alerts",        dateField: "vence",          label: "Alerta",       titleFn: r => r.titulo || "Alerta" },
+    { moduleId: "cotizaciones",  key: "quotes",        dateField: "fecha",          label: "Cotizacion",   titleFn: r => [r.cliente, r.vehiculo].filter(Boolean).join(" - ") || "Cotizacion" },
+    { moduleId: "expedientes",   key: "files",         dateField: "vence",          label: "Expediente",   titleFn: r => [r.tramite, r.cliente].filter(Boolean).join(" - ") || "Expediente" },
+    { moduleId: "gestoria",      key: "paperwork",     dateField: "vence",          label: "Gestoria",     titleFn: r => [r.tramite, r.cliente].filter(Boolean).join(" - ") || "Tramite" },
+    { moduleId: "consignaciones",key: "consignments",  dateField: "vence",          label: "Consignacion", titleFn: r => [r.titular, r.vehiculo].filter(Boolean).join(" - ") || "Consignacion" },
+    { moduleId: "cobros",        key: "collections",   dateField: "vence",          label: "Cobro",        titleFn: r => [r.cliente, r.concepto].filter(Boolean).join(" - ") || "Cobro" },
+    { moduleId: "autorizaciones",key: "authorizations",dateField: "vence",          label: "Autorizacion", titleFn: r => r.solicitud || "Autorizacion" },
+    { moduleId: "infracciones",  key: "tickets",       dateField: "vence",          label: "Infraccion",   titleFn: r => [r.dominio, r.detalle].filter(Boolean).join(" - ") || "Infraccion" },
+    { moduleId: "postventa",     key: "afterSales",    dateField: "entrega",        label: "Postventa",    titleFn: r => `Entrega: ${[r.cliente, r.vehiculo].filter(Boolean).join(" - ")}` },
+    { moduleId: "taller",        key: "workshop",      dateField: "vence",          label: "Taller",       titleFn: r => [r.vehiculo, r.trabajo].filter(Boolean).join(" - ") || "Taller" },
+    { moduleId: "miespacio",     key: "workspace",     dateField: "vence",          label: "Mi espacio",   titleFn: r => r.tarea || "Tarea" },
+    { moduleId: "dormidos",      key: "sleepingLeads", dateField: "ultimoContacto", label: "Dormido",      titleFn: r => `Reactivar: ${r.cliente || "lead"}` },
+  ];
+  const virtualItems = sources.flatMap(({ moduleId, key, dateField, label, titleFn }) =>
+    (state[key] || [])
+      .filter(r => /^\d{4}-\d{2}-\d{2}$/.test(String(r[dateField] || "")))
+      .map(r => ({
+        id: `virtual-${moduleId}-${r.id}`,
+        fecha: r[dateField],
+        hora: "",
+        titulo: titleFn(r),
+        tipo: label,
+        cliente: r.cliente || r.titular || r.beneficiario || "",
+        vehiculo: r.vehiculo || "",
+        estado: r.estado || "",
+        vendedor: r.responsable || r.gestor || r.vendedor || "",
+        notas: "",
+        virtual: true,
+        origen: moduleId,
+        originKey: key,
+        originId: r.id
+      }))
+  );
+  return [...(state.calendar || []), ...virtualItems];
 }
 
 function shiftCalendar(step) {
@@ -1231,10 +1534,33 @@ function bind() {
   });
 
   document.querySelectorAll("[data-module]").forEach(btn => btn.addEventListener("click", () => {
+    if (btn.dataset.module !== currentModule) { clientProfileId = null; clientProfileTab = "resumen"; }
     currentModule = btn.dataset.module;
     query = "";
     render();
   }));
+
+  document.querySelector("[data-back-profile]")?.addEventListener("click", () => {
+    clientProfileId = null;
+    clientProfileTab = "resumen";
+    render();
+  });
+
+  document.querySelectorAll("[data-profile-tab]").forEach(btn => btn.addEventListener("click", () => {
+    clientProfileTab = btn.dataset.profileTab;
+    render();
+  }));
+
+  document.querySelectorAll("[data-client-row]").forEach(tr => {
+    tr.addEventListener("click", e => {
+      if (e.target.closest("button, a")) return;
+      clientProfileId = tr.dataset.clientRow;
+      clientProfileTab = "resumen";
+      render();
+    });
+  });
+
+  document.querySelectorAll("[data-quick-action]").forEach(btn => btn.addEventListener("click", () => handleQuickAction(btn.dataset.quickAction)));
 
   document.querySelectorAll("[data-action='search']").forEach(inputEl => inputEl.addEventListener("input", e => {
     query = e.target.value;
