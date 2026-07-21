@@ -7,6 +7,7 @@ let query = "";
 let publicConfig = {};
 let calendarView = "month";
 let calendarCursor = new Date().toISOString().slice(0, 10);
+let _vehiclePhotosBuf = [];
 
 const modules = [
   { id: "dashboard", label: "Dashboard", icon: "D", subtitle: "Resumen operativo de la agencia" },
@@ -550,6 +551,10 @@ function detailList(row, columns) {
 }
 
 function renderDetailValue(key, value) {
+  if (key === "fotos") {
+    const imgs = Array.isArray(value) ? value : [];
+    return imgs.length ? `<div class="vehicle-gallery">${imgs.map(src => `<img src="${escapeHtml(src)}" alt="foto">`).join("")}</div>` : `<span class="muted">Sin fotos</span>`;
+  }
   if (/monto|precio|comision|costo|presupuesto/i.test(key)) return money(value);
   if (/estado|prioridad|tipo/i.test(key)) return pill(value);
   return escapeHtml(value);
@@ -558,13 +563,61 @@ function renderDetailValue(key, value) {
 
 function vehicleColumns() {
   return [
+    { key: "fotos", label: "", render: (fotos) => fotos?.length ? `<img class="row-thumb" src="${escapeHtml(fotos[0])}" alt="foto">` : `<div style="width:52px;height:38px;border-radius:4px;background:var(--border);display:flex;align-items:center;justify-content:center;font-size:18px;">🚗</div>` },
     { key: "dominio", label: "Dominio" },
     { key: "modelo", label: "Modelo", render: (_, r) => `<strong>${escapeHtml(r.marca)} ${escapeHtml(r.modelo)}</strong><br><span class="muted">${r.anio} - ${Number(r.km).toLocaleString("es-AR")} km</span>` },
     { key: "precio", label: "Precio", render: v => money(v) },
     { key: "estado", label: "Estado", render: v => pill(v) },
-    { key: "ubicacion", label: "Ubicacion" },
-    { key: "margen", label: "Margen", render: v => money(v) }
+    { key: "ubicacion", label: "Ubicacion" }
   ];
+}
+
+function resizeImage(file, maxW = 900, maxH = 675, quality = 0.75) {
+  return new Promise(resolve => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const ratio = Math.min(maxW / img.width, maxH / img.height, 1);
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(img.width * ratio);
+      canvas.height = Math.round(img.height * ratio);
+      canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(url);
+      resolve(canvas.toDataURL("image/jpeg", quality));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(null); };
+    img.src = url;
+  });
+}
+
+function vehiclePhotoSection(row = {}) {
+  return `
+    <fieldset class="form-section">
+      <legend><span>F</span>FOTOS DEL VEHICULO</legend>
+      <div class="vehicle-photos-preview" id="vph-preview"></div>
+      <div class="toolbar" style="margin:0;gap:8px">
+        <label class="btn ghost file-btn">
+          Agregar fotos
+          <input type="file" accept="image/png,image/jpeg,image/webp" data-action="vehicle-photo-upload" multiple>
+        </label>
+        <small class="muted">Max 5 fotos · JPG/PNG/WEBP · se comprimen automaticamente</small>
+      </div>
+    </fieldset>
+  `;
+}
+
+function updatePhotoPreview() {
+  const preview = document.getElementById("vph-preview");
+  if (!preview) return;
+  preview.innerHTML = _vehiclePhotosBuf.length
+    ? _vehiclePhotosBuf.map((src, i) => `<div class="photo-thumb"><img src="${escapeHtml(src)}" alt="Foto ${i+1}"><button type="button" class="icon-btn remove-photo" data-photo-index="${i}" title="Quitar">X</button></div>`).join("")
+    : `<p class="muted" style="font-size:12px">Sin fotos cargadas.</p>`;
+  preview.querySelectorAll("[data-photo-index]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      _vehiclePhotosBuf.splice(Number(btn.dataset.photoIndex), 1);
+      updatePhotoPreview();
+    });
+  });
 }
 
 function clientColumns() {
@@ -914,6 +967,10 @@ function formFor(key, row = {}) {
   };
   const fields = dynamicDef?.fields || forms[key] || forms.clients;
   if (key === "orders") return orderForm(row);
+  if (key === "vehicles") {
+    _vehiclePhotosBuf = (row.fotos || []).slice();
+    return groupedForm(key, fields, row) + vehiclePhotoSection(row);
+  }
   const linkedKeys = ["sales", "paperwork", "calendar", "quotes", "files", "consignments"];
   const linkedHtml = linkedKeys.includes(key)
     ? `<fieldset class="form-section"><legend><span>+</span>VINCULOS</legend><div class="form-grid">${linkedClientVehicleFields(row)}</div></fieldset>`
@@ -1298,6 +1355,7 @@ function bindModal() {
         if (/^(anio|anioDesde|anioHasta|km|precio|margen|monto|precioPretendido|comision|costo|presupuesto|puntaje|dias)$/.test(k)) item[k] = Number(item[k]);
       });
       const prevEtapa = (id && key === "sales") ? (state[key].find(x => x.id === id)?.etapa) : null;
+      if (key === "vehicles") item.fotos = _vehiclePhotosBuf.slice();
       if (id) {
         state[key] = state[key].map(x => x.id === id ? { ...x, ...item, id } : x);
       } else {
@@ -1326,6 +1384,23 @@ function bindModal() {
       if (phone && form?.elements.telefono) form.elements.telefono.value = phone;
     });
   });
+  document.querySelectorAll("[data-action='vehicle-photo-upload']").forEach(input => {
+    if (input.dataset.bound) return;
+    input.dataset.bound = "true";
+    input.addEventListener("change", async () => {
+      const files = Array.from(input.files || []);
+      for (const file of files) {
+        if (!file.type.startsWith("image/")) { toast("Solo imagenes JPG, PNG o WEBP."); continue; }
+        if (_vehiclePhotosBuf.length >= 5) { toast("Maximo 5 fotos por vehiculo."); break; }
+        const dataUrl = await resizeImage(file);
+        if (dataUrl) _vehiclePhotosBuf.push(dataUrl);
+      }
+      input.value = "";
+      updatePhotoPreview();
+    });
+  });
+  // Render existing photos after modal opens
+  updatePhotoPreview();
   document.querySelectorAll("[data-vehicle-link]").forEach(select => {
     if (select.dataset.bound) return;
     select.dataset.bound = "true";
