@@ -968,7 +968,7 @@ function groupedForm(key, fields, row = {}) {
     <fieldset class="form-section">
       <legend>${section.icon ? `<span>${section.icon}</span>` : ""}${escapeHtml(section.title)}</legend>
       ${section.note ? `<p>${escapeHtml(section.note)}</p>` : ""}
-      <div class="form-grid">${section.fields.map(field => fieldControl(normalizeField(field, row, key))).join("")}</div>
+      <div class="form-grid">${section.fields.map(field => fieldControl(field)).join("")}</div>
     </fieldset>
   `).join("");
 }
