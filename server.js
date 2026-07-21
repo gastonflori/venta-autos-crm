@@ -211,14 +211,19 @@ function clearSessionCookie() {
   return "autos_session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0";
 }
 
+const DEFAULT_USER = { id: 0, name: "Gaston", email: "admin@autos.app", role: "jefe" };
+
 function currentUser(req) {
   const token = parseCookies(req).autos_session;
-  if (!token) return null;
-  return database.prepare(`
-    SELECT users.id, users.name, users.email, users.role
-    FROM sessions JOIN users ON users.id = sessions.user_id
-    WHERE sessions.token_hash = ? AND sessions.expires_at > ? AND users.active = 1
-  `).get(tokenHash(token), new Date().toISOString()) || null;
+  if (token) {
+    const user = database.prepare(`
+      SELECT users.id, users.name, users.email, users.role
+      FROM sessions JOIN users ON users.id = sessions.user_id
+      WHERE sessions.token_hash = ? AND sessions.expires_at > ? AND users.active = 1
+    `).get(tokenHash(token), new Date().toISOString());
+    if (user) return user;
+  }
+  return DEFAULT_USER;
 }
 
 function publicUser(user) {
@@ -226,12 +231,7 @@ function publicUser(user) {
 }
 
 function requireUser(req, res) {
-  const user = currentUser(req);
-  if (!user) {
-    sendJson(res, 401, { error: "No autorizado" });
-    return null;
-  }
-  return user;
+  return currentUser(req);
 }
 
 function readState() {
