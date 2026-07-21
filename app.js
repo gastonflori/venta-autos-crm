@@ -1026,13 +1026,14 @@ function financeColumns() {
 function calendarPage() {
   const items = filteredCalendar();
   const today = todayKey();
-  const pending = (state.calendar || []).filter(x => /Pendiente|Programado/i.test(x.estado || "")).length;
-  const confirmed = (state.calendar || []).filter(x => /Confirmado|Listo/i.test(x.estado || "")).length;
-  const overdue = (state.calendar || []).filter(x => x.fecha < today && !/Hecho|Cancelado|Listo/i.test(x.estado || "")).length;
+  const allAgenda = aggregatedAgendaItems();
+  const pending = allAgenda.filter(x => /Pendiente|Programado/i.test(x.estado || "")).length;
+  const confirmed = allAgenda.filter(x => /Confirmado|Listo/i.test(x.estado || "")).length;
+  const overdue = allAgenda.filter(x => x.fecha < today && !/Hecho|Cancelado|Listo/i.test(x.estado || "")).length;
   return `
     <div class="grid stats calendar-stats">
-      ${stat("Eventos cargados", state.calendar.length, "Agenda total")}
-      ${stat("Hoy", calendarForDay(today).length, "Compromisos del dia")}
+      ${stat("Eventos cargados", allAgenda.length, "Agenda total")}
+      ${stat("Hoy", allAgenda.filter(x => x.fecha === today).length, "Compromisos del dia")}
       ${stat("Pendientes", pending, "A coordinar o resolver")}
       ${stat("Confirmados", confirmed, "Listos para atender")}
       ${stat("Vencidos", overdue, "Requieren accion")}
@@ -1138,7 +1139,7 @@ function calendarEventCard(event) {
 }
 
 function filteredCalendar() {
-  const rows = filtered(state.calendar || []);
+  const rows = filtered(aggregatedAgendaItems());
   if (calendarView === "list") return rows;
   const cursor = localDate(calendarCursor);
   if (calendarView === "week") {
