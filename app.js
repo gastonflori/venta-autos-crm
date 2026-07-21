@@ -118,11 +118,11 @@ const sectionData = {
 
 const moduleEnhancements = {
   alertas: { fields: [["titulo", "Titulo"], ["tipo", "Tipo"], ["prioridad", "Prioridad"], ["area", "Area"], ["cliente", "Cliente"], ["vehiculo", "Vehiculo"], ["vence", "Vence", "date"], ["responsable", "Responsable"], ["estado", "Estado"], ["detalle", "Detalle", "textarea"]], columns: [["titulo", "Titulo"], ["prioridad", "Prioridad"], ["area", "Area"], ["cliente", "Cliente"], ["vence", "Vence"], ["estado", "Estado"]] },
-  stock: { fields: [["dominio", "Dominio"], ["marca", "Marca"], ["modelo", "Modelo"], ["version", "Version"], ["anio", "Anio", "number"], ["km", "Kilometros", "number"], ["precio", "Precio", "number"], ["moneda", "Moneda"], ["estado", "Estado"], ["ubicacion", "Ubicacion"], ["origen", "Origen"], ["margen", "Margen", "number"], ["notas", "Notas", "textarea"]] },
-  clientes: { fields: [["nombre", "Nombre"], ["telefono", "Telefono"], ["email", "Email", "email"], ["dni", "DNI/CUIT"], ["interes", "Interes"], ["origen", "Origen"], ["vendedor", "Vendedor"], ["proximo", "Proximo contacto"], ["estado", "Estado"], ["notas", "Notas", "textarea"]] },
-  ventas: { fields: [["cliente", "Cliente"], ["vehiculo", "Vehiculo"], ["etapa", "Etapa"], ["monto", "Monto", "number"], ["moneda", "Moneda"], ["sena", "Sena", "number"], ["vendedor", "Vendedor"], ["proximo", "Proximo paso"], ["estado", "Estado"], ["notas", "Notas", "textarea"]] },
+  stock: { fields: [["dominio", "Dominio"], ["marca", "Marca"], ["modelo", "Modelo"], ["version", "Version"], ["anio", "Anio", "number"], ["km", "Kilometros", "number"], ["precio", "Precio", "number"], ["moneda", "Moneda"], ["estado", "Estado"], ["ubicacion", "Ubicacion"], ["origen", "Origen"], ["margen", "Margen", "number"], ["notas", "Notas", "textarea"]], columns: [["dominio", "Dominio"], ["marca", "Marca"], ["modelo", "Modelo"], ["anio", "Anio"], ["precio", "Precio"], ["estado", "Estado"]] },
+  clientes: { fields: [["nombre", "Nombre"], ["telefono", "Telefono"], ["email", "Email", "email"], ["dni", "DNI/CUIT"], ["interes", "Interes"], ["origen", "Origen"], ["vendedor", "Vendedor"], ["proximo", "Proximo contacto"], ["estado", "Estado"], ["notas", "Notas", "textarea"]], columns: [["nombre", "Nombre"], ["telefono", "Telefono"], ["interes", "Interes"], ["origen", "Origen"], ["estado", "Estado"]] },
+  ventas: { fields: [["cliente", "Cliente"], ["vehiculo", "Vehiculo"], ["etapa", "Etapa"], ["monto", "Monto", "number"], ["moneda", "Moneda"], ["sena", "Sena", "number"], ["vendedor", "Vendedor"], ["proximo", "Proximo paso"], ["estado", "Estado"], ["notas", "Notas", "textarea"]], columns: [["cliente", "Cliente"], ["vehiculo", "Vehiculo"], ["etapa", "Etapa"], ["monto", "Monto"], ["vendedor", "Vendedor"], ["estado", "Estado"]] },
   cotizaciones: { fields: [["cliente", "Cliente"], ["telefono", "Telefono"], ["vehiculo", "Vehiculo"], ["precioLista", "Precio lista", "number"], ["bonificacion", "Bonificacion", "number"], ["monto", "Monto final", "number"], ["moneda", "Moneda"], ["validez", "Validez hasta", "date"], ["vendedor", "Vendedor"], ["estado", "Estado"], ["notas", "Condiciones", "textarea"]], columns: [["cliente", "Cliente"], ["vehiculo", "Vehiculo"], ["monto", "Monto"], ["moneda", "Moneda"], ["validez", "Validez"], ["estado", "Estado"]] },
-  gestoria: { fields: [["tramite", "Tramite"], ["cliente", "Cliente"], ["vehiculo", "Vehiculo"], ["dominio", "Dominio"], ["gestor", "Gestor"], ["vence", "Vence", "date"], ["costo", "Costo", "number"], ["estado", "Estado"], ["notas", "Observaciones", "textarea"]] },
+  gestoria: { fields: [["tramite", "Tramite"], ["cliente", "Cliente"], ["vehiculo", "Vehiculo"], ["dominio", "Dominio"], ["gestor", "Gestor"], ["vence", "Vence", "date"], ["costo", "Costo", "number"], ["estado", "Estado"], ["notas", "Observaciones", "textarea"]], columns: [["tramite", "Tramite"], ["cliente", "Cliente"], ["vehiculo", "Vehiculo"], ["estado", "Estado"], ["vence", "Vence"]] },
   expedientes: { fields: [["numero", "Numero"], ["cliente", "Cliente"], ["telefono", "Telefono"], ["vehiculo", "Vehiculo"], ["dominio", "Dominio"], ["tramite", "Tramite"], ["responsable", "Responsable"], ["fechaAlta", "Fecha alta", "date"], ["vence", "Vence", "date"], ["estado", "Estado"], ["detalle", "Documentacion", "textarea"]], columns: [["numero", "Numero"], ["cliente", "Cliente"], ["vehiculo", "Vehiculo"], ["tramite", "Tramite"], ["responsable", "Responsable"], ["estado", "Estado"]] },
   reclamos: { fields: [["cliente", "Cliente"], ["telefono", "Telefono"], ["vehiculo", "Vehiculo"], ["motivo", "Motivo"], ["canal", "Canal"], ["prioridad", "Prioridad"], ["responsable", "Responsable"], ["proximo", "Proximo paso"], ["estado", "Estado"], ["detalle", "Detalle", "textarea"]], columns: [["cliente", "Cliente"], ["motivo", "Motivo"], ["canal", "Canal"], ["prioridad", "Prioridad"], ["responsable", "Responsable"], ["estado", "Estado"]] },
   tesoreria: { fields: [["cuenta", "Cuenta"], ["tipo", "Tipo"], ["concepto", "Concepto"], ["cliente", "Cliente"], ["vehiculo", "Vehiculo"], ["monto", "Monto", "number"], ["moneda", "Moneda"], ["medio", "Medio de pago"], ["fecha", "Fecha", "date"], ["estado", "Estado"], ["notas", "Notas", "textarea"]], columns: [["cuenta", "Cuenta"], ["tipo", "Tipo"], ["concepto", "Concepto"], ["monto", "Monto"], ["moneda", "Moneda"], ["estado", "Estado"]] },
@@ -130,7 +130,7 @@ const moduleEnhancements = {
   pedidos: { fields: [["cliente", "Cliente"], ["telefono", "Telefono"], ["marca", "Marca"], ["modelo", "Modelo"], ["anioDesde", "Anio desde", "number"], ["anioHasta", "Anio hasta", "number"], ["presupuesto", "Presupuesto maximo", "number"], ["moneda", "Moneda"], ["vendedor", "Vendedor"], ["estado", "Estado"], ["notas", "Notas", "textarea"]], columns: [["cliente", "Cliente"], ["telefono", "Telefono"], ["marca", "Marca"], ["modelo", "Modelo"], ["presupuesto", "Presupuesto"], ["moneda", "Moneda"], ["estado", "Estado"]] },
   liquidaciones: { fields: [["beneficiario", "Beneficiario"], ["operacion", "Operacion"], ["cliente", "Cliente"], ["vehiculo", "Vehiculo"], ["concepto", "Concepto"], ["monto", "Monto", "number"], ["moneda", "Moneda"], ["fecha", "Fecha", "date"], ["estado", "Estado"], ["notas", "Detalle", "textarea"]], columns: [["beneficiario", "Beneficiario"], ["operacion", "Operacion"], ["concepto", "Concepto"], ["monto", "Monto"], ["fecha", "Fecha"], ["estado", "Estado"]] },
   infracciones: { fields: [["dominio", "Dominio"], ["vehiculo", "Vehiculo"], ["detalle", "Detalle"], ["monto", "Monto", "number"], ["moneda", "Moneda"], ["vence", "Vence", "date"], ["responsable", "Responsable"], ["estado", "Estado"], ["notas", "Notas", "textarea"]], columns: [["dominio", "Dominio"], ["vehiculo", "Vehiculo"], ["detalle", "Detalle"], ["monto", "Monto"], ["vence", "Vence"], ["estado", "Estado"]] },
-  finanzas: { fields: [["concepto", "Concepto"], ["tipo", "Tipo"], ["categoria", "Categoria"], ["cliente", "Cliente"], ["vehiculo", "Vehiculo"], ["monto", "Monto", "number"], ["moneda", "Moneda"], ["fecha", "Fecha", "date"], ["medio", "Medio de pago"], ["estado", "Estado"], ["notas", "Notas", "textarea"]] },
+  finanzas: { fields: [["concepto", "Concepto"], ["tipo", "Tipo"], ["categoria", "Categoria"], ["cliente", "Cliente"], ["vehiculo", "Vehiculo"], ["monto", "Monto", "number"], ["moneda", "Moneda"], ["fecha", "Fecha", "date"], ["medio", "Medio de pago"], ["estado", "Estado"], ["notas", "Notas", "textarea"]], columns: [["concepto", "Concepto"], ["tipo", "Tipo"], ["monto", "Monto"], ["fecha", "Fecha"], ["estado", "Estado"]] },
   reportes: { fields: [["nombre", "Nombre"], ["periodo", "Periodo"], ["area", "Area"], ["indicador", "Indicador"], ["valor", "Valor"], ["responsable", "Responsable"], ["fecha", "Fecha", "date"], ["estado", "Estado"], ["detalle", "Detalle", "textarea"]], columns: [["nombre", "Nombre"], ["periodo", "Periodo"], ["area", "Area"], ["indicador", "Indicador"], ["valor", "Valor"], ["estado", "Estado"]] },
   mensajes: { fields: [["cliente", "Cliente"], ["telefono", "Telefono"], ["canal", "Canal"], ["plantilla", "Plantilla"], ["mensaje", "Mensaje", "textarea"], ["hora", "Hora"], ["responsable", "Responsable"], ["estado", "Estado"]], columns: [["cliente", "Cliente"], ["canal", "Canal"], ["plantilla", "Plantilla"], ["hora", "Hora"], ["responsable", "Responsable"], ["estado", "Estado"]] },
   conversaciones: { fields: [["cliente", "Cliente"], ["telefono", "Telefono"], ["canal", "Canal"], ["ultimoMensaje", "Ultimo mensaje"], ["responsable", "Responsable"], ["proximo", "Proximo paso"], ["estado", "Estado"], ["notas", "Notas", "textarea"]], columns: [["cliente", "Cliente"], ["canal", "Canal"], ["ultimoMensaje", "Ultimo mensaje"], ["responsable", "Responsable"], ["estado", "Estado"]] },
@@ -194,6 +194,29 @@ const sectionDefaults = {
   workshop: [{ id: "ta-1", vehiculo: "Ford Ranger XLS", trabajo: "Service y lavado", responsable: "Taller", costo: 280000, estado: "En proceso" }]
 };
 
+const coreSeedDefaults = {
+  vehicles: [
+    { id: "vh-1", dominio: "AB123CD", marca: "Toyota", modelo: "Corolla", version: "XEI CVT", anio: 2022, km: 35000, precio: 24400000, moneda: "ARS", estado: "Disponible", ubicacion: "Salon", origen: "Usados", margen: 800000, notas: "" },
+    { id: "vh-2", dominio: "FG456HI", marca: "Ford", modelo: "Ranger", version: "XLS 4x4", anio: 2021, km: 58000, precio: 38000000, moneda: "ARS", estado: "Reservado", ubicacion: "Deposito", origen: "Permuta", margen: 1200000, notas: "" },
+    { id: "vh-3", dominio: "JK789LM", marca: "Volkswagen", modelo: "Amarok", version: "Highline V6", anio: 2023, km: 18000, precio: 52000000, moneda: "ARS", estado: "Disponible", ubicacion: "Salon", origen: "Concesionaria", margen: 1500000, notas: "" }
+  ],
+  clients: [
+    { id: "cl-1", nombre: "Martina Quiroga", telefono: "+54 11 5555 1234", email: "martina@mail.com", dni: "30123456", interes: "Toyota Corolla", origen: "WhatsApp", vendedor: "Gastoonfloori", proximo: "", estado: "Caliente", notas: "Busca auto familiar, hasta 25M" },
+    { id: "cl-2", nombre: "Sergio Calvo", telefono: "+54 11 5555 5678", email: "sergio@mail.com", dni: "28765432", interes: "Amarok V6", origen: "Salon", vendedor: "Gastoonfloori", proximo: "", estado: "Seguimiento", notas: "Quiere cambiar camioneta" },
+    { id: "cl-3", nombre: "Nicolas Paz", telefono: "+54 11 5555 9012", email: "nico@mail.com", dni: "32100987", interes: "Ranger XLS", origen: "Instagram", vendedor: "Gastoonfloori", proximo: "", estado: "Cerrado", notas: "Compro la Ranger" }
+  ],
+  sales: [
+    { id: "sa-1", cliente: "Martina Quiroga", clienteId: "cl-1", vehiculo: "Toyota Corolla XEI CVT", vehiculoId: "vh-1", etapa: "Tasacion", monto: 24400000, moneda: "ARS", sena: 0, vendedor: "Gastoonfloori", proximo: "Confirmar tasacion", estado: "Tasacion", notas: "" },
+    { id: "sa-2", cliente: "Sergio Calvo", clienteId: "cl-2", vehiculo: "Volkswagen Amarok Highline V6", vehiculoId: "vh-3", etapa: "Reserva", monto: 52000000, moneda: "ARS", sena: 1000000, vendedor: "Gastoonfloori", proximo: "Coordinar entrega", estado: "Reserva", notas: "" }
+  ],
+  paperwork: [
+    { id: "pw-1", tramite: "Transferencia", cliente: "Sergio Calvo", clienteId: "cl-2", vehiculo: "Amarok Highline V6", vehiculoId: "vh-3", dominio: "JK789LM", gestor: "Gestoria Central", vence: "2026-08-01", costo: 180000, estado: "En curso", notas: "" }
+  ],
+  finance: [
+    { id: "fn-1", concepto: "Sena Amarok V6", tipo: "Ingreso", categoria: "Sena", cliente: "Sergio Calvo", vehiculo: "Amarok Highline V6", monto: 1000000, moneda: "ARS", fecha: "2026-07-15", medio: "Transferencia", estado: "Confirmado", notas: "" }
+  ]
+};
+
 async function saveState(message = "Datos guardados") {
   await api("/api/state", { method: "PUT", body: JSON.stringify({ state }) });
   toast(message);
@@ -241,6 +264,14 @@ function normalizeState(next = {}) {
     ...order
   }));
   if (!merged.settings.sectionsSeeded) merged.settings.sectionsSeeded = true;
+  if (!merged.settings.coreSeedV2) {
+    Object.entries(coreSeedDefaults).forEach(([key, rows]) => {
+      if (!Array.isArray(merged[key]) || merged[key].length === 0) {
+        merged[key] = rows.map(row => ({ ...row }));
+      }
+    });
+    merged.settings.coreSeedV2 = true;
+  }
   return merged;
 }
 
@@ -418,7 +449,9 @@ function filtered(items) {
 }
 function genericColumns(moduleId) {
   const def = sectionData[moduleId];
-  return (def?.columns || []).map(([key, label]) => ({
+  const cols = def?.columns
+    || (def?.fields || []).filter(([,, t]) => t !== "textarea").slice(0, 6).map(([k, l]) => [k, l]);
+  return cols.map(([key, label]) => ({
     key,
     label,
     render: value => /monto|precio|comision|costo|presupuesto/i.test(key) ? money(value) : (/estado|prioridad|tipo/i.test(key) ? pill(value) : escapeHtml(value))
@@ -435,6 +468,8 @@ function genericSectionPage(moduleId) {
   const moneyTotal = totalForRows(allRows);
   const next = nextDatedRow(allRows);
   const first = rows[0] || allRows[0];
+  const cols = genericColumns(moduleId);
+  const detailCols = (def.columns || (def.fields || []).filter(([,, t]) => t !== "textarea").slice(0, 6).map(([k, l]) => [k, l]));
   return `
     <div class="grid stats module-stats">
       ${stat("Registros", allRows.length, "Total del modulo")}
@@ -443,7 +478,7 @@ function genericSectionPage(moduleId) {
       ${stat("Monto", moneyTotal ? money(moneyTotal) : "-", "Valores asociados")}
     </div>
     <div class="grid two-col module-grid" style="margin-top:16px">
-      ${tablePage(def.key, def.title, genericColumns(moduleId), false, moduleId)}
+      ${tablePage(def.key, def.title, cols, false, moduleId)}
       <section class="card module-panel">
         <div class="card-head"><h2>Gestion</h2><span class="pill info">${escapeHtml(def.title)}</span></div>
         <div class="card-body">
@@ -456,11 +491,11 @@ function genericSectionPage(moduleId) {
           </div>
           <div class="detail-box">
             <h3>${first ? "Ultimo registro" : "Sin registros"}</h3>
-            ${first ? detailList(first, def.columns) : `<p class="muted">Carga un registro para administrar esta seccion.</p>`}
+            ${first ? detailList(first, detailCols) : `<p class="muted">Carga un registro para administrar esta seccion.</p>`}
           </div>
           <div class="detail-box">
             <h3>Proximo vencimiento</h3>
-            ${next ? detailList(next, def.columns.slice(0, 4)) : `<p class="muted">No hay fechas pendientes.</p>`}
+            ${next ? detailList(next, detailCols.slice(0, 4)) : `<p class="muted">No hay fechas pendientes.</p>`}
           </div>
         </div>
       </section>
@@ -512,7 +547,7 @@ function nextDatedRow(rows) {
 }
 
 function detailList(row, columns) {
-  return `<dl class="detail-list">${columns.map(([key, label]) => `<div><dt>${escapeHtml(label)}</dt><dd>${renderDetailValue(key, row[key])}</dd></div>`).join("")}</dl>`;
+  return `<dl class="detail-list">${(columns || []).map(([key, label]) => `<div><dt>${escapeHtml(label)}</dt><dd>${renderDetailValue(key, row[key])}</dd></div>`).join("")}</dl>`;
 }
 
 function renderDetailValue(key, value) {
