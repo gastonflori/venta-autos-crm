@@ -356,7 +356,11 @@ function serveStatic(req, res, pathname) {
       });
       return;
     }
-    res.writeHead(200, { "Content-Type": contentTypes[path.extname(filePath)] || "application/octet-stream" });
+    const ext = path.extname(filePath);
+    res.writeHead(200, {
+      "Content-Type": contentTypes[ext] || "application/octet-stream",
+      "Cache-Control": "no-cache, no-store, must-revalidate"
+    });
     res.end(data);
   });
 }
