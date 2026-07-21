@@ -1676,28 +1676,37 @@ function bindModal() {
     form.dataset.bound = "true";
     form.addEventListener("submit", async e => {
       e.preventDefault();
-      const key = e.target.dataset.save;
-      const id = e.target.dataset.id;
-      const item = Object.fromEntries(new FormData(e.target).entries());
-      Object.keys(item).forEach(k => {
-        if (/^(anio|anioDesde|anioHasta|km|precio|margen|monto|precioPretendido|comision|costo|presupuesto|puntaje|dias)$/.test(k)) item[k] = Number(item[k]);
-      });
-      const prevEtapa = (id && key === "sales") ? (state[key].find(x => x.id === id)?.etapa) : null;
-      if (key === "vehicles") item.fotos = _vehiclePhotosBuf.slice();
-      if (id) {
-        state[key] = state[key].map(x => x.id === id ? { ...x, ...item, id } : x);
-      } else {
-        state[key].unshift({ ...item, id: `${key}-${Date.now()}` });
+      const btn = e.target.querySelector("[type='submit']");
+      const btnLabel = btn?.textContent || "Guardar";
+      if (btn) { btn.disabled = true; btn.textContent = "Guardando..."; }
+      try {
+        const key = e.target.dataset.save;
+        const id = e.target.dataset.id;
+        const item = Object.fromEntries(new FormData(e.target).entries());
+        Object.keys(item).forEach(k => {
+          if (/^(anio|anioDesde|anioHasta|km|precio|margen|monto|precioPretendido|comision|costo|presupuesto|puntaje|dias)$/.test(k)) item[k] = Number(item[k]);
+        });
+        const prevEtapa = (id && key === "sales") ? (state[key].find(x => x.id === id)?.etapa) : null;
+        if (key === "vehicles") item.fotos = _vehiclePhotosBuf.slice();
+        if (!Array.isArray(state[key])) state[key] = [];
+        if (id) {
+          state[key] = state[key].map(x => x.id === id ? { ...x, ...item, id } : x);
+        } else {
+          state[key].unshift({ ...item, id: `${key}-${Date.now()}` });
+        }
+        if (key === "sales" && item.etapa === "Cierre" && prevEtapa !== "Cierre") {
+          const savedId = id || state[key][0]?.id;
+          const saved = state[key].find(x => x.id === savedId);
+          if (saved) closeSaleEffects(saved);
+        }
+        addAudit(`${id ? "Actualizado" : "Creado"} ${labelForKey(key)}`);
+        await saveState("Datos guardados");
+        document.querySelector("[data-modal]")?.remove();
+        render();
+      } catch (err) {
+        toast(err.message || "Error al guardar. Intenta de nuevo.");
+        if (btn) { btn.disabled = false; btn.textContent = btnLabel; }
       }
-      if (key === "sales" && item.etapa === "Cierre" && prevEtapa !== "Cierre") {
-        const savedId = id || state[key][0]?.id;
-        const saved = state[key].find(x => x.id === savedId);
-        if (saved) closeSaleEffects(saved);
-      }
-      addAudit(`${id ? "Actualizado" : "Creado"} ${labelForKey(key)}`);
-      await saveState("Datos guardados");
-      document.querySelector("[data-modal]")?.remove();
-      render();
     });
   });
   document.querySelectorAll("[data-client-link]").forEach(select => {
