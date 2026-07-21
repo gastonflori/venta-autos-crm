@@ -469,7 +469,7 @@ function genericSectionPage(moduleId) {
   const moneyTotal = totalForRows(allRows);
   const next = nextDatedRow(allRows);
   const first = rows[0] || allRows[0];
-  const cols = genericColumns(moduleId);
+  const cols = moduleId === "stock" ? vehicleColumns() : genericColumns(moduleId);
   const detailCols = (def.columns || (def.fields || []).filter(([,, t]) => t !== "textarea").slice(0, 6).map(([k, l]) => [k, l]));
   return `
     <div class="grid stats module-stats">
