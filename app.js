@@ -364,7 +364,6 @@ function shell() {
           </div>
           <div class="top-actions">
             <input class="search" data-action="search" value="${escapeHtml(query)}" placeholder="Buscar en este modulo">
-            <button class="btn ghost" data-action="theme" title="Tema">Tema</button>
             <button class="btn" data-action="quick-add">Nuevo</button>
           </div>
         </header>
