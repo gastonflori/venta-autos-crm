@@ -1385,7 +1385,8 @@ function formFor(key, row = {}) {
     _vehiclePhotosBuf = (row.fotos || []).slice();
     return groupedForm(key, fields, row) + vehiclePhotoSection(row);
   }
-  const linkedKeys = ["sales", "paperwork", "calendar", "quotes", "files", "consignments"];
+  if (key === "sales") return salesForm(row);
+  const linkedKeys = ["paperwork", "calendar", "quotes", "files", "consignments"];
   const linkedHtml = linkedKeys.includes(key)
     ? `<fieldset class="form-section"><legend><span>+</span>VINCULOS</legend><div class="form-grid">${linkedClientVehicleFields(row)}</div></fieldset>`
     : "";
@@ -1454,6 +1455,69 @@ function linkedClientVehicleFields(row = {}) {
     }))
     .join("");
   return `<div class="field"><label>Cliente vinculado</label><select name="clienteId" data-client-link>${clientOptions}</select><small>Autocompleta nombre y telefono</small></div><div class="field"><label>Vehiculo vinculado</label><select name="vehiculoId" data-vehicle-link>${vehicleOptions}</select><small>Autocompleta nombre del vehiculo</small></div>`;
+}
+
+function salesForm(row = {}) {
+  const clients = state.clients || [];
+  const availableVehicles = (state.vehicles || []).filter(v =>
+    /^(Disponible|Publicado|Reservado)$/i.test(v.estado || "") || v.id === (row.vehiculoId || "")
+  );
+  const staffListId = "list-vendedor-sales";
+  const staffOpts = staffNames().map(n => `<option value="${escapeHtml(n)}"></option>`).join("");
+
+  const noClients = clients.length === 0;
+  const clientSection = noClients
+    ? `<div class="field full"><div class="sales-hint">Primero cargá el cliente en el módulo <strong>Clientes</strong> antes de crear una venta.</div></div>`
+    : `<div class="field full">
+        <label>Cliente *</label>
+        <select name="clienteId" required data-sales-client>
+          <option value="">— Seleccioná un cliente —</option>
+          ${clients.map(c => `<option value="${escapeHtml(c.id)}" ${c.id === (row.clienteId || "") ? "selected" : ""} data-nombre="${escapeHtml(c.nombre)}">${escapeHtml(c.nombre)}${c.telefono ? ` · ${escapeHtml(c.telefono)}` : ""}</option>`).join("")}
+        </select>
+        <input type="hidden" name="cliente" value="${escapeHtml(row.cliente || clients.find(c => c.id === (row.clienteId || ""))?.nombre || "")}">
+        <small>El cliente debe estar cargado en el módulo Clientes</small>
+      </div>`;
+
+  const noVehicles = availableVehicles.length === 0;
+  const vehicleSection = noVehicles
+    ? `<div class="field full"><div class="sales-hint">No hay vehículos disponibles en Stock. Cargá uno en el módulo <strong>Stock</strong> primero.</div></div>`
+    : `<div class="field full">
+        <label>Vehículo *</label>
+        <select name="vehiculoId" required data-sales-vehicle>
+          <option value="">— Seleccioná un vehículo —</option>
+          ${availableVehicles.map(v => {
+            const nombre = `${v.marca || ""} ${v.modelo || ""}`.trim();
+            const label = `${nombre}${v.dominio ? ` (${v.dominio})` : ""} — ${money(v.precio)}`;
+            return `<option value="${escapeHtml(v.id)}" ${v.id === (row.vehiculoId || "") ? "selected" : ""} data-nombre="${escapeHtml(nombre)}" data-precio="${v.precio || 0}">${escapeHtml(label)}</option>`;
+          }).join("")}
+        </select>
+        <input type="hidden" name="vehiculo" value="${escapeHtml(row.vehiculo || "")}">
+        <small>Solo se muestran vehículos Disponible / Publicado / Reservado</small>
+      </div>`;
+
+  const stages = ["Contacto", "Tasacion", "Reserva", "Cierre", "Perdida"];
+  return `
+    <fieldset class="form-section">
+      <legend><span>+</span>CLIENTE</legend>
+      <div class="form-grid">${clientSection}</div>
+    </fieldset>
+    <fieldset class="form-section">
+      <legend><span>V</span>VEHICULO</legend>
+      <div class="form-grid">${vehicleSection}</div>
+    </fieldset>
+    <fieldset class="form-section">
+      <legend><span>$</span>OPERACION</legend>
+      <div class="form-grid">
+        <div class="field"><label>Etapa</label><select name="etapa">${stages.map(s => `<option ${(row.etapa || "Contacto") === s ? "selected" : ""}>${s}</option>`).join("")}</select></div>
+        <div class="field"><label>Monto total *</label><input name="monto" type="number" required value="${row.monto || ""}" placeholder="0" min="0"></div>
+        <div class="field"><label>Seña cobrada</label><input name="sena" type="number" value="${row.sena || 0}" placeholder="0" min="0"></div>
+        <div class="field"><label>Moneda</label><select name="moneda"><option ${(row.moneda || "ARS") === "ARS" ? "selected" : ""}>ARS</option><option ${(row.moneda || "") === "USD" ? "selected" : ""}>USD</option></select></div>
+        <div class="field"><label>Vendedor</label><input name="vendedor" list="${staffListId}" value="${escapeHtml(row.vendedor || authUser?.name || "")}"><datalist id="${staffListId}">${staffOpts}</datalist></div>
+        <div class="field"><label>Próximo paso</label><input name="proximo" value="${escapeHtml(row.proximo || "")}"></div>
+        <div class="field full"><label>Notas</label><textarea name="notas">${escapeHtml(row.notas || "")}</textarea></div>
+      </div>
+    </fieldset>
+  `;
 }
 
 function orderForm(row = {}) {
@@ -1701,6 +1765,10 @@ function bind() {
 
   document.querySelectorAll("[data-delete]").forEach(btn => btn.addEventListener("click", async () => {
     const [key, id] = btn.dataset.delete.split(":");
+    if (key === "sales") {
+      const sale = (state.sales || []).find(x => x.id === id);
+      if (sale && sale.etapa !== "Cierre") revertVehicleFromSale(sale);
+    }
     state[key] = state[key].filter(x => x.id !== id);
     addAudit(`Registro eliminado en ${labelForKey(key)}`);
     await saveState("Registro eliminado");
@@ -1800,20 +1868,26 @@ function bindModal() {
         const id = e.target.dataset.id;
         const item = Object.fromEntries(new FormData(e.target).entries());
         Object.keys(item).forEach(k => {
-          if (/^(anio|anioDesde|anioHasta|km|precio|margen|monto|precioPretendido|comision|costo|presupuesto|puntaje|dias)$/.test(k)) item[k] = Number(item[k]);
+          if (/^(anio|anioDesde|anioHasta|km|precio|margen|monto|sena|precioPretendido|comision|costo|presupuesto|puntaje|dias)$/.test(k)) item[k] = Number(item[k]);
         });
         const prevEtapa = (id && key === "sales") ? (state[key].find(x => x.id === id)?.etapa) : null;
         if (key === "vehicles") item.fotos = _vehiclePhotosBuf.slice();
+        if (key === "sales") {
+          const cSel = e.target.querySelector("[data-sales-client]");
+          const vSel = e.target.querySelector("[data-sales-vehicle]");
+          if (cSel?.value) item.cliente = cSel.selectedOptions[0]?.dataset.nombre || item.cliente || "";
+          if (vSel?.value) item.vehiculo = vSel.selectedOptions[0]?.dataset.nombre || item.vehiculo || "";
+        }
         if (!Array.isArray(state[key])) state[key] = [];
         if (id) {
           state[key] = state[key].map(x => x.id === id ? { ...x, ...item, id } : x);
         } else {
           state[key].unshift({ ...item, id: `${key}-${Date.now()}` });
         }
-        if (key === "sales" && item.etapa === "Cierre" && prevEtapa !== "Cierre") {
+        if (key === "sales") {
           const savedId = id || state[key][0]?.id;
           const saved = state[key].find(x => x.id === savedId);
-          if (saved) closeSaleEffects(saved);
+          if (saved) applyStageEffects(saved, item.etapa, prevEtapa);
         }
         addAudit(`${id ? "Actualizado" : "Creado"} ${labelForKey(key)}`);
         await saveState("Datos guardados");
@@ -1864,6 +1938,27 @@ function bindModal() {
       const dominio = option?.dataset.dominio || "";
       if (nombre && form?.elements.vehiculo) form.elements.vehiculo.value = nombre;
       if (dominio && form?.elements.dominio) form.elements.dominio.value = dominio;
+    });
+  });
+  document.querySelectorAll("[data-sales-client]").forEach(select => {
+    if (select.dataset.bound) return;
+    select.dataset.bound = "true";
+    select.addEventListener("change", () => {
+      const opt = select.selectedOptions[0];
+      const form = select.closest("form");
+      if (opt?.dataset.nombre && form?.elements.cliente) form.elements.cliente.value = opt.dataset.nombre;
+    });
+  });
+  document.querySelectorAll("[data-sales-vehicle]").forEach(select => {
+    if (select.dataset.bound) return;
+    select.dataset.bound = "true";
+    select.addEventListener("change", () => {
+      const opt = select.selectedOptions[0];
+      const form = select.closest("form");
+      if (opt?.dataset.nombre && form?.elements.vehiculo) form.elements.vehiculo.value = opt.dataset.nombre;
+      if (opt?.dataset.precio && form?.elements.monto && !form.elements.monto.value) {
+        form.elements.monto.value = opt.dataset.precio;
+      }
     });
   });
 }
@@ -1978,33 +2073,135 @@ async function advanceSale() {
 }
 
 function closeSaleEffects(sale) {
+  const nowId = Date.now();
+  const vLabel = sale.vehiculo || "";
+  const total = Number(sale.monto || 0);
+  const sena = Number(sale.sena || 0);
+  const saldo = Math.max(0, total - sena);
+
   if (sale.vehiculoId) {
-    const v = state.vehicles.find(x => x.id === sale.vehiculoId);
+    const v = (state.vehicles || []).find(x => x.id === sale.vehiculoId);
     if (v) v.estado = "Vendido";
   }
-  const vLabel = sale.vehiculo || "";
-  if (!state.finance.some(f => f.saleRef === sale.id)) {
+
+  if (!(state.finance || []).some(f => f.saleRef === sale.id)) {
+    state.finance = state.finance || [];
     state.finance.unshift({
-      id: `fin-${Date.now()}`,
+      id: `fin-${nowId}`,
       saleRef: sale.id,
       concepto: `Venta ${vLabel}`,
       tipo: "Ingreso",
       categoria: "Venta",
       cliente: sale.cliente || "",
+      clienteId: sale.clienteId || "",
       vehiculo: vLabel,
-      monto: Number(sale.monto || 0),
+      vehiculoId: sale.vehiculoId || "",
+      monto: total,
       moneda: sale.moneda || "ARS",
       fecha: todayKey(),
       medio: "",
       estado: "Confirmado",
-      notas: ""
+      notas: sena > 0 ? `Seña previa: ${money(sena)} · Saldo: ${money(saldo)}` : ""
     });
   }
+
+  const saldoYaEnTesoreria = (state.treasury || []).some(t => t.saleRef === sale.id && /saldo/i.test(t.concepto || ""));
+  if (saldo > 0 && !saldoYaEnTesoreria) {
+    state.treasury = state.treasury || [];
+    state.treasury.unshift({
+      id: `trx-${nowId + 1}`,
+      saleRef: sale.id,
+      cuenta: "Caja",
+      tipo: "Ingreso",
+      concepto: `Saldo — ${vLabel}`,
+      cliente: sale.cliente || "",
+      clienteId: sale.clienteId || "",
+      monto: saldo,
+      moneda: sale.moneda || "ARS",
+      fecha: todayKey(),
+      estado: "Confirmado",
+      notas: `Saldo de venta. Seña previa: ${money(sena)}`
+    });
+  }
+
+  if (saldo > 0) {
+    state.collections = state.collections || [];
+    const yaEnCobros = state.collections.some(c => c.saleRef === sale.id);
+    if (!yaEnCobros) {
+      state.collections.unshift({
+        id: `cb-${nowId + 2}`,
+        saleRef: sale.id,
+        cliente: sale.cliente || "",
+        clienteId: sale.clienteId || "",
+        telefono: (state.clients || []).find(c => c.id === sale.clienteId)?.telefono || "",
+        concepto: `Saldo venta ${vLabel}`,
+        vehiculo: vLabel,
+        monto: saldo,
+        moneda: sale.moneda || "ARS",
+        medio: "",
+        vence: todayKey(),
+        estado: "Pendiente",
+        notas: `Saldo final. Seña ya cobrada: ${money(sena)}`
+      });
+    }
+  }
+
   if (sale.clienteId) {
-    const c = state.clients.find(x => x.id === sale.clienteId);
+    const c = (state.clients || []).find(x => x.id === sale.clienteId);
     if (c) c.estado = "Cerrado";
   }
-  addAudit(`Cierre: ${sale.cliente || "cliente"} — ${vLabel}`);
+
+  addAudit(`Cierre: ${sale.cliente || "cliente"} — ${vLabel} — Total ${money(total)}`);
+}
+
+function revertVehicleFromSale(sale) {
+  if (!sale.vehiculoId) return;
+  const v = (state.vehicles || []).find(x => x.id === sale.vehiculoId);
+  if (v && v.estado !== "Vendido") v.estado = "Disponible";
+}
+
+function applyStageEffects(sale, newEtapa, prevEtapa) {
+  if (newEtapa === prevEtapa) return;
+  const nowId = Date.now();
+
+  if (newEtapa === "Tasacion") {
+    const v = sale.vehiculoId ? (state.vehicles || []).find(x => x.id === sale.vehiculoId) : null;
+    if (v && !Number(v.precio)) toast("Atención: el vehículo no tiene precio de referencia cargado en Stock.");
+  }
+
+  if (newEtapa === "Reserva") {
+    if (sale.vehiculoId) {
+      const v = (state.vehicles || []).find(x => x.id === sale.vehiculoId);
+      if (v && v.estado !== "Vendido") v.estado = "Reservado";
+    }
+    const sena = Number(sale.sena || 0);
+    const yaRegistrada = (state.treasury || []).some(t => t.saleRef === sale.id && /seña/i.test(t.concepto || ""));
+    if (sena > 0 && !yaRegistrada) {
+      state.treasury = state.treasury || [];
+      state.treasury.unshift({
+        id: `trx-${nowId}`,
+        saleRef: sale.id,
+        cuenta: "Caja",
+        tipo: "Ingreso",
+        concepto: `Seña — ${sale.vehiculo || "vehículo"}`,
+        cliente: sale.cliente || "",
+        clienteId: sale.clienteId || "",
+        monto: sena,
+        moneda: sale.moneda || "ARS",
+        fecha: todayKey(),
+        estado: "Confirmado",
+        notas: `Seña de venta ID ${sale.id}`
+      });
+    }
+  }
+
+  if (newEtapa === "Cierre" && prevEtapa !== "Cierre") {
+    closeSaleEffects(sale);
+  }
+
+  if (newEtapa === "Perdida" && prevEtapa !== "Perdida") {
+    revertVehicleFromSale(sale);
+  }
 }
 
 function addAudit(text) {
