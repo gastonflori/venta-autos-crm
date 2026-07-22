@@ -245,6 +245,7 @@ function normalizeState(next = {}) {
     messages: [],
     calendar: [],
     audit: [],
+    clientDocs: [],
     settings: {}
   };
   const merged = { ...defaults, ...next, settings: { ...defaults.settings, ...(next.settings || {}) } };
@@ -723,8 +724,34 @@ function clientProfileCompras(client) {
 function clientProfileDocumentos(client) {
   const paperwork = clientRelated("paperwork", client);
   const files = clientRelated("files", client);
+  const docs = (state.clientDocs || []).filter(d => d.clienteId === client.id);
   return `
     <section class="card profile-section">
+      <div class="card-head">
+        <h2>Documentos del cliente</h2>
+        <div style="display:flex;gap:8px;align-items:center">
+          <span class="pill info">${docs.length}</span>
+          <button class="btn" data-quick-action="new-client-doc:${escapeHtml(client.id)}">+ Nuevo documento</button>
+        </div>
+      </div>
+      <div class="card-body">
+        ${docs.length ? `<div style="overflow:auto"><table>
+          <thead><tr><th>Tipo</th><th>Nombre</th><th>Fecha</th><th>Estado</th><th>Archivo</th><th></th></tr></thead>
+          <tbody>${docs.map(doc => `<tr>
+            <td>${pill(doc.tipo || "Otro")}</td>
+            <td><strong>${escapeHtml(doc.nombre || "")}</strong>${doc.notas ? `<br><small class="muted">${escapeHtml(doc.notas)}</small>` : ""}</td>
+            <td>${escapeHtml(doc.fecha || "")}</td>
+            <td>${pill(doc.estado || "Recibido")}</td>
+            <td>${doc.archivo ? `<a class="btn ghost" style="font-size:12px;min-height:28px;padding:4px 10px" href="${escapeHtml(doc.archivo)}" download="${escapeHtml(doc.archivoNombre || 'documento')}">Descargar</a>` : `<span class="muted">—</span>`}</td>
+            <td class="record-actions">
+              <button class="icon-btn" data-edit="clientDocs:${escapeHtml(doc.id)}" title="Editar">E</button>
+              <button class="icon-btn" data-delete="clientDocs:${escapeHtml(doc.id)}" title="Eliminar">X</button>
+            </td>
+          </tr>`).join("")}</tbody>
+        </table></div>` : `<p class="muted">Sin documentos cargados para este cliente. Usá "+ Nuevo documento" para agregar uno.</p>`}
+      </div>
+    </section>
+    <section class="card profile-section" style="margin-top:16px">
       <div class="card-head"><h2>Gestoria</h2><span class="pill info">${paperwork.length}</span></div>
       <div class="card-body">
         ${profileMiniTable(paperwork, [
@@ -802,6 +829,7 @@ function handleQuickAction(action) {
   if (type === "new-quote")     return openModal("quotes",   { ...prefill, vehiculo: client.interes || "" });
   if (type === "new-calendar")  return openModal("calendar", { ...prefill, titulo: `Contacto con ${client.nombre}`, tipo: "Llamado", hora: "10:00", fecha: todayKey() });
   if (type === "new-message")   return openModal("messages", { ...prefill, canal: "WhatsApp", plantilla: "Seguimiento" });
+  if (type === "new-client-doc") return openModal("clientDocs", { clienteId: client.id, cliente: client.nombre });
 }
 
 function flowsForModule(moduleId) {
@@ -1445,6 +1473,7 @@ function formFor(key, row = {}) {
     return groupedForm(key, fields, row) + vehiclePhotoSection(row);
   }
   if (key === "sales") return salesForm(row);
+  if (key === "clientDocs") return clientDocForm(row);
   const linkedKeys = ["paperwork", "calendar", "quotes", "files", "consignments"];
   const linkedHtml = linkedKeys.includes(key)
     ? `<fieldset class="form-section"><legend><span>+</span>VINCULOS</legend><div class="form-grid">${linkedClientVehicleFields(row)}</div></fieldset>`
@@ -1483,7 +1512,8 @@ function modalMeta(key, row = {}) {
     calendar: "Agenda de test drives, entregas, llamados y vencimientos.",
     paperwork: "Tramite administrativo vinculado a cliente y vehiculo.",
     finance: "Movimiento de caja, banco, ingreso o egreso.",
-    messages: "Plantilla o mensaje operativo para enviar."
+    messages: "Plantilla o mensaje operativo para enviar.",
+    clientDocs: "Documento vinculado a la carpeta del cliente."
   };
   return {
     title: `${editing ? "Editar" : "Nuevo"} ${key === "orders" ? "pedido del cliente" : label}`,
@@ -1574,6 +1604,57 @@ function salesForm(row = {}) {
         <div class="field"><label>Vendedor</label><input name="vendedor" list="${staffListId}" value="${escapeHtml(row.vendedor || authUser?.name || "")}"><datalist id="${staffListId}">${staffOpts}</datalist></div>
         <div class="field"><label>Próximo paso</label><input name="proximo" value="${escapeHtml(row.proximo || "")}"></div>
         <div class="field full"><label>Notas</label><textarea name="notas">${escapeHtml(row.notas || "")}</textarea></div>
+      </div>
+    </fieldset>
+  `;
+}
+
+function clientDocForm(row = {}) {
+  const tiposDoc = ["DNI", "Cédula verde", "Cédula azul", "Contrato", "Factura", "Recibo", "Poder notarial", "CUIL/CUIT", "Domicilio", "Otro"];
+  const estados = ["Recibido", "Pendiente", "Vencido", "Archivado"];
+  const hasFile = row.archivoNombre && row.archivo;
+  return `
+    <fieldset class="form-section">
+      <legend><span>D</span>DOCUMENTO</legend>
+      <div class="form-grid">
+        <input type="hidden" name="clienteId" value="${escapeHtml(row.clienteId || '')}">
+        <input type="hidden" name="cliente" value="${escapeHtml(row.cliente || '')}">
+        <div class="field">
+          <label>Tipo de documento</label>
+          <select name="tipo">${tiposDoc.map(t => `<option ${(row.tipo || "DNI") === t ? "selected" : ""}>${escapeHtml(t)}</option>`).join("")}</select>
+        </div>
+        <div class="field">
+          <label>Nombre / descripcion</label>
+          <input name="nombre" value="${escapeHtml(row.nombre || '')}" placeholder="Ej: DNI frente, Contrato de compraventa" required>
+        </div>
+        <div class="field">
+          <label>Fecha</label>
+          <input name="fecha" type="date" value="${escapeHtml(row.fecha || todayKey())}">
+        </div>
+        <div class="field">
+          <label>Estado</label>
+          <select name="estado">${estados.map(e => `<option ${(row.estado || "Recibido") === e ? "selected" : ""}>${escapeHtml(e)}</option>`).join("")}</select>
+        </div>
+        <div class="field full">
+          <label>Notas</label>
+          <textarea name="notas">${escapeHtml(row.notas || '')}</textarea>
+        </div>
+      </div>
+    </fieldset>
+    <fieldset class="form-section">
+      <legend><span>+</span>ARCHIVO ADJUNTO</legend>
+      <div class="form-grid">
+        <div class="field full">
+          ${hasFile ? `<div class="doc-file-current"><span class="pill ok">Archivo actual: ${escapeHtml(row.archivoNombre)}</span></div>` : ""}
+          <label class="btn ghost file-btn" style="width:fit-content;margin-top:6px">
+            ${hasFile ? "Reemplazar archivo" : "Seleccionar archivo"}
+            <input type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp" data-action="doc-file-upload">
+          </label>
+          <small id="doc-file-label" style="margin-top:8px;display:block">${hasFile ? `Archivo cargado: ${escapeHtml(row.archivoNombre)}` : "Sin archivo — PDF, imagen o Word, máx 5 MB"}</small>
+          <input type="hidden" name="archivo" value="${escapeHtml(row.archivo || '')}">
+          <input type="hidden" name="archivoNombre" value="${escapeHtml(row.archivoNombre || '')}">
+          <input type="hidden" name="archivoTipo" value="${escapeHtml(row.archivoTipo || '')}">
+        </div>
       </div>
     </fieldset>
   `;
@@ -1741,7 +1822,7 @@ function fieldControl(field) {
 
 function labelForKey(key) {
   const dynamicDef = Object.values(sectionData).find(def => def.key === key);
-  return dynamicDef?.item || ({ vehicles: "vehiculo", clients: "cliente", sales: "oportunidad", paperwork: "tramite", finance: "movimiento", messages: "mensaje", calendar: "evento" }[key] || "registro");
+  return dynamicDef?.item || ({ vehicles: "vehiculo", clients: "cliente", sales: "oportunidad", paperwork: "tramite", finance: "movimiento", messages: "mensaje", calendar: "evento", clientDocs: "documento" }[key] || "registro");
 }
 
 function pill(value) {
@@ -2018,6 +2099,26 @@ function bindModal() {
       if (opt?.dataset.precio && form?.elements.monto && !form.elements.monto.value) {
         form.elements.monto.value = opt.dataset.precio;
       }
+    });
+  });
+  document.querySelectorAll("[data-action='doc-file-upload']").forEach(input => {
+    if (input.dataset.bound) return;
+    input.dataset.bound = "true";
+    input.addEventListener("change", () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      if (file.size > 5 * 1024 * 1024) return toast("El archivo debe pesar menos de 5 MB.");
+      const reader = new FileReader();
+      reader.onload = () => {
+        const form = input.closest("form");
+        if (form?.elements.archivo)      form.elements.archivo.value      = String(reader.result || "");
+        if (form?.elements.archivoNombre) form.elements.archivoNombre.value = file.name;
+        if (form?.elements.archivoTipo)   form.elements.archivoTipo.value   = file.type;
+        const label = document.getElementById("doc-file-label");
+        if (label) label.textContent = `Archivo listo: ${file.name} (${(file.size / 1024).toFixed(0)} KB)`;
+      };
+      reader.onerror = () => toast("No se pudo leer el archivo.");
+      reader.readAsDataURL(file);
     });
   });
 }
