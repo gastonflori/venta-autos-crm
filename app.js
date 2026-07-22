@@ -3135,142 +3135,195 @@ function generateQuotePDF(quoteId) {
   const vehicle = quote.vehiculoId ? (state.vehicles || []).find(v => v.id === quote.vehiculoId) : null;
   const client  = quote.clienteId  ? (state.clients  || []).find(c => c.id === quote.clienteId)  : null;
   const cfg = state.settings || {};
-  const agencyName = cfg.businessName || publicConfig.businessName || "Sote CRM";
+  const agencyName = cfg.businessName || publicConfig.businessName || "Sote Auto";
   const moneda = quote.moneda || "ARS";
   const fmt = (v) => `${moneda} ${Number(v || 0).toLocaleString("es-AR", { maximumFractionDigits: 0 })}`;
 
-  const doc = new JsPDF({ unit: "mm", format: "a4" });
-  const W = 210, M = 14;
-  let y = 18;
+  // Palette
+  const DARK  = [11, 17, 32];      // #0b1120
+  const BLUE  = [42, 120, 214];    // #2a78d6
+  const LIGHT = [248, 250, 253];   // soft page bg
+  const GRAY  = [98, 108, 126];
+  const LGRAY = [210, 216, 226];
+  const WHITE = [255, 255, 255];
+  const GREEN = [22, 163, 74];
 
-  // ─── ENCABEZADO ─────────────────────────────────────────────────────────────
+  const doc = new JsPDF({ unit: "mm", format: "a4" });
+  const W = 210, H = 297, M = 14;
+  let y = 0;
+
+  // ─── HEADER BANNER ──────────────────────────────────────────────────────────
+  const hdrH = 36;
+  doc.setFillColor(...DARK).rect(0, 0, W, hdrH, "F");
+  // Accent line on top
+  doc.setFillColor(...BLUE).rect(0, 0, W, 2.5, "F");
+
+  // Logo or agency name
   let logoLoaded = false;
   if (cfg.logoDataUrl) {
-    try {
-      doc.addImage(cfg.logoDataUrl, undefined, M, y, 38, 18, undefined, "FAST");
-      logoLoaded = true;
-    } catch (_) { /* fallback to text */ }
+    try { doc.addImage(cfg.logoDataUrl, undefined, M, 7, 34, 16, undefined, "FAST"); logoLoaded = true; } catch (_) {}
   }
   if (!logoLoaded) {
-    doc.setFont("helvetica", "bold").setFontSize(20).setTextColor(20, 40, 80);
-    doc.text(agencyName, M, y + 10);
+    doc.setFont("helvetica", "bold").setFontSize(17).setTextColor(...WHITE);
+    doc.text(agencyName, M, 20);
   }
-  // agency contact (right-aligned block)
-  doc.setFont("helvetica", "normal").setFontSize(8).setTextColor(90, 90, 90);
-  const contactLines = [agencyName];
-  if (cfg.phone)   contactLines.push(`Tel: ${cfg.phone}`);
+
+  // Contact block right-aligned in header
+  const contactLines = [];
+  if (cfg.phone)   contactLines.push(cfg.phone);
   if (cfg.email)   contactLines.push(cfg.email);
   if (cfg.address) contactLines.push(cfg.address);
-  contactLines.forEach((line, i) => doc.text(line, W - M, y + 3 + i * 4.5, { align: "right" }));
-  y += 24;
+  doc.setFont("helvetica", "normal").setFontSize(7.5).setTextColor(180, 195, 220);
+  contactLines.forEach((line, i) => doc.text(line, W - M, 12 + i * 4.8, { align: "right" }));
 
-  // horizontal rule
-  doc.setDrawColor(210, 210, 210).setLineWidth(0.4).line(M, y, W - M, y);
-  y += 8;
-
-  // ─── TÍTULO ─────────────────────────────────────────────────────────────────
+  // Quote label in header
   const quoteNum = quoteId.replace(/\D/g, "").slice(-6).padStart(6, "0") || "000001";
-  doc.setFont("helvetica", "bold").setFontSize(22).setTextColor(20, 40, 80);
-  doc.text("COTIZACIÓN", M, y);
-  doc.setFont("helvetica", "normal").setFontSize(10).setTextColor(110, 110, 110);
-  doc.text(`Ref. #${quoteNum}`, M + 60, y);
-  y += 7;
+  doc.setFont("helvetica", "bold").setFontSize(8).setTextColor(...BLUE);
+  doc.text(`COTIZACION  #${quoteNum}`, W - M, hdrH - 7, { align: "right" });
+
+  y = hdrH + 10;
+
+  // ─── TITULO + FECHAS ────────────────────────────────────────────────────────
+  doc.setFont("helvetica", "bold").setFontSize(26).setTextColor(...DARK);
+  doc.text("COTIZACION", M, y);
+  y += 3;
 
   const today = new Date().toLocaleDateString("es-AR", { day: "2-digit", month: "long", year: "numeric" });
-  doc.setFontSize(9).setTextColor(80, 80, 80);
-  doc.text(`Emisión: ${today}`, M, y);
+  doc.setFont("helvetica", "normal").setFontSize(8.5).setTextColor(...GRAY);
+  doc.text(`Emitida el ${today}`, M, y + 5);
   if (quote.validez) {
     const vDate = new Date(quote.validez + "T12:00:00").toLocaleDateString("es-AR", { day: "2-digit", month: "long", year: "numeric" });
-    doc.text(`Válida hasta: ${vDate}`, M + 80, y);
+    doc.setFont("helvetica", "bold").setFontSize(8.5).setTextColor(...BLUE);
+    doc.text(`Valida hasta: ${vDate}`, W - M, y + 5, { align: "right" });
   }
-  y += 10;
+  y += 12;
 
-  // ─── CLIENTE ────────────────────────────────────────────────────────────────
+  // thin accent rule
+  doc.setDrawColor(...BLUE).setLineWidth(0.5).line(M, y, M + 40, y);
+  doc.setDrawColor(...LGRAY).setLineWidth(0.3).line(M + 40, y, W - M, y);
+  y += 8;
+
+  // ─── DOS COLUMNAS: CLIENTE + VEHICULO ───────────────────────────────────────
+  const colW = (W - 2 * M - 6) / 2;
+  const colR = M + colW + 6;
+
+  // Cliente card
   const clientName  = client?.nombre   || quote.cliente   || "—";
   const clientPhone = client?.telefono || quote.telefono  || "";
   const clientEmail = client?.email    || "";
-  doc.setFillColor(240, 245, 255).rect(M, y - 1, W - 2 * M, 5 + (clientPhone ? 5 : 0) + (clientEmail ? 5 : 0) + 2, "F");
-  doc.setFont("helvetica", "bold").setFontSize(9).setTextColor(20, 40, 80);
-  doc.text("CLIENTE", M + 2, y + 3);
-  doc.setFont("helvetica", "normal").setFontSize(10).setTextColor(20, 20, 20);
-  y += 7;
-  doc.text(clientName, M + 2, y); y += 5;
-  if (clientPhone) { doc.setFontSize(9).setTextColor(80,80,80); doc.text(`Tel: ${clientPhone}`, M + 2, y); y += 5; }
-  if (clientEmail) { doc.setFontSize(9).setTextColor(80,80,80); doc.text(`Email: ${clientEmail}`, M + 2, y); y += 5; }
-  y += 5;
+  const clientLines = [clientName, clientPhone && `Tel: ${clientPhone}`, clientEmail && `Email: ${clientEmail}`].filter(Boolean);
+  const cardH = 8 + clientLines.length * 5.2;
 
-  // ─── VEHÍCULO ───────────────────────────────────────────────────────────────
+  doc.setFillColor(...LIGHT).roundedRect(M, y, colW, cardH, 2, 2, "F");
+  doc.setDrawColor(...LGRAY).setLineWidth(0.25).roundedRect(M, y, colW, cardH, 2, 2, "S");
+  doc.setFillColor(...BLUE).rect(M, y, 2.5, cardH, "F");
+  doc.setFont("helvetica", "bold").setFontSize(7).setTextColor(...BLUE);
+  doc.text("CLIENTE", M + 5, y + 5);
+  doc.setFont("helvetica", "bold").setFontSize(10.5).setTextColor(...DARK);
+  doc.text(clientName, M + 5, y + 5 + 5.5);
+  doc.setFont("helvetica", "normal").setFontSize(8.5).setTextColor(...GRAY);
+  if (clientPhone) doc.text(`Tel: ${clientPhone}`, M + 5, y + 5 + 5.5 + 5);
+  if (clientEmail) doc.text(clientEmail, M + 5, y + 5 + 5.5 + (clientPhone ? 10 : 5));
+
+  // Vehiculo card
   const vLabel   = vehicle ? `${vehicle.marca || ""} ${vehicle.modelo || ""} ${vehicle.version || ""}`.replace(/ +/g, " ").trim() : (quote.vehiculo || "—");
-  const vAnio    = vehicle?.anio    ? String(vehicle.anio)   : "";
+  const vAnio    = vehicle?.anio    ? `${vehicle.anio}` : "";
   const vKm      = vehicle?.km      ? `${Number(vehicle.km).toLocaleString("es-AR")} km` : "";
   const vDominio = vehicle?.dominio || "";
   const fotos    = vehicle?.fotos   || [];
 
-  doc.setFont("helvetica", "bold").setFontSize(9).setTextColor(20, 40, 80);
-  doc.text("VEHÍCULO", M, y); y += 5;
-  doc.setFont("helvetica", "bold").setFontSize(13).setTextColor(10, 10, 10);
-  doc.text(vLabel, M, y); y += 6;
-  doc.setFont("helvetica", "normal").setFontSize(9).setTextColor(80, 80, 80);
-  const vDetails = [vAnio && `Año: ${vAnio}`, vKm && `Km: ${vKm}`, vDominio && `Dominio: ${vDominio}`].filter(Boolean);
-  if (vDetails.length) { doc.text(vDetails.join("   ·   "), M, y); y += 6; }
-  y += 2;
+  doc.setFillColor(...LIGHT).roundedRect(colR, y, colW, cardH, 2, 2, "F");
+  doc.setDrawColor(...LGRAY).setLineWidth(0.25).roundedRect(colR, y, colW, cardH, 2, 2, "S");
+  doc.setFillColor(...DARK).rect(colR, y, 2.5, cardH, "F");
+  doc.setFont("helvetica", "bold").setFontSize(7).setTextColor(...DARK);
+  doc.text("VEHICULO", colR + 5, y + 5);
+  doc.setFont("helvetica", "bold").setFontSize(10.5).setTextColor(...DARK);
+  const vLabelLines = doc.splitTextToSize(vLabel, colW - 8);
+  doc.text(vLabelLines, colR + 5, y + 5 + 5.5);
+  doc.setFont("helvetica", "normal").setFontSize(8).setTextColor(...GRAY);
+  const vspec = [vAnio, vKm, vDominio].filter(Boolean).join("  ·  ");
+  if (vspec) doc.text(vspec, colR + 5, y + 5 + 5.5 + 5 * vLabelLines.length);
 
-  // vehicle photos (up to 3)
+  y += cardH + 8;
+
+  // ─── FOTOS ──────────────────────────────────────────────────────────────────
   if (fotos.length > 0) {
     const count = Math.min(fotos.length, 3);
-    const gapX = 4, photoW = (W - 2 * M - gapX * (count - 1)) / count;
+    const gapX = 3;
+    const photoW = (W - 2 * M - gapX * (count - 1)) / count;
     const photoH = photoW * 0.62;
-    if (y + photoH > 265) { doc.addPage(); y = 20; }
+    if (y + photoH > 255) { doc.addPage(); y = 18; }
     for (let i = 0; i < count; i++) {
-      try {
-        doc.addImage(fotos[i], undefined, M + i * (photoW + gapX), y, photoW, photoH, undefined, "MEDIUM");
-      } catch (_) { /* skip failed image */ }
+      try { doc.addImage(fotos[i], undefined, M + i * (photoW + gapX), y, photoW, photoH, undefined, "MEDIUM"); } catch (_) {}
     }
-    y += photoH + 6;
+    y += photoH + 8;
   }
 
   // ─── PRECIO ─────────────────────────────────────────────────────────────────
-  doc.setDrawColor(210, 210, 210).line(M, y, W - M, y); y += 8;
-  doc.setFont("helvetica", "bold").setFontSize(9).setTextColor(20, 40, 80);
-  doc.text("PRECIO", M, y); y += 6;
+  if (y + 40 > 270) { doc.addPage(); y = 18; }
 
-  if (quote.precioLista && Number(quote.precioLista) > 0) {
-    doc.setFont("helvetica", "normal").setFontSize(10).setTextColor(60, 60, 60);
-    doc.text(`Precio de lista:`, M, y);
-    doc.text(fmt(quote.precioLista), W - M, y, { align: "right" }); y += 5;
+  const hasList = quote.precioLista && Number(quote.precioLista) > 0;
+  const hasBoni = quote.bonificacion && Number(quote.bonificacion) > 0;
+  const priceCardH = 10 + (hasList ? 7 : 0) + (hasBoni ? 7 : 0) + (hasList || hasBoni ? 2 : 0) + 13;
+
+  doc.setFillColor(...LIGHT).roundedRect(M, y, W - 2 * M, priceCardH, 2, 2, "F");
+  doc.setDrawColor(...LGRAY).setLineWidth(0.25).roundedRect(M, y, W - 2 * M, priceCardH, 2, 2, "S");
+
+  let py = y + 7;
+  doc.setFont("helvetica", "bold").setFontSize(7.5).setTextColor(...GRAY);
+  doc.text("PRECIO", M + 5, py); py += 6;
+
+  if (hasList) {
+    doc.setFont("helvetica", "normal").setFontSize(10).setTextColor(...GRAY);
+    doc.text("Precio de lista:", M + 5, py);
+    doc.setFont("helvetica", "normal").setFontSize(10).setTextColor(...DARK);
+    doc.text(fmt(quote.precioLista), W - M - 5, py, { align: "right" }); py += 7;
   }
-  if (quote.bonificacion && Number(quote.bonificacion) > 0) {
-    doc.setFont("helvetica", "normal").setFontSize(10).setTextColor(60, 60, 60);
-    doc.text(`Bonificación:`, M, y);
-    doc.text(`- ${fmt(quote.bonificacion)}`, W - M, y, { align: "right" }); y += 5;
+  if (hasBoni) {
+    doc.setFont("helvetica", "normal").setFontSize(10).setTextColor(...GRAY);
+    doc.text("Bonificacion:", M + 5, py);
+    doc.setFont("helvetica", "normal").setFontSize(10).setTextColor([34, 139, 34]);
+    doc.text(`- ${fmt(quote.bonificacion)}`, W - M - 5, py, { align: "right" }); py += 7;
   }
-  // final price — big and highlighted
-  y += 2;
-  doc.setFillColor(20, 40, 80).rect(M, y - 4, W - 2 * M, 12, "F");
-  doc.setFont("helvetica", "bold").setFontSize(14).setTextColor(255, 255, 255);
-  doc.text("PRECIO FINAL:", M + 4, y + 4);
-  doc.setFontSize(15);
-  doc.text(fmt(quote.monto), W - M - 4, y + 4, { align: "right" });
-  y += 16;
+  if (hasList || hasBoni) {
+    doc.setDrawColor(...LGRAY).setLineWidth(0.2).line(M + 5, py - 2, W - M - 5, py - 2); py += 1;
+  }
+
+  // Precio final — caja azul oscuro
+  const finalBoxY = y + priceCardH - 14;
+  doc.setFillColor(...DARK).roundedRect(M + 2, finalBoxY, W - 2 * M - 4, 13, 1.5, 1.5, "F");
+  // Left accent strip
+  doc.setFillColor(...BLUE).roundedRect(M + 2, finalBoxY, 4, 13, 1.5, 1.5, "F");
+  doc.setFont("helvetica", "bold").setFontSize(9).setTextColor(160, 185, 220);
+  doc.text("PRECIO FINAL", M + 9, finalBoxY + 8.5);
+  doc.setFont("helvetica", "bold").setFontSize(16).setTextColor(...WHITE);
+  doc.text(fmt(quote.monto), W - M - 6, finalBoxY + 8.5, { align: "right" });
+
+  y += priceCardH + 8;
 
   // ─── CONDICIONES ────────────────────────────────────────────────────────────
   if (quote.notas) {
-    doc.setDrawColor(210,210,210).line(M, y, W - M, y); y += 7;
-    doc.setFont("helvetica", "bold").setFontSize(9).setTextColor(20, 40, 80);
-    doc.text("CONDICIONES", M, y); y += 5;
-    doc.setFont("helvetica", "normal").setFontSize(9).setTextColor(60, 60, 60);
+    if (y + 24 > 270) { doc.addPage(); y = 18; }
+    doc.setFont("helvetica", "bold").setFontSize(7.5).setTextColor(...GRAY);
+    doc.text("CONDICIONES Y OBSERVACIONES", M, y); y += 5;
+    doc.setFont("helvetica", "normal").setFontSize(8.5).setTextColor(...DARK);
     const lines = doc.splitTextToSize(quote.notas, W - 2 * M);
-    if (y + lines.length * 4.5 > 265) { doc.addPage(); y = 20; }
+    if (y + lines.length * 4.5 > 268) { doc.addPage(); y = 18; }
     doc.text(lines, M, y);
-    y += lines.length * 4.5 + 4;
+    y += lines.length * 4.5 + 6;
   }
 
   // ─── PIE ────────────────────────────────────────────────────────────────────
-  const footerY = 285;
-  doc.setDrawColor(210,210,210).line(M, footerY - 4, W - M, footerY - 4);
-  doc.setFont("helvetica", "normal").setFontSize(8).setTextColor(120,120,120);
-  if (quote.vendedor) doc.text(`Asesor: ${quote.vendedor}`, M, footerY);
-  doc.text(`${agencyName} · Ante cualquier consulta no dudes en contactarnos.`, W - M, footerY, { align: "right" });
+  const footerY = H - 14;
+  doc.setFillColor(...DARK).rect(0, footerY - 8, W, 22, "F");
+  doc.setFillColor(...BLUE).rect(0, footerY - 8, W, 1.5, "F");
+  doc.setFont("helvetica", "normal").setFontSize(7.5).setTextColor(160, 185, 220);
+  if (quote.vendedor) {
+    doc.setFont("helvetica", "bold").setTextColor(...WHITE);
+    doc.text(`Asesor: ${quote.vendedor}`, M, footerY + 3);
+  }
+  doc.setFont("helvetica", "normal").setTextColor(160, 185, 220);
+  doc.text(`${agencyName}  ·  Consultas sin compromiso`, W - M, footerY + 3, { align: "right" });
 
   // ─── GUARDAR ────────────────────────────────────────────────────────────────
   const clean = (s) => (s || "").replace(/[^a-zA-Z0-9ÁÉÍÓÚáéíóúÑñ]/g, "_").replace(/_+/g, "_").replace(/^_|_$/g, "");
