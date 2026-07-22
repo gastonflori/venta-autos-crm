@@ -506,6 +506,7 @@ function clientProfilePage(clientId) {
   const tabs = [
     { id: "resumen", label: "Resumen" },
     { id: "cuenta", label: "Cuenta corriente" },
+    { id: "cuotas", label: "Cuotas pendientes" },
     { id: "compras", label: "Compras" },
     { id: "documentos", label: "Documentos" },
     { id: "agenda", label: "Agenda" }
@@ -544,11 +545,12 @@ function clientProfilePage(clientId) {
         ${tabs.map(t => `<button class="${clientProfileTab === t.id ? "active" : ""}" data-profile-tab="${t.id}">${t.label}</button>`).join("")}
       </div>
       <div class="profile-tab-content">
-        ${clientProfileTab === "resumen"    ? clientProfileResumen(client)    : ""}
-        ${clientProfileTab === "cuenta"     ? clientProfileCuenta(client)     : ""}
-        ${clientProfileTab === "compras"    ? clientProfileCompras(client)    : ""}
-        ${clientProfileTab === "documentos" ? clientProfileDocumentos(client) : ""}
-        ${clientProfileTab === "agenda"     ? clientProfileAgenda(client)     : ""}
+        ${clientProfileTab === "resumen"    ? clientProfileResumen(client)           : ""}
+        ${clientProfileTab === "cuenta"     ? clientProfileCuenta(client)            : ""}
+        ${clientProfileTab === "cuotas"     ? clientProfileCuotasPendientes(client)  : ""}
+        ${clientProfileTab === "compras"    ? clientProfileCompras(client)           : ""}
+        ${clientProfileTab === "documentos" ? clientProfileDocumentos(client)        : ""}
+        ${clientProfileTab === "agenda"     ? clientProfileAgenda(client)            : ""}
       </div>
     </div>
   `;
@@ -586,22 +588,22 @@ function clientProfileResumen(client) {
   `;
 }
 
+function matchesClienteRecord(record, client) {
+  const cId = client.id || "";
+  if (!cId) return false;
+  if (record.clienteId) return record.clienteId === cId;
+  const cName = (client.nombre || "").toLowerCase().trim();
+  const rName = (record.cliente || "").toLowerCase().trim();
+  return cName.length > 0 && rName === cName;
+}
+
 function clientProfileCuenta(client) {
   const cId = client.id || "";
-  const cName = (client.nombre || "").toLowerCase().trim();
-
-  // Strict filter: ID match when record has clienteId; exact name match only for legacy records without clienteId
-  function matchesCuenta(r) {
-    if (!cId) return false;
-    if (r.clienteId) return r.clienteId === cId;
-    const rName = (r.cliente || "").toLowerCase().trim();
-    return cName.length > 0 && rName === cName;
-  }
 
   const today = todayKey();
-  const financeRows = (state.finance || []).filter(matchesCuenta).map(r => ({ fecha: r.fecha || "", concepto: r.concepto || "", tipo: r.tipo || "Ingreso", monto: Number(r.monto || 0), origen: "Finanzas", estado: r.estado || "" }));
-  const treasuryRows = (state.treasury || []).filter(matchesCuenta).map(r => ({ fecha: r.fecha || "", concepto: r.concepto || "", tipo: r.tipo || "Ingreso", monto: Number(r.monto || 0), origen: "Tesoreria", estado: r.estado || "" }));
-  const collectionRows = (state.collections || []).filter(matchesCuenta).map(r => ({ fecha: r.vence || "", concepto: r.concepto || "Cobro", tipo: "Cobro pendiente", monto: Number(r.monto || 0), origen: "Cobros", estado: r.estado || "" }));
+  const financeRows = (state.finance || []).filter(r => matchesClienteRecord(r, client)).map(r => ({ fecha: r.fecha || "", concepto: r.concepto || "", tipo: r.tipo || "Ingreso", monto: Number(r.monto || 0), origen: "Finanzas", estado: r.estado || "" }));
+  const treasuryRows = (state.treasury || []).filter(r => matchesClienteRecord(r, client)).map(r => ({ fecha: r.fecha || "", concepto: r.concepto || "", tipo: r.tipo || "Ingreso", monto: Number(r.monto || 0), origen: "Tesoreria", estado: r.estado || "" }));
+  const collectionRows = (state.collections || []).filter(r => matchesClienteRecord(r, client)).map(r => ({ fecha: r.vence || "", concepto: r.concepto || "Cobro", tipo: "Cobro pendiente", monto: Number(r.monto || 0), origen: "Cobros", estado: r.estado || "" }));
   const all = [...financeRows, ...treasuryRows, ...collectionRows].sort((a, b) => a.fecha.localeCompare(b.fecha));
   const emptyState = `<div class="card-body"><p class="muted">Sin movimientos registrados para este cliente.</p></div>`;
   const totalAdeudado = all.filter(r => /Cargo/i.test(r.tipo)).reduce((s, r) => s + r.monto, 0);
@@ -660,6 +662,44 @@ function clientProfileCuenta(client) {
   `;
 }
 
+function clientProfileCuotasPendientes(client) {
+  const today = todayKey();
+  const cuotas = (state.collections || [])
+    .filter(r => matchesClienteRecord(r, client) && r.numeroCuota && !/Confirmado/i.test(r.estado || ""))
+    .sort((a, b) => (a.vence || "").localeCompare(b.vence || ""));
+  const total = cuotas.reduce((s, r) => s + Number(r.monto || 0), 0);
+  return `
+    <section class="card profile-section">
+      <div class="card-head">
+        <h2>Cuotas pendientes</h2>
+        <span class="pill ${cuotas.length ? "warn" : "ok"}">${cuotas.length}</span>
+      </div>
+      ${!cuotas.length
+        ? `<div class="card-body"><p class="muted">No hay cuotas pendientes para este cliente.</p></div>`
+        : `<div style="overflow:auto"><table>
+            <thead><tr><th>Vence</th><th>Concepto</th><th>Cuota #</th><th>Monto</th><th>Estado</th><th></th></tr></thead>
+            <tbody>
+              ${cuotas.map(r => {
+                const isVencida = r.vence && r.vence < today;
+                return `<tr>
+                  <td style="white-space:nowrap">${escapeHtml(r.vence || "—")}</td>
+                  <td>${escapeHtml(r.concepto || "")}</td>
+                  <td style="text-align:center">${r.numeroCuota || "—"}</td>
+                  <td>${money(r.monto)}</td>
+                  <td>${isVencida ? `<span class="pill crit">Vencida</span>` : `<span class="pill warn">Pendiente</span>`}</td>
+                  <td><button class="btn ghost" style="font-size:12px;padding:3px 10px" data-pay-cuota="${escapeHtml(r.id)}">Registrar pago</button></td>
+                </tr>`;
+              }).join("")}
+            </tbody>
+          </table>
+          <div style="padding:12px 16px;text-align:right;font-weight:700;font-size:13px;border-top:1px solid var(--border)">
+            Total pendiente: <span style="color:var(--crit)">${money(total)}</span>
+          </div>
+        </div>`}
+    </section>
+  `;
+}
+
 function clientProfileCompras(client) {
   const sales = clientRelated("sales", client);
   const quotes = clientRelated("quotes", client);
@@ -667,11 +707,20 @@ function clientProfileCompras(client) {
     <section class="card profile-section">
       <div class="card-head"><h2>Historial de compras</h2><span class="pill info">${sales.length}</span></div>
       <div class="card-body">
-        ${sales.length ? `<div style="overflow:auto"><table><thead><tr><th></th><th>Vehiculo</th><th>Monto</th><th>Etapa</th><th>Vendedor</th></tr></thead><tbody>
+        ${sales.length ? `<div style="overflow:auto"><table><thead><tr><th></th><th>Vehiculo</th><th>Monto</th><th>Forma de pago</th><th>Cuotas</th><th>Etapa</th><th>Vendedor</th></tr></thead><tbody>
           ${sales.map(s => {
             const v = s.vehiculoId ? (state.vehicles || []).find(x => x.id === s.vehiculoId) : null;
             const thumb = v?.fotos?.[0] ? `<img class="row-thumb" src="${escapeHtml(v.fotos[0])}" alt="foto">` : `<div class="row-thumb-placeholder"></div>`;
-            return `<tr><td style="width:60px">${thumb}</td><td><strong>${escapeHtml(s.vehiculo)}</strong></td><td>${money(s.monto)}</td><td>${pill(s.etapa)}</td><td>${escapeHtml(s.vendedor)}</td></tr>`;
+            let cuotasPill = "";
+            if (s.formaPago === "Cuotas") {
+              const cuotas = getSaleCuotas(s.id);
+              const total = Number(s.cantCuotas || 0);
+              const pagadas = cuotas.filter(c => /Confirmado/i.test(c.estado || "")).length;
+              cuotasPill = `<span class="pill ${pagadas === total ? "ok" : "warn"}">${pagadas}/${total}</span>`;
+            } else {
+              cuotasPill = `<span class="muted">—</span>`;
+            }
+            return `<tr><td style="width:60px">${thumb}</td><td><strong>${escapeHtml(s.vehiculo)}</strong></td><td>${money(s.monto)}</td><td><span class="pill info">${escapeHtml(s.formaPago || "—")}</span></td><td>${cuotasPill}</td><td>${pill(s.etapa)}</td><td>${escapeHtml(s.vendedor)}</td></tr>`;
           }).join("")}
         </tbody></table></div>` : `<p class="muted">Sin compras registradas todavia.</p>`}
       </div>
@@ -2282,6 +2331,7 @@ function bind() {
   document.querySelectorAll("[data-advance-sale]").forEach(btn => btn.addEventListener("click", () => advanceSaleById(btn.dataset.advanceSale)));
   document.querySelectorAll("[data-sale-report]").forEach(btn => btn.addEventListener("click", () => openSaleReport(btn.dataset.saleReport)));
   document.querySelectorAll("[data-mark-cuota]").forEach(btn => btn.addEventListener("click", () => markNextCuota(btn.dataset.markCuota)));
+  document.querySelectorAll("[data-pay-cuota]").forEach(btn => btn.addEventListener("click", () => payCuota(btn.dataset.payCuota)));
   document.querySelectorAll("[data-quote-pdf]").forEach(btn => btn.addEventListener("click", () => generateQuotePDF(btn.dataset.quotePdf)));
   document.querySelectorAll("[data-marca-input]").forEach(marcaInput => {
     function syncModelos() {
@@ -3085,11 +3135,12 @@ function openSaleReport(saleId) {
   });
 }
 
-async function markNextCuota(saleId) {
-  const cuotas = getSaleCuotas(saleId);
-  const next = cuotas.find(c => !/Confirmado/i.test(c.estado || ""));
-  if (!next) return toast("No hay cuotas pendientes.");
-  next.estado = "Confirmado";
+async function payCuota(cuotaId) {
+  const cuota = (state.collections || []).find(c => c.id === cuotaId);
+  if (!cuota) return toast("Cuota no encontrada.");
+  if (/Confirmado/i.test(cuota.estado || "")) return toast("Esta cuota ya fue pagada.");
+  cuota.estado = "Confirmado";
+  const saleId = cuota.saleId;
   const sale = (state.sales || []).find(s => s.id === saleId);
   const nowTs = Date.now();
   state.treasury = state.treasury || [];
@@ -3098,25 +3149,35 @@ async function markNextCuota(saleId) {
     saleId,
     cuenta: "Caja",
     tipo: "Ingreso",
-    concepto: `Cuota ${next.numeroCuota}/${sale?.cantCuotas || "?"} — ${sale?.vehiculo || ""}`,
-    cliente: next.cliente || sale?.cliente || "",
-    clienteId: next.clienteId || sale?.clienteId || "",
-    monto: next.monto,
-    moneda: next.moneda || sale?.moneda || "ARS",
+    concepto: `Cuota ${cuota.numeroCuota}/${sale?.cantCuotas || "?"} — ${sale?.vehiculo || ""}`,
+    cliente: cuota.cliente || sale?.cliente || "",
+    clienteId: cuota.clienteId || sale?.clienteId || "",
+    monto: cuota.monto,
+    moneda: cuota.moneda || sale?.moneda || "ARS",
     fecha: todayKey(),
     medio: "",
     estado: "Confirmado",
-    notas: `Pago de cuota ${next.numeroCuota}`
+    notas: `Pago de cuota ${cuota.numeroCuota}`
   });
-  const totalPagadas = cuotas.filter(c => /Confirmado/i.test(c.estado || "")).length;
-  const totalCuotas = Number(sale?.cantCuotas || cuotas.length);
-  if (totalPagadas >= totalCuotas && sale && sale.etapa !== "Cierre") {
-    sale.etapa = "Cierre";
-    closeSaleEffects(sale);
+  if (sale) {
+    const cuotas = getSaleCuotas(saleId);
+    const totalPagadas = cuotas.filter(c => /Confirmado/i.test(c.estado || "")).length;
+    const totalCuotas = Number(sale.cantCuotas || cuotas.length);
+    if (totalPagadas >= totalCuotas && sale.etapa !== "Cierre") {
+      sale.etapa = "Cierre";
+      closeSaleEffects(sale);
+    }
   }
-  addAudit(`Cuota ${next.numeroCuota} pagada — ${next.cliente || ""}`);
-  await saveState(`Cuota ${next.numeroCuota} marcada como pagada`);
+  addAudit(`Cuota ${cuota.numeroCuota} pagada — ${cuota.cliente || ""}`);
+  await saveState(`Cuota ${cuota.numeroCuota} marcada como pagada`);
   render();
+}
+
+async function markNextCuota(saleId) {
+  const cuotas = getSaleCuotas(saleId);
+  const next = cuotas.find(c => !/Confirmado/i.test(c.estado || ""));
+  if (!next) return toast("No hay cuotas pendientes.");
+  await payCuota(next.id);
 }
 
 function generateQuotePDF(quoteId) {
