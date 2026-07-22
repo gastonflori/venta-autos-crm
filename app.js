@@ -31,10 +31,6 @@ const modules = [
   { id: "infracciones", label: "Infracciones", icon: "I", subtitle: "Multas, patentes y pendientes" },
   { id: "finanzas", label: "Finanzas", icon: "$", subtitle: "Ingresos, egresos y caja" },
   { id: "reportes", label: "Reportes", icon: "RP", subtitle: "Indicadores y analisis del negocio" },
-  { id: "mensajes", label: "Mensajes", icon: "M", subtitle: "Plantillas y mensajes operativos" },
-  { id: "conversaciones", label: "Conversaciones", icon: "CV", subtitle: "Historial de contacto con clientes" },
-  { id: "correos", label: "Correos", icon: "@", subtitle: "Emails enviados y pendientes" },
-  { id: "configuracion", label: "Configuracion", icon: "*", subtitle: "Preferencias de agencia y cuenta" },
   { id: "misventas", label: "Mis ventas", icon: "MV", subtitle: "Operaciones asignadas al usuario" }
 ];
 
@@ -90,9 +86,6 @@ const sectionData = {
   liquidaciones: { key: "settlements", title: "Liquidaciones", item: "liquidacion", fields: [["beneficiario", "Beneficiario"], ["concepto", "Concepto"], ["monto", "Monto", "number"], ["fecha", "Fecha", "date"], ["estado", "Estado"]], columns: [["beneficiario", "Beneficiario"], ["concepto", "Concepto"], ["monto", "Monto"], ["fecha", "Fecha"], ["estado", "Estado"]] },
   infracciones: { key: "tickets", title: "Infracciones", item: "infraccion", fields: [["dominio", "Dominio"], ["detalle", "Detalle"], ["monto", "Monto", "number"], ["vence", "Vence", "date"], ["estado", "Estado"]], columns: [["dominio", "Dominio"], ["detalle", "Detalle"], ["monto", "Monto"], ["vence", "Vence"], ["estado", "Estado"]] },
   reportes: { key: "reports", title: "Reportes", item: "reporte", fields: [["nombre", "Nombre"], ["periodo", "Periodo"], ["indicador", "Indicador"], ["valor", "Valor"], ["estado", "Estado"]], columns: [["nombre", "Nombre"], ["periodo", "Periodo"], ["indicador", "Indicador"], ["valor", "Valor"], ["estado", "Estado"]] },
-  mensajes: { key: "messages", title: "Mensajes", item: "mensaje", fields: [["cliente", "Cliente"], ["plantilla", "Plantilla"], ["estado", "Estado"], ["hora", "Hora"]], columns: [["cliente", "Cliente"], ["plantilla", "Plantilla"], ["estado", "Estado"], ["hora", "Hora"]] },
-  conversaciones: { key: "conversations", title: "Conversaciones", item: "conversacion", fields: [["cliente", "Cliente"], ["canal", "Canal"], ["ultimoMensaje", "Ultimo mensaje"], ["responsable", "Responsable"], ["estado", "Estado"]], columns: [["cliente", "Cliente"], ["canal", "Canal"], ["ultimoMensaje", "Ultimo mensaje"], ["responsable", "Responsable"], ["estado", "Estado"]] },
-  correos: { key: "emails", title: "Correos", item: "correo", fields: [["para", "Para"], ["asunto", "Asunto"], ["plantilla", "Plantilla"], ["estado", "Estado"], ["fecha", "Fecha", "date"]], columns: [["para", "Para"], ["asunto", "Asunto"], ["plantilla", "Plantilla"], ["estado", "Estado"], ["fecha", "Fecha"]] },
   misventas: { key: "mySales", title: "Mis ventas", item: "venta propia", fields: [["cliente", "Cliente"], ["vehiculo", "Vehiculo"], ["etapa", "Etapa"], ["monto", "Monto", "number"], ["proximo", "Proximo paso"]], columns: [["cliente", "Cliente"], ["vehiculo", "Vehiculo"], ["etapa", "Etapa"], ["monto", "Monto"], ["proximo", "Proximo paso"]] },
   cobros: { key: "collections", title: "Cobros", item: "cobro", fields: [["cliente", "Cliente"], ["concepto", "Concepto"], ["monto", "Monto", "number"], ["vence", "Vence", "date"], ["estado", "Estado"]], columns: [["cliente", "Cliente"], ["concepto", "Concepto"], ["monto", "Monto"], ["vence", "Vence"], ["estado", "Estado"]] }
 };
@@ -113,9 +106,6 @@ const moduleEnhancements = {
   infracciones: { fields: [["dominio", "Dominio"], ["vehiculo", "Vehiculo"], ["detalle", "Detalle"], ["monto", "Monto", "number"], ["moneda", "Moneda"], ["vence", "Vence", "date"], ["responsable", "Responsable"], ["estado", "Estado"], ["notas", "Notas", "textarea"]], columns: [["dominio", "Dominio"], ["vehiculo", "Vehiculo"], ["detalle", "Detalle"], ["monto", "Monto"], ["vence", "Vence"], ["estado", "Estado"]] },
   finanzas: { fields: [["concepto", "Concepto"], ["tipo", "Tipo"], ["categoria", "Categoria"], ["cliente", "Cliente"], ["vehiculo", "Vehiculo"], ["monto", "Monto", "number"], ["moneda", "Moneda"], ["fecha", "Fecha", "date"], ["medio", "Medio de pago"], ["estado", "Estado"], ["notas", "Notas", "textarea"]], columns: [["concepto", "Concepto"], ["tipo", "Tipo"], ["monto", "Monto"], ["fecha", "Fecha"], ["estado", "Estado"]] },
   reportes: { fields: [["nombre", "Nombre"], ["periodo", "Periodo"], ["area", "Area"], ["indicador", "Indicador"], ["valor", "Valor"], ["responsable", "Responsable"], ["fecha", "Fecha", "date"], ["estado", "Estado"], ["detalle", "Detalle", "textarea"]], columns: [["nombre", "Nombre"], ["periodo", "Periodo"], ["area", "Area"], ["indicador", "Indicador"], ["valor", "Valor"], ["estado", "Estado"]] },
-  mensajes: { fields: [["cliente", "Cliente"], ["telefono", "Telefono"], ["canal", "Canal"], ["plantilla", "Plantilla"], ["mensaje", "Mensaje", "textarea"], ["hora", "Hora"], ["responsable", "Responsable"], ["estado", "Estado"]], columns: [["cliente", "Cliente"], ["canal", "Canal"], ["plantilla", "Plantilla"], ["hora", "Hora"], ["responsable", "Responsable"], ["estado", "Estado"]] },
-  conversaciones: { fields: [["cliente", "Cliente"], ["telefono", "Telefono"], ["canal", "Canal"], ["ultimoMensaje", "Ultimo mensaje"], ["responsable", "Responsable"], ["proximo", "Proximo paso"], ["estado", "Estado"], ["notas", "Notas", "textarea"]], columns: [["cliente", "Cliente"], ["canal", "Canal"], ["ultimoMensaje", "Ultimo mensaje"], ["responsable", "Responsable"], ["estado", "Estado"]] },
-  correos: { fields: [["para", "Para"], ["cliente", "Cliente"], ["asunto", "Asunto"], ["plantilla", "Plantilla"], ["mensaje", "Mensaje", "textarea"], ["fecha", "Fecha", "date"], ["responsable", "Responsable"], ["estado", "Estado"]], columns: [["para", "Para"], ["asunto", "Asunto"], ["plantilla", "Plantilla"], ["fecha", "Fecha"], ["responsable", "Responsable"], ["estado", "Estado"]] },
   misventas: { fields: [["cliente", "Cliente"], ["vehiculo", "Vehiculo"], ["etapa", "Etapa"], ["monto", "Monto", "number"], ["moneda", "Moneda"], ["sena", "Sena", "number"], ["proximo", "Proximo paso"], ["estado", "Estado"], ["notas", "Notas", "textarea"]], columns: [["cliente", "Cliente"], ["vehiculo", "Vehiculo"], ["etapa", "Etapa"], ["monto", "Monto"], ["proximo", "Proximo paso"], ["estado", "Estado"]] },
   cobros: { fields: [["cliente", "Cliente"], ["telefono", "Telefono"], ["concepto", "Concepto"], ["vehiculo", "Vehiculo"], ["monto", "Monto", "number"], ["moneda", "Moneda"], ["medio", "Medio"], ["vence", "Vence", "date"], ["estado", "Estado"], ["notas", "Notas", "textarea"]], columns: [["cliente", "Cliente"], ["concepto", "Concepto"], ["monto", "Monto"], ["vence", "Vence"], ["estado", "Estado"]] }
 };
@@ -1917,6 +1907,7 @@ function salesForm(row = {}) {
         <div class="field full"><textarea name="notas" placeholder="Condiciones especiales, observaciones...">${escapeHtml(row.notas || "")}</textarea></div>
       </div>
     </fieldset>
+    <input type="hidden" name="quoteRef" value="${escapeHtml(row.quoteRef || "")}">
   `;
 }
 
@@ -2403,6 +2394,10 @@ function bindModal() {
               saved.sena = Number(item.anticipo);
             }
             onNewSaleCreated(item, saved);
+            if (item.quoteRef) {
+              const srcQuote = (state.quotes || []).find(q => q.id === item.quoteRef);
+              if (srcQuote) { srcQuote.estado = "Vendido"; srcQuote.saleId = saved.id; }
+            }
           }
         }
         addAudit(`${id ? "Actualizado" : "Creado"} ${labelForKey(key)}`);
@@ -2668,6 +2663,19 @@ async function handleModuleFlow(action) {
     state.files = state.files || [];
     state.files.unshift({ id: `ex-${nowId}`, numero: `EXP-${nowId}`, cliente: source.cliente || "", clienteId: source.clienteId || "", telefono: source.telefono || "", vehiculo: source.vehiculo || "", vehiculoId: source.vehiculoId || "", dominio: "", tramite: "Transferencia", responsable: "Gestoria", fechaAlta: todayKey(), vence: "", estado: "Pendiente", detalle: "" });
     return persistFlow("Expediente generado");
+  }
+  if (flow === "quote-sale") {
+    return openModal("sales", {
+      clienteId: source.clienteId || "",
+      cliente: source.cliente || "",
+      vehiculoId: source.vehiculoId || "",
+      vehiculo: source.vehiculo || "",
+      monto: Number(source.monto || 0),
+      moneda: source.moneda || "ARS",
+      vendedor: source.vendedor || authUser?.name || "",
+      etapa: "Contacto",
+      quoteRef: source.id
+    });
   }
   if (flow === "consignment-stock") {
     state.vehicles = state.vehicles || [];
@@ -3104,6 +3112,7 @@ async function markNextCuota(saleId) {
 }
 
 function generateQuotePDF(quoteId) {
+  try {
   const JsPDF = window.jspdf?.jsPDF;
   if (!JsPDF) return toast("No se pudo generar el PDF. Verificá tu conexión a internet.");
 
@@ -3306,7 +3315,8 @@ function generateQuotePDF(quoteId) {
   // ─── GUARDAR ────────────────────────────────────────────────────────────────
   const clean = (s) => (s || "").replace(/[^a-zA-Z0-9ÁÉÍÓÚáéíóúÑñ]/g, "_").replace(/_+/g, "_").replace(/^_|_$/g, "");
   const filename = `Cotizacion-${clean(clientName)}-${clean(vLabel || quote.vehiculo)}.pdf`;
-  try { doc.save(filename); } catch (e) { toast("No se pudo guardar el PDF: " + (e.message || "error desconocido")); }
+  doc.save(filename);
+  } catch (e) { toast("No se pudo generar el PDF: " + (e.message || "error desconocido")); }
 }
 
 function addAudit(text) {
@@ -3331,7 +3341,7 @@ function exportCurrent() {
 }
 
 function moduleKeyMap() {
-  return { calendario: "calendar", stock: "vehicles", clientes: "clients", ventas: "sales", gestoria: "paperwork", finanzas: "finance", whatsapp: "messages", mensajes: "messages" };
+  return { calendario: "calendar", stock: "vehicles", clientes: "clients", ventas: "sales", gestoria: "paperwork", finanzas: "finance", whatsapp: "messages" };
 }
 
 function escapeHtml(value) {
