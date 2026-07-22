@@ -69,9 +69,11 @@ async function boot() {
     publicConfig = {};
   }
   try {
-    await loadState();
+    const me = await api("/api/auth/me");
+    authUser = me.user;
+    if (authUser) await loadState();
   } catch {
-    authUser = { name: "Gaston", email: "admin@autos.app", role: "jefe" };
+    authUser = null;
   }
   render();
 }
@@ -303,7 +305,7 @@ function toast(message) {
 
 function render() {
   setTheme();
-  document.getElementById("app").innerHTML = shell();
+  document.getElementById("app").innerHTML = authUser ? shell() : login();
   bind();
 }
 
