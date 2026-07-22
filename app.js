@@ -8,6 +8,7 @@ let publicConfig = {};
 let calendarView = "month";
 let calendarCursor = new Date().toISOString().slice(0, 10);
 let _vehiclePhotosBuf = [];
+let _expPhotosBuf = [];
 let clientProfileId = null;
 let clientProfileTab = "resumen";
 let catalogoVehiculos = {};
@@ -476,7 +477,7 @@ function tablePage(key, title, columns, embedded = false, moduleId = "") {
         <table>
           <thead><tr>${columns.map(c => `<th>${c.label}</th>`).join("")}<th></th></tr></thead>
           <tbody>
-            ${rows.length ? rows.map(row => `<tr${key === "clients" ? ` data-client-row="${escapeHtml(row.id)}" class="clickable-row"` : key === "vehicles" ? ` data-vehicle-row="${escapeHtml(row.id)}" class="clickable-row"` : ""}>${columns.map(c => `<td>${c.render ? c.render(row[c.key], row) : escapeHtml(row[c.key])}</td>`).join("")}<td class="record-actions">${flows.map(([flow, label]) => `<button class="icon-btn" data-module-flow="${flow}:${key}:${row.id}" title="${escapeHtml(label)}">${escapeHtml(label.split(" ").map(w => w[0]).join("").slice(0,2).toUpperCase())}</button>`).join("")}${moduleId === "cotizaciones" ? `<button class="icon-btn" data-quote-pdf="${escapeHtml(row.id)}" title="Descargar PDF" style="font-weight:700;color:var(--accent)">PDF</button>` : ""}<button class="icon-btn" data-edit="${key}:${row.id}" title="Editar">E</button><button class="icon-btn" data-delete="${key}:${row.id}" title="Eliminar">X</button></td></tr>`).join("") : `<tr><td colspan="${columns.length + 1}" class="empty">No hay registros para mostrar.</td></tr>`}
+            ${rows.length ? rows.map(row => `<tr${key === "clients" ? ` data-client-row="${escapeHtml(row.id)}" class="clickable-row"` : key === "vehicles" ? ` data-vehicle-row="${escapeHtml(row.id)}" class="clickable-row"` : ""}>${columns.map(c => `<td>${c.render ? c.render(row[c.key], row) : escapeHtml(row[c.key])}</td>`).join("")}<td class="record-actions">${flows.map(([flow, label]) => `<button class="icon-btn" data-module-flow="${flow}:${key}:${row.id}" title="${escapeHtml(label)}">${escapeHtml(label.split(" ").map(w => w[0]).join("").slice(0,2).toUpperCase())}</button>`).join("")}${moduleId === "cotizaciones" ? `<button class="icon-btn" data-quote-pdf="${escapeHtml(row.id)}" title="Descargar PDF" style="font-weight:700;color:var(--accent)">PDF</button>` : ""}${moduleId === "consignaciones" ? `<button class="icon-btn" data-consign-exp="${escapeHtml(row.id)}" title="Expediente tecnico">ET</button>` : ""}${key === "files" && row.tipo === "Vehiculo" ? `<button class="icon-btn" data-file-exp="${escapeHtml(row.id)}" title="Ver expediente">ET</button>` : ""}<button class="icon-btn" data-edit="${key}:${row.id}" title="Editar">E</button><button class="icon-btn" data-delete="${key}:${row.id}" title="Eliminar">X</button></td></tr>`).join("") : `<tr><td colspan="${columns.length + 1}" class="empty">No hay registros para mostrar.</td></tr>`}
           </tbody>
         </table>
       </div>
@@ -1022,6 +1023,118 @@ function updatePhotoPreview() {
   });
 }
 
+function expPhotoSection() {
+  return `
+    <div class="vehicle-photos-preview" id="exp-photo-preview" style="margin-bottom:8px"></div>
+    <label class="btn ghost file-btn" style="margin-bottom:4px">
+      Agregar fotos de detalle
+      <input type="file" accept="image/png,image/jpeg,image/webp" data-action="exp-photo-upload" multiple>
+    </label>
+    <small class="muted" style="display:block;margin-top:4px">Max 6 fotos · se comprimen automaticamente</small>
+  `;
+}
+
+function updateExpPhotoPreview() {
+  const preview = document.getElementById("exp-photo-preview");
+  if (!preview) return;
+  preview.innerHTML = _expPhotosBuf.length
+    ? _expPhotosBuf.map((src, i) => `<div class="photo-thumb"><img src="${escapeHtml(src)}" alt="Foto ${i+1}"><button type="button" class="icon-btn remove-photo" data-exp-photo-index="${i}" title="Quitar">X</button></div>`).join("")
+    : `<p class="muted" style="font-size:12px">Sin fotos.</p>`;
+  preview.querySelectorAll("[data-exp-photo-index]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      _expPhotosBuf.splice(Number(btn.dataset.expPhotoIndex), 1);
+      updateExpPhotoPreview();
+    });
+  });
+}
+
+function openExpedienteTecnicoModal(vehiculoId = "", vehiculoRef = "", consignacionId = "") {
+  _expPhotosBuf = [];
+  const existing = (state.files || []).find(f =>
+    f.tipo === "Vehiculo" &&
+    ((vehiculoId && f.vehiculoId === vehiculoId) || (consignacionId && f.consignacionId === consignacionId))
+  );
+  const label = vehiculoRef || existing?.vehiculoRef || "Vehiculo";
+  const historial = existing?.historial || [];
+  const histHtml = historial.length
+    ? [...historial].reverse().map(h => `
+        <div class="exp-historial-entry">
+          <div class="exp-entry-meta"><strong>${escapeHtml(h.autor || "—")}</strong><span class="muted">${escapeHtml(h.fecha || "")}</span></div>
+          <p class="exp-entry-notas">${escapeHtml(h.notas || "").replace(/\n/g, "<br>")}</p>
+          ${(h.fotos || []).length ? `<div class="vehicle-gallery">${h.fotos.map(src => `<img src="${escapeHtml(src)}" alt="foto">`).join("")}</div>` : ""}
+        </div>`).join("")
+    : `<p class="muted" style="padding:12px 0">Sin entradas previas.</p>`;
+  document.body.insertAdjacentHTML("beforeend", `
+    <div class="modal-backdrop" data-modal>
+      <section class="modal">
+        <div class="modal-head">
+          <div><h2>Expediente tecnico</h2><p>${escapeHtml(label)}</p></div>
+          <button class="icon-btn" data-close>X</button>
+        </div>
+        <div style="max-height:35vh;overflow-y:auto;padding:0 2px 12px;border-bottom:1px solid var(--border);margin-bottom:16px">
+          <h3 style="font-size:12px;font-weight:700;letter-spacing:.06em;color:var(--muted);margin-bottom:10px">HISTORIAL (${historial.length} ${historial.length === 1 ? "entrada" : "entradas"})</h3>
+          ${histHtml}
+        </div>
+        <div>
+          <h3 style="font-size:12px;font-weight:700;letter-spacing:.06em;color:var(--muted);margin-bottom:10px">NUEVA ENTRADA</h3>
+          <div class="field full" style="margin-bottom:12px">
+            <label>Notas de estado (mecanico, chapa, interior, documentacion)</label>
+            <textarea id="exp-notas" rows="4" placeholder="Ej: Golpe en paragolpes trasero. Motor sin observaciones. Cedula verde presente. VTV vence 10/2026."></textarea>
+          </div>
+          ${expPhotoSection()}
+        </div>
+        <div class="modal-actions">
+          <button class="btn ghost" data-close>Cerrar</button>
+          <button class="btn primary-action" id="exp-save-btn">Guardar entrada</button>
+        </div>
+      </section>
+    </div>
+  `);
+  bindModal();
+  updateExpPhotoPreview();
+  document.querySelector("[data-action='exp-photo-upload']")?.addEventListener("change", async function() {
+    const files = Array.from(this.files || []);
+    for (const file of files) {
+      if (!file.type.startsWith("image/")) { toast("Solo imagenes JPG, PNG o WEBP."); continue; }
+      if (_expPhotosBuf.length >= 6) { toast("Maximo 6 fotos por entrada."); break; }
+      const dataUrl = await resizeImage(file);
+      if (dataUrl) _expPhotosBuf.push(dataUrl);
+    }
+    this.value = "";
+    updateExpPhotoPreview();
+  });
+  document.getElementById("exp-save-btn")?.addEventListener("click", async () => {
+    const notas = document.getElementById("exp-notas")?.value?.trim() || "";
+    if (!notas && _expPhotosBuf.length === 0) return toast("Escribi una nota o agrega al menos una foto.");
+    const entrada = {
+      id: `h-${Date.now()}`,
+      fecha: todayKey(),
+      autor: authUser?.name || authUser?.email || "Sistema",
+      notas,
+      fotos: _expPhotosBuf.slice()
+    };
+    state.files = state.files || [];
+    if (existing) {
+      existing.historial = existing.historial || [];
+      existing.historial.push(entrada);
+    } else {
+      state.files.unshift({
+        id: `ex-V-${Date.now()}`,
+        tipo: "Vehiculo",
+        vehiculoId: vehiculoId || "",
+        vehiculoRef: label,
+        consignacionId: consignacionId || "",
+        estado: "Activo",
+        historial: [entrada]
+      });
+    }
+    addAudit(`Expediente tecnico actualizado: ${label}`);
+    await saveState("Entrada guardada en expediente tecnico");
+    document.querySelector("[data-modal]")?.remove();
+    toast("Entrada guardada correctamente");
+  });
+}
+
 function openVehiclePreview(id) {
   const v = (state.vehicles || []).find(x => x.id === id);
   if (!v) return;
@@ -1054,6 +1167,7 @@ function openVehiclePreview(id) {
           <div class="modal-actions">
             <button class="btn ghost" data-close>Cerrar</button>
             <button class="btn ghost" data-vp-edit="${escapeHtml(id)}">Editar</button>
+            <button class="btn ghost" data-vp-exp="${escapeHtml(id)}">Expediente tecnico</button>
             <button class="btn primary-action" data-vp-send="${escapeHtml(id)}">Enviar a cliente</button>
           </div>
         </div>
@@ -1064,6 +1178,10 @@ function openVehiclePreview(id) {
   document.querySelector(`[data-vp-edit="${id}"]`)?.addEventListener("click", () => {
     document.querySelector("[data-modal]")?.remove();
     openModal("vehicles", v);
+  });
+  document.querySelector(`[data-vp-exp="${id}"]`)?.addEventListener("click", () => {
+    document.querySelector("[data-modal]")?.remove();
+    openExpedienteTecnicoModal(id, `${v.marca || ""} ${v.modelo || ""}`.trim());
   });
   document.querySelector(`[data-vp-send="${id}"]`)?.addEventListener("click", () => sendVehicleToClient(v));
 }
@@ -2162,9 +2280,24 @@ function bind() {
     openModal(map[currentModule] || dynamicDef?.key || "clients");
   });
 
+  document.querySelectorAll("[data-consign-exp]").forEach(btn => btn.addEventListener("click", () => {
+    const cs = (state.consignments || []).find(x => x.id === btn.dataset.consignExp);
+    if (!cs) return;
+    const ref = [cs.vehiculo, cs.titular].filter(Boolean).join(" — ");
+    openExpedienteTecnicoModal(cs.vehiculoId || "", ref, cs.id);
+  }));
+  document.querySelectorAll("[data-file-exp]").forEach(btn => btn.addEventListener("click", () => {
+    const f = (state.files || []).find(x => x.id === btn.dataset.fileExp);
+    if (!f) return;
+    openExpedienteTecnicoModal(f.vehiculoId || "", f.vehiculoRef || "", f.consignacionId || "");
+  }));
   document.querySelectorAll("[data-edit]").forEach(btn => btn.addEventListener("click", () => {
     const [key, id] = btn.dataset.edit.split(":");
-    openModal(key, state[key].find(x => x.id === id));
+    const row = state[key]?.find(x => x.id === id);
+    if (key === "files" && row?.tipo === "Vehiculo") {
+      return openExpedienteTecnicoModal(row.vehiculoId || "", row.vehiculoRef || "", row.consignacionId || "");
+    }
+    openModal(key, row);
   }));
 
   document.querySelectorAll("[data-delete]").forEach(btn => btn.addEventListener("click", async () => {
@@ -2565,8 +2698,11 @@ async function handleModuleFlow(action) {
   }
   if (flow === "consignment-stock") {
     state.vehicles = state.vehicles || [];
+    const newVehicleId = `vehicles-${nowId}`;
     const parts2 = (source.vehiculo || "").split(" ");
-    state.vehicles.unshift({ id: `vehicles-${nowId}`, dominio: source.dominio || "", marca: parts2[0] || "", modelo: parts2.slice(1).join(" ") || source.vehiculo || "", anio: source.anio || 0, km: source.km || 0, precio: source.precioPretendido || 0, moneda: "ARS", estado: "Disponible", ubicacion: "", origen: "Consignacion", margen: 0, notas: `Consignado de ${source.titular || ""}` });
+    state.vehicles.unshift({ id: newVehicleId, dominio: source.dominio || "", marca: parts2[0] || "", modelo: parts2.slice(1).join(" ") || source.vehiculo || "", anio: source.anio || 0, km: source.km || 0, precio: source.precioPretendido || 0, moneda: "ARS", estado: "Disponible", ubicacion: "", origen: "Consignacion", margen: 0, fotos: source.fotos || [], notas: `Consignado de ${source.titular || ""}` });
+    const expTec = (state.files || []).find(f => f.tipo === "Vehiculo" && f.consignacionId === source.id);
+    if (expTec) expTec.vehiculoId = newVehicleId;
     source.estado = "Ingresado a Stock";
     return persistFlow("Vehiculo ingresado al stock");
   }
