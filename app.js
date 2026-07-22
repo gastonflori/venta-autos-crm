@@ -474,7 +474,7 @@ function tablePage(key, title, columns, embedded = false, moduleId = "") {
         <table>
           <thead><tr>${columns.map(c => `<th>${c.label}</th>`).join("")}<th></th></tr></thead>
           <tbody>
-            ${rows.length ? rows.map(row => `<tr${key === "clients" ? ` data-client-row="${escapeHtml(row.id)}" class="clickable-row"` : key === "vehicles" ? ` data-vehicle-row="${escapeHtml(row.id)}" class="clickable-row"` : ""}>${columns.map(c => `<td>${c.render ? c.render(row[c.key], row) : escapeHtml(row[c.key])}</td>`).join("")}<td class="record-actions">${flows.map(([flow, label]) => `<button class="icon-btn" data-module-flow="${flow}:${key}:${row.id}" title="${escapeHtml(label)}">${escapeHtml(label.split(" ").map(w => w[0]).join("").slice(0,2).toUpperCase())}</button>`).join("")}<button class="icon-btn" data-edit="${key}:${row.id}" title="Editar">E</button><button class="icon-btn" data-delete="${key}:${row.id}" title="Eliminar">X</button></td></tr>`).join("") : `<tr><td colspan="${columns.length + 1}" class="empty">No hay registros para mostrar.</td></tr>`}
+            ${rows.length ? rows.map(row => `<tr${key === "clients" ? ` data-client-row="${escapeHtml(row.id)}" class="clickable-row"` : key === "vehicles" ? ` data-vehicle-row="${escapeHtml(row.id)}" class="clickable-row"` : ""}>${columns.map(c => `<td>${c.render ? c.render(row[c.key], row) : escapeHtml(row[c.key])}</td>`).join("")}<td class="record-actions">${flows.map(([flow, label]) => `<button class="icon-btn" data-module-flow="${flow}:${key}:${row.id}" title="${escapeHtml(label)}">${escapeHtml(label.split(" ").map(w => w[0]).join("").slice(0,2).toUpperCase())}</button>`).join("")}${moduleId === "cotizaciones" ? `<button class="icon-btn" data-quote-pdf="${escapeHtml(row.id)}" title="Descargar PDF" style="font-weight:700;color:var(--accent)">PDF</button>` : ""}<button class="icon-btn" data-edit="${key}:${row.id}" title="Editar">E</button><button class="icon-btn" data-delete="${key}:${row.id}" title="Eliminar">X</button></td></tr>`).join("") : `<tr><td colspan="${columns.length + 1}" class="empty">No hay registros para mostrar.</td></tr>`}
           </tbody>
         </table>
       </div>
@@ -1611,6 +1611,7 @@ function openModal(key, row = {}) {
           ${formFor(key, row)}
           <div class="modal-actions">
             <button class="btn ghost" type="button" data-close>Cancelar</button>
+            ${key === "quotes" && row.id ? `<button class="btn ghost" type="button" data-quote-pdf="${escapeHtml(row.id)}" title="Descargar PDF de esta cotizacion">Descargar PDF</button>` : ""}
             <button class="btn primary-action" type="submit">${meta.submit}</button>
           </div>
         </form>
@@ -2160,6 +2161,7 @@ function bind() {
   document.querySelectorAll("[data-advance-sale]").forEach(btn => btn.addEventListener("click", () => advanceSaleById(btn.dataset.advanceSale)));
   document.querySelectorAll("[data-sale-report]").forEach(btn => btn.addEventListener("click", () => openSaleReport(btn.dataset.saleReport)));
   document.querySelectorAll("[data-mark-cuota]").forEach(btn => btn.addEventListener("click", () => markNextCuota(btn.dataset.markCuota)));
+  document.querySelectorAll("[data-quote-pdf]").forEach(btn => btn.addEventListener("click", () => generateQuotePDF(btn.dataset.quotePdf)));
   document.querySelectorAll("[data-calendar-view]").forEach(btn => btn.addEventListener("click", () => {
     calendarView = btn.dataset.calendarView;
     render();
@@ -2309,6 +2311,11 @@ function bindModal() {
   });
   // Render existing photos after modal opens
   updatePhotoPreview();
+  document.querySelectorAll("[data-quote-pdf]").forEach(btn => {
+    if (btn.dataset.bound) return;
+    btn.dataset.bound = "true";
+    btn.addEventListener("click", () => generateQuotePDF(btn.dataset.quotePdf));
+  });
   document.querySelectorAll("[data-vehicle-link]").forEach(select => {
     if (select.dataset.bound) return;
     select.dataset.bound = "true";
@@ -2892,6 +2899,159 @@ async function markNextCuota(saleId) {
   addAudit(`Cuota ${next.numeroCuota} pagada — ${next.cliente || ""}`);
   await saveState(`Cuota ${next.numeroCuota} marcada como pagada`);
   render();
+}
+
+function generateQuotePDF(quoteId) {
+  const JsPDF = window.jspdf?.jsPDF;
+  if (!JsPDF) return toast("No se pudo generar el PDF. Verificá tu conexión a internet.");
+
+  const quote = (state.quotes || []).find(q => q.id === quoteId);
+  if (!quote) return toast("Cotización no encontrada.");
+
+  const vehicle = quote.vehiculoId ? (state.vehicles || []).find(v => v.id === quote.vehiculoId) : null;
+  const client  = quote.clienteId  ? (state.clients  || []).find(c => c.id === quote.clienteId)  : null;
+  const cfg = state.settings || {};
+  const agencyName = cfg.businessName || publicConfig.businessName || "Sote CRM";
+  const moneda = quote.moneda || "ARS";
+  const fmt = (v) => `${moneda} ${Number(v || 0).toLocaleString("es-AR", { maximumFractionDigits: 0 })}`;
+
+  const doc = new JsPDF({ unit: "mm", format: "a4" });
+  const W = 210, M = 14;
+  let y = 18;
+
+  // ─── ENCABEZADO ─────────────────────────────────────────────────────────────
+  let logoLoaded = false;
+  if (cfg.logoDataUrl) {
+    try {
+      doc.addImage(cfg.logoDataUrl, undefined, M, y, 38, 18, undefined, "FAST");
+      logoLoaded = true;
+    } catch (_) { /* fallback to text */ }
+  }
+  if (!logoLoaded) {
+    doc.setFont("helvetica", "bold").setFontSize(20).setTextColor(20, 40, 80);
+    doc.text(agencyName, M, y + 10);
+  }
+  // agency contact (right-aligned block)
+  doc.setFont("helvetica", "normal").setFontSize(8).setTextColor(90, 90, 90);
+  const contactLines = [agencyName];
+  if (cfg.phone)   contactLines.push(`Tel: ${cfg.phone}`);
+  if (cfg.email)   contactLines.push(cfg.email);
+  if (cfg.address) contactLines.push(cfg.address);
+  contactLines.forEach((line, i) => doc.text(line, W - M, y + 3 + i * 4.5, { align: "right" }));
+  y += 24;
+
+  // horizontal rule
+  doc.setDrawColor(210, 210, 210).setLineWidth(0.4).line(M, y, W - M, y);
+  y += 8;
+
+  // ─── TÍTULO ─────────────────────────────────────────────────────────────────
+  const quoteNum = quoteId.replace(/\D/g, "").slice(-6).padStart(6, "0") || "000001";
+  doc.setFont("helvetica", "bold").setFontSize(22).setTextColor(20, 40, 80);
+  doc.text("COTIZACIÓN", M, y);
+  doc.setFont("helvetica", "normal").setFontSize(10).setTextColor(110, 110, 110);
+  doc.text(`Ref. #${quoteNum}`, M + 60, y);
+  y += 7;
+
+  const today = new Date().toLocaleDateString("es-AR", { day: "2-digit", month: "long", year: "numeric" });
+  doc.setFontSize(9).setTextColor(80, 80, 80);
+  doc.text(`Emisión: ${today}`, M, y);
+  if (quote.validez) {
+    const vDate = new Date(quote.validez + "T12:00:00").toLocaleDateString("es-AR", { day: "2-digit", month: "long", year: "numeric" });
+    doc.text(`Válida hasta: ${vDate}`, M + 80, y);
+  }
+  y += 10;
+
+  // ─── CLIENTE ────────────────────────────────────────────────────────────────
+  const clientName  = client?.nombre   || quote.cliente   || "—";
+  const clientPhone = client?.telefono || quote.telefono  || "";
+  const clientEmail = client?.email    || "";
+  doc.setFillColor(240, 245, 255).rect(M, y - 1, W - 2 * M, 5 + (clientPhone ? 5 : 0) + (clientEmail ? 5 : 0) + 2, "F");
+  doc.setFont("helvetica", "bold").setFontSize(9).setTextColor(20, 40, 80);
+  doc.text("CLIENTE", M + 2, y + 3);
+  doc.setFont("helvetica", "normal").setFontSize(10).setTextColor(20, 20, 20);
+  y += 7;
+  doc.text(clientName, M + 2, y); y += 5;
+  if (clientPhone) { doc.setFontSize(9).setTextColor(80,80,80); doc.text(`Tel: ${clientPhone}`, M + 2, y); y += 5; }
+  if (clientEmail) { doc.setFontSize(9).setTextColor(80,80,80); doc.text(`Email: ${clientEmail}`, M + 2, y); y += 5; }
+  y += 5;
+
+  // ─── VEHÍCULO ───────────────────────────────────────────────────────────────
+  const vLabel   = vehicle ? `${vehicle.marca || ""} ${vehicle.modelo || ""} ${vehicle.version || ""}`.replace(/ +/g, " ").trim() : (quote.vehiculo || "—");
+  const vAnio    = vehicle?.anio    ? String(vehicle.anio)   : "";
+  const vKm      = vehicle?.km      ? `${Number(vehicle.km).toLocaleString("es-AR")} km` : "";
+  const vDominio = vehicle?.dominio || "";
+  const fotos    = vehicle?.fotos   || [];
+
+  doc.setFont("helvetica", "bold").setFontSize(9).setTextColor(20, 40, 80);
+  doc.text("VEHÍCULO", M, y); y += 5;
+  doc.setFont("helvetica", "bold").setFontSize(13).setTextColor(10, 10, 10);
+  doc.text(vLabel, M, y); y += 6;
+  doc.setFont("helvetica", "normal").setFontSize(9).setTextColor(80, 80, 80);
+  const vDetails = [vAnio && `Año: ${vAnio}`, vKm && `Km: ${vKm}`, vDominio && `Dominio: ${vDominio}`].filter(Boolean);
+  if (vDetails.length) { doc.text(vDetails.join("   ·   "), M, y); y += 6; }
+  y += 2;
+
+  // vehicle photos (up to 3)
+  if (fotos.length > 0) {
+    const count = Math.min(fotos.length, 3);
+    const gapX = 4, photoW = (W - 2 * M - gapX * (count - 1)) / count;
+    const photoH = photoW * 0.62;
+    if (y + photoH > 265) { doc.addPage(); y = 20; }
+    for (let i = 0; i < count; i++) {
+      try {
+        doc.addImage(fotos[i], undefined, M + i * (photoW + gapX), y, photoW, photoH, undefined, "MEDIUM");
+      } catch (_) { /* skip failed image */ }
+    }
+    y += photoH + 6;
+  }
+
+  // ─── PRECIO ─────────────────────────────────────────────────────────────────
+  doc.setDrawColor(210, 210, 210).line(M, y, W - M, y); y += 8;
+  doc.setFont("helvetica", "bold").setFontSize(9).setTextColor(20, 40, 80);
+  doc.text("PRECIO", M, y); y += 6;
+
+  if (quote.precioLista && Number(quote.precioLista) > 0) {
+    doc.setFont("helvetica", "normal").setFontSize(10).setTextColor(60, 60, 60);
+    doc.text(`Precio de lista:`, M, y);
+    doc.text(fmt(quote.precioLista), W - M, y, { align: "right" }); y += 5;
+  }
+  if (quote.bonificacion && Number(quote.bonificacion) > 0) {
+    doc.setFont("helvetica", "normal").setFontSize(10).setTextColor(60, 60, 60);
+    doc.text(`Bonificación:`, M, y);
+    doc.text(`- ${fmt(quote.bonificacion)}`, W - M, y, { align: "right" }); y += 5;
+  }
+  // final price — big and highlighted
+  y += 2;
+  doc.setFillColor(20, 40, 80).rect(M, y - 4, W - 2 * M, 12, "F");
+  doc.setFont("helvetica", "bold").setFontSize(14).setTextColor(255, 255, 255);
+  doc.text("PRECIO FINAL:", M + 4, y + 4);
+  doc.setFontSize(15);
+  doc.text(fmt(quote.monto), W - M - 4, y + 4, { align: "right" });
+  y += 16;
+
+  // ─── CONDICIONES ────────────────────────────────────────────────────────────
+  if (quote.notas) {
+    doc.setDrawColor(210,210,210).line(M, y, W - M, y); y += 7;
+    doc.setFont("helvetica", "bold").setFontSize(9).setTextColor(20, 40, 80);
+    doc.text("CONDICIONES", M, y); y += 5;
+    doc.setFont("helvetica", "normal").setFontSize(9).setTextColor(60, 60, 60);
+    const lines = doc.splitTextToSize(quote.notas, W - 2 * M);
+    if (y + lines.length * 4.5 > 265) { doc.addPage(); y = 20; }
+    doc.text(lines, M, y);
+    y += lines.length * 4.5 + 4;
+  }
+
+  // ─── PIE ────────────────────────────────────────────────────────────────────
+  const footerY = 285;
+  doc.setDrawColor(210,210,210).line(M, footerY - 4, W - M, footerY - 4);
+  doc.setFont("helvetica", "normal").setFontSize(8).setTextColor(120,120,120);
+  if (quote.vendedor) doc.text(`Asesor: ${quote.vendedor}`, M, footerY);
+  doc.text(`${agencyName} · Ante cualquier consulta no dudes en contactarnos.`, W - M, footerY, { align: "right" });
+
+  // ─── GUARDAR ────────────────────────────────────────────────────────────────
+  const clean = (s) => (s || "").replace(/[^a-zA-Z0-9ÁÉÍÓÚáéíóúÑñ]/g, "_").replace(/_+/g, "_").replace(/^_|_$/g, "");
+  const filename = `Cotizacion-${clean(clientName)}-${clean(vLabel || quote.vehiculo)}.pdf`;
+  try { doc.save(filename); } catch (e) { toast("No se pudo guardar el PDF: " + (e.message || "error desconocido")); }
 }
 
 function addAudit(text) {
