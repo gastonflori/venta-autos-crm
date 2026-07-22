@@ -1287,7 +1287,7 @@ function salesPage() {
   return `
     <div class="toolbar">
       <button class="btn" data-add="sales">Nueva oportunidad</button>
-      <button class="btn ghost" data-action="advance">Avanzar primera venta</button>
+      <button class="btn ghost" data-action="export">Exportar CSV</button>
     </div>
     <div class="grid two-col module-grid">
       <section class="card">
@@ -1299,8 +1299,6 @@ function salesPage() {
         <div class="card-body">
           <div class="module-actions">
             <button class="btn" data-section-action="new:sales">Nuevo</button>
-            <button class="btn ghost" data-section-action="complete:sales">Marcar hecho</button>
-            <button class="btn ghost" data-section-action="duplicate:sales">Duplicar primero</button>
             <button class="btn ghost" data-action="export">Exportar CSV</button>
           </div>
           <div class="detail-box">
@@ -1315,21 +1313,44 @@ function salesPage() {
 }
 
 function kanban() {
-  const stages = ["Contacto", "Tasacion", "Reserva", "Cierre"];
-  return `<div class="kanban">${stages.map(stage => `
-    <section class="lane">
-      <h3>${stage}</h3>
-      ${(state.sales || []).filter(s => s.etapa === stage).map(s => `
-        <article class="deal">
+  const stageOrder = ["Contacto", "Tasacion", "Reserva", "Cierre"];
+  return `<div class="kanban">${stageOrder.map(stage => {
+    const stageSales = (state.sales || []).filter(s => s.etapa === stage);
+    const isLast = stage === "Cierre";
+    return `<section class="lane">
+      <h3>${escapeHtml(stage)} <span class="lane-count">${stageSales.length}</span></h3>
+      ${stageSales.map(s => {
+        const v = s.vehiculoId ? (state.vehicles || []).find(x => x.id === s.vehiculoId) : null;
+        const thumb = v?.fotos?.[0] ? `<img class="deal-thumb" src="${escapeHtml(v.fotos[0])}" alt="">` : "";
+        const senaPill = Number(s.sena) > 0 ? `<span class="pill ok deal-sena">Seña cobrada</span>` : "";
+        const advBtn = isLast ? "" : `<button class="btn ghost deal-advance" data-advance-sale="${escapeHtml(s.id)}">Avanzar etapa →</button>`;
+        return `<article class="deal">
+          ${thumb}
           <strong>${escapeHtml(s.cliente)}</strong>
           <p>${escapeHtml(s.vehiculo)}</p>
           <p>${money(s.monto)}</p>
-          <p>${escapeHtml(s.vendedor)} - ${escapeHtml(s.proximo)}</p>
-          <div class="record-actions" style="margin-top:10px"><button class="icon-btn" data-edit="sales:${s.id}" title="Editar">E</button><button class="icon-btn" data-delete="sales:${s.id}" title="Eliminar">X</button></div>
-        </article>
-      `).join("")}
-    </section>
-  `).join("")}</div>`;
+          ${senaPill}
+          ${s.vendedor ? `<p class="muted">${escapeHtml(s.vendedor)}</p>` : ""}
+          <div class="record-actions deal-actions"><button class="icon-btn" data-edit="sales:${escapeHtml(s.id)}" title="Editar">E</button><button class="icon-btn" data-delete="sales:${escapeHtml(s.id)}" title="Eliminar">X</button></div>
+          ${advBtn}
+        </article>`;
+      }).join("")}
+    </section>`;
+  }).join("")}</div>`;
+}
+
+async function advanceSaleById(id) {
+  const stageOrder = ["Contacto", "Tasacion", "Reserva", "Cierre"];
+  const sale = (state.sales || []).find(s => s.id === id);
+  if (!sale) return toast("Venta no encontrada.");
+  const idx = stageOrder.indexOf(sale.etapa);
+  if (idx === -1 || idx === stageOrder.length - 1) return toast("La venta ya está en la etapa final.");
+  const prevEtapa = sale.etapa;
+  sale.etapa = stageOrder[idx + 1];
+  applyStageEffects(sale, sale.etapa, prevEtapa);
+  addAudit(`Venta de ${sale.cliente} avanzó a ${sale.etapa}`);
+  await saveState("Etapa avanzada");
+  render();
 }
 
 function whatsappPage() {
@@ -1824,7 +1845,7 @@ function bind() {
   }));
 
   document.querySelector("[data-action='export']")?.addEventListener("click", exportCurrent);
-  document.querySelector("[data-action='advance']")?.addEventListener("click", advanceSale);
+  document.querySelectorAll("[data-advance-sale]").forEach(btn => btn.addEventListener("click", () => advanceSaleById(btn.dataset.advanceSale)));
   document.querySelectorAll("[data-calendar-view]").forEach(btn => btn.addEventListener("click", () => {
     calendarView = btn.dataset.calendarView;
     render();
