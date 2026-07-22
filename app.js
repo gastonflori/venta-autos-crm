@@ -503,13 +503,10 @@ function genericSectionPage(moduleId) {
   if (!def) {
     return '<section class="card"><div class="card-head"><h2>Modulo en preparacion</h2></div><div class="card-body"><p class="muted">Esta seccion esta lista para conectarse.</p></div></section>';
   }
-  const rows = filtered(state[def.key] || []);
   const allRows = state[def.key] || [];
+  const rows = filtered(allRows);
   const moneyTotal = totalForRows(allRows);
-  const next = nextDatedRow(allRows);
-  const first = rows[0] || allRows[0];
   const cols = moduleId === "stock" ? vehicleColumns() : genericColumns(moduleId);
-  const detailCols = (def.columns || (def.fields || []).filter(([,, t]) => t !== "textarea").slice(0, 6).map(([k, l]) => [k, l]));
   return `
     <div class="grid stats module-stats">
       ${stat("Registros", allRows.length, "Total del modulo")}
@@ -517,28 +514,8 @@ function genericSectionPage(moduleId) {
       ${stat("Pendientes", pendingRows(allRows), "Requieren seguimiento")}
       ${stat("Monto", moneyTotal ? money(moneyTotal) : "-", "Valores asociados")}
     </div>
-    <div class="grid two-col module-grid" style="margin-top:16px">
+    <div style="margin-top:16px">
       ${tablePage(def.key, def.title, cols, false, moduleId)}
-      <section class="card module-panel">
-        <div class="card-head"><h2>Gestion</h2><span class="pill info">${escapeHtml(def.title)}</span></div>
-        <div class="card-body">
-          <div class="module-actions">
-            <button class="btn" data-section-action="new:${def.key}">Nuevo</button>
-            <button class="btn ghost" data-section-action="complete:${def.key}">Resolver pendiente</button>
-            <button class="btn ghost" data-section-action="duplicate:${def.key}">Duplicar primero</button>
-            <button class="btn ghost" data-action="export">Exportar CSV</button>
-            ${moduleFlowButtons(moduleId, def.key)}
-          </div>
-          <div class="detail-box">
-            <h3>${first ? "Ultimo registro" : "Sin registros"}</h3>
-            ${first ? detailList(first, detailCols) : `<p class="muted">Carga un registro para administrar esta seccion.</p>`}
-          </div>
-          <div class="detail-box">
-            <h3>Proximo vencimiento</h3>
-            ${next ? detailList(next, detailCols.slice(0, 4)) : `<p class="muted">No hay fechas pendientes.</p>`}
-          </div>
-        </div>
-      </section>
     </div>
   `;
 }
@@ -1319,25 +1296,10 @@ function salesPage() {
       <button class="btn" data-add="sales">Nueva oportunidad</button>
       <button class="btn ghost" data-action="export">Exportar CSV</button>
     </div>
-    <div class="grid two-col module-grid">
-      <section class="card">
-        <div class="card-head"><h2>Pipeline comercial</h2><span class="pill info">${state.sales.length} operaciones</span></div>
-        <div class="card-body">${kanban()}</div>
-      </section>
-      <section class="card module-panel">
-        <div class="card-head"><h2>Gestion</h2><span class="pill info">Ventas</span></div>
-        <div class="card-body">
-          <div class="module-actions">
-            <button class="btn" data-section-action="new:sales">Nuevo</button>
-            <button class="btn ghost" data-action="export">Exportar CSV</button>
-          </div>
-          <div class="detail-box">
-            <h3>Ultima operacion</h3>
-            ${state.sales[0] ? detailList(state.sales[0], [["cliente", "Cliente"], ["vehiculo", "Vehiculo"], ["etapa", "Etapa"], ["monto", "Monto"], ["vendedor", "Vendedor"], ["proximo", "Proximo"]]) : `<p class="muted">Sin ventas cargadas.</p>`}
-          </div>
-        </div>
-      </section>
-    </div>
+    <section class="card">
+      <div class="card-head"><h2>Pipeline comercial</h2><span class="pill info">${state.sales.length} operaciones</span></div>
+      <div class="card-body">${kanban()}</div>
+    </section>
     <div style="margin-top:16px">${tablePage("sales", "Operaciones", genericColumns("ventas"), true, "ventas")}</div>
   `;
 }
