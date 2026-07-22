@@ -2427,7 +2427,9 @@ function bindModal() {
         Object.keys(item).forEach(k => {
           if (/^(anio|anioDesde|anioHasta|km|precio|margen|monto|sena|anticipo|cantCuotas|montoCuota|precioPretendido|comision|costo|presupuesto|puntaje|dias)$/.test(k)) item[k] = Number(item[k]);
         });
-        const prevEtapa = (id && key === "sales") ? (state[key].find(x => x.id === id)?.etapa) : null;
+        const prevSale = (id && key === "sales") ? (state[key].find(x => x.id === id)) : null;
+        const prevEtapa = prevSale?.etapa || null;
+        const prevClienteId = prevSale?.clienteId || null;
         if (key === "vehicles" || key === "consignments") item.fotos = _vehiclePhotosBuf.slice();
         if (key === "sales") {
           const cSel = e.target.querySelector("[data-sales-client]");
@@ -2445,6 +2447,7 @@ function bindModal() {
           const savedId = id || state[key][0]?.id;
           const saved = state[key].find(x => x.id === savedId);
           if (saved) applyStageEffects(saved, item.etapa, prevEtapa);
+          if (id && saved) syncSaleRelatedRecords(saved);
           if (!id && saved) {
             if (item.tieneAnticipo === "1" && Number(item.anticipo || 0) > 0) {
               saved.sena = Number(item.anticipo);
@@ -2784,10 +2787,11 @@ function closeSaleEffects(sale) {
     if (v) v.estado = "Vendido";
   }
 
-  if (!(state.finance || []).some(f => f.saleRef === sale.id)) {
+  if (!(state.finance || []).some(f => f.saleRef === sale.id || f.saleId === sale.id)) {
     state.finance = state.finance || [];
     state.finance.unshift({
       id: `fin-${nowId}`,
+      saleId: sale.id,
       saleRef: sale.id,
       concepto: `Venta ${vLabel}`,
       tipo: "Ingreso",
@@ -2805,11 +2809,12 @@ function closeSaleEffects(sale) {
     });
   }
 
-  const saldoYaEnTesoreria = (state.treasury || []).some(t => t.saleRef === sale.id && /saldo/i.test(t.concepto || ""));
+  const saldoYaEnTesoreria = (state.treasury || []).some(t => (t.saleRef === sale.id || t.saleId === sale.id) && /saldo/i.test(t.concepto || ""));
   if (saldo > 0 && !saldoYaEnTesoreria) {
     state.treasury = state.treasury || [];
     state.treasury.unshift({
       id: `trx-${nowId + 1}`,
+      saleId: sale.id,
       saleRef: sale.id,
       cuenta: "Caja",
       tipo: "Ingreso",
@@ -2826,10 +2831,11 @@ function closeSaleEffects(sale) {
 
   if (saldo > 0) {
     state.collections = state.collections || [];
-    const yaEnCobros = state.collections.some(c => c.saleRef === sale.id);
+    const yaEnCobros = state.collections.some(c => c.saleRef === sale.id || c.saleId === sale.id);
     if (!yaEnCobros) {
       state.collections.unshift({
         id: `cb-${nowId + 2}`,
+        saleId: sale.id,
         saleRef: sale.id,
         cliente: sale.cliente || "",
         clienteId: sale.clienteId || "",
@@ -2852,11 +2858,12 @@ function closeSaleEffects(sale) {
   }
 
   // Auto-create gestoria expediente
-  if (!(state.files || []).some(f => f.saleRef === sale.id)) {
+  if (!(state.files || []).some(f => (f.saleRef === sale.id || f.saleId === sale.id) && f.tipo !== "Vehiculo")) {
     state.files = state.files || [];
     const vDom = (state.vehicles || []).find(x => x.id === sale.vehiculoId)?.dominio || "";
     state.files.unshift({
       id: `ex-${nowId + 10}`,
+      saleId: sale.id,
       saleRef: sale.id,
       numero: `EXP-${new Date().getFullYear()}-${String((state.files.length + 1)).padStart(4, "0")}`,
       cliente: sale.cliente || "",
@@ -2875,11 +2882,12 @@ function closeSaleEffects(sale) {
   }
 
   // Auto-create liquidacion de comision para el vendedor
-  if (sale.vendedor && !(state.settlements || []).some(s => s.saleRef === sale.id)) {
+  if (sale.vendedor && !(state.settlements || []).some(s => s.saleRef === sale.id || s.saleId === sale.id)) {
     const comision = Math.round(Number(sale.monto || 0) * 0.02);
     state.settlements = state.settlements || [];
     state.settlements.unshift({
       id: `li-${nowId + 11}`,
+      saleId: sale.id,
       saleRef: sale.id,
       beneficiario: sale.vendedor || "",
       operacion: vLabel,
@@ -2897,6 +2905,24 @@ function closeSaleEffects(sale) {
   }
 
   addAudit(`Cierre: ${sale.cliente || "cliente"} — ${vLabel} — Total ${money(total)}`);
+}
+
+function syncSaleRelatedRecords(sale) {
+  const id = sale.id;
+  const matches = r => r.saleRef === id || r.saleId === id;
+  const patch = r => {
+    r.saleId = id;
+    r.saleRef = id;
+    r.clienteId = sale.clienteId || "";
+    r.cliente = sale.cliente || "";
+    if ("vehiculo" in r) r.vehiculo = sale.vehiculo || "";
+    if ("vehiculoId" in r) r.vehiculoId = sale.vehiculoId || "";
+  };
+  (state.finance || []).filter(matches).forEach(patch);
+  (state.treasury || []).filter(matches).forEach(patch);
+  (state.collections || []).filter(matches).forEach(patch);
+  (state.settlements || []).filter(matches).forEach(patch);
+  (state.files || []).filter(r => r.tipo !== "Vehiculo" && matches(r)).forEach(patch);
 }
 
 function revertVehicleFromSale(sale) {
@@ -2920,11 +2946,12 @@ function applyStageEffects(sale, newEtapa, prevEtapa) {
       if (v && v.estado !== "Vendido") v.estado = "Reservado";
     }
     const sena = Number(sale.sena || 0);
-    const yaRegistrada = (state.treasury || []).some(t => t.saleRef === sale.id && /seña/i.test(t.concepto || ""));
+    const yaRegistrada = (state.treasury || []).some(t => (t.saleRef === sale.id || t.saleId === sale.id) && /seña/i.test(t.concepto || ""));
     if (sena > 0 && !yaRegistrada) {
       state.treasury = state.treasury || [];
       state.treasury.unshift({
         id: `trx-${nowId}`,
+        saleId: sale.id,
         saleRef: sale.id,
         cuenta: "Caja",
         tipo: "Ingreso",
@@ -2984,6 +3011,7 @@ function onNewSaleCreated(item, sale) {
         state.collections.unshift({
           id: `cb-${nowTs + i + 1}`,
           saleId: sale.id,
+          saleRef: sale.id,
           numeroCuota: i + 1,
           cliente: sale.cliente || "",
           clienteId: sale.clienteId || "",
