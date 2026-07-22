@@ -500,6 +500,13 @@ function genericColumns(moduleId) {
   }));
 }
 
+function consignacionColumns() {
+  return [
+    { key: "fotos", label: "", render: (fotos) => fotos?.length ? `<img class="row-thumb" src="${escapeHtml(fotos[0])}" alt="foto">` : `<div class="row-thumb-placeholder"></div>` },
+    ...genericColumns("consignaciones")
+  ];
+}
+
 function genericSectionPage(moduleId) {
   const def = sectionData[moduleId];
   if (!def) {
@@ -508,7 +515,7 @@ function genericSectionPage(moduleId) {
   const allRows = state[def.key] || [];
   const rows = filtered(allRows);
   const moneyTotal = totalForRows(allRows);
-  const cols = moduleId === "stock" ? vehicleColumns() : genericColumns(moduleId);
+  const cols = moduleId === "stock" ? vehicleColumns() : moduleId === "consignaciones" ? consignacionColumns() : genericColumns(moduleId);
   return `
     <div class="grid stats module-stats">
       ${stat("Registros", allRows.length, "Total del modulo")}
@@ -995,7 +1002,7 @@ function vehiclePhotoSection(row = {}) {
           Agregar fotos
           <input type="file" accept="image/png,image/jpeg,image/webp" data-action="vehicle-photo-upload" multiple>
         </label>
-        <small class="muted">Max 5 fotos · JPG/PNG/WEBP · se comprimen automaticamente</small>
+        <small class="muted">Max 6 fotos · JPG/PNG/WEBP · se comprimen automaticamente</small>
       </div>
     </fieldset>
   `;
@@ -1595,6 +1602,10 @@ function formFor(key, row = {}) {
   if (key === "vehicles") {
     _vehiclePhotosBuf = (row.fotos || []).slice();
     return groupedForm(key, fields, row) + vehiclePhotoSection(row);
+  }
+  if (key === "consignments") {
+    _vehiclePhotosBuf = (row.fotos || []).slice();
+    return groupedFormWithLinks(key, fields, row) + vehiclePhotoSection(row);
   }
   if (key === "sales") return salesForm(row);
   if (key === "clientDocs") return clientDocForm(row);
@@ -2281,7 +2292,7 @@ function bindModal() {
           if (/^(anio|anioDesde|anioHasta|km|precio|margen|monto|sena|anticipo|cantCuotas|montoCuota|precioPretendido|comision|costo|presupuesto|puntaje|dias)$/.test(k)) item[k] = Number(item[k]);
         });
         const prevEtapa = (id && key === "sales") ? (state[key].find(x => x.id === id)?.etapa) : null;
-        if (key === "vehicles") item.fotos = _vehiclePhotosBuf.slice();
+        if (key === "vehicles" || key === "consignments") item.fotos = _vehiclePhotosBuf.slice();
         if (key === "sales") {
           const cSel = e.target.querySelector("[data-sales-client]");
           const vSel = e.target.querySelector("[data-sales-vehicle]");
@@ -2338,7 +2349,7 @@ function bindModal() {
       const files = Array.from(input.files || []);
       for (const file of files) {
         if (!file.type.startsWith("image/")) { toast("Solo imagenes JPG, PNG o WEBP."); continue; }
-        if (_vehiclePhotosBuf.length >= 5) { toast("Maximo 5 fotos por vehiculo."); break; }
+        if (_vehiclePhotosBuf.length >= 6) { toast("Maximo 6 fotos por vehiculo."); break; }
         const dataUrl = await resizeImage(file);
         if (dataUrl) _vehiclePhotosBuf.push(dataUrl);
       }
