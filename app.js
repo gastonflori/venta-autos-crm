@@ -35,20 +35,7 @@ const modules = [
   { id: "conversaciones", label: "Conversaciones", icon: "CV", subtitle: "Historial de contacto con clientes" },
   { id: "correos", label: "Correos", icon: "@", subtitle: "Emails enviados y pendientes" },
   { id: "configuracion", label: "Configuracion", icon: "*", subtitle: "Preferencias de agencia y cuenta" },
-  { id: "misventas", label: "Mis ventas", icon: "MV", subtitle: "Operaciones asignadas al usuario" },
-  { id: "postventa", label: "Postventa", icon: "PV", subtitle: "Seguimiento despues de la entrega" },
-  { id: "miscomisiones", label: "Mis comisiones", icon: "%", subtitle: "Comisiones liquidadas y pendientes" },
-  { id: "cobros", label: "Cobros", icon: "CB", subtitle: "Cuotas, senas y pagos por cobrar" },
-  { id: "sugerencias", label: "Sugerencias", icon: "S", subtitle: "Mejoras internas y pedidos del equipo" },
-  { id: "autorizaciones", label: "Autorizaciones", icon: "AU", subtitle: "Aprobaciones pendientes" },
-  { id: "dormidos", label: "Dormidos", icon: "Z", subtitle: "Leads sin movimiento" },
-  { id: "miespacio", label: "Mi espacio", icon: "ME", subtitle: "Tareas y datos personales" },
-  { id: "wishlist", label: "Wishlist", icon: "W", subtitle: "Vehiculos buscados por clientes" },
-  { id: "nps", label: "NPS", icon: "N", subtitle: "Encuestas de satisfaccion" },
-  { id: "papelera", label: "Papelera", icon: "X", subtitle: "Registros eliminados" },
-  { id: "telefonos", label: "Telefonos", icon: "TE", subtitle: "Directorio y contactos utiles" },
-  { id: "oportunidades", label: "Oportunidades", icon: "OP", subtitle: "Negocios potenciales" },
-  { id: "taller", label: "Taller", icon: "TA", subtitle: "Preparacion y trabajos mecanicos" }
+  { id: "misventas", label: "Mis ventas", icon: "MV", subtitle: "Operaciones asignadas al usuario" }
 ];
 
 async function api(path, options = {}) {
@@ -107,19 +94,7 @@ const sectionData = {
   conversaciones: { key: "conversations", title: "Conversaciones", item: "conversacion", fields: [["cliente", "Cliente"], ["canal", "Canal"], ["ultimoMensaje", "Ultimo mensaje"], ["responsable", "Responsable"], ["estado", "Estado"]], columns: [["cliente", "Cliente"], ["canal", "Canal"], ["ultimoMensaje", "Ultimo mensaje"], ["responsable", "Responsable"], ["estado", "Estado"]] },
   correos: { key: "emails", title: "Correos", item: "correo", fields: [["para", "Para"], ["asunto", "Asunto"], ["plantilla", "Plantilla"], ["estado", "Estado"], ["fecha", "Fecha", "date"]], columns: [["para", "Para"], ["asunto", "Asunto"], ["plantilla", "Plantilla"], ["estado", "Estado"], ["fecha", "Fecha"]] },
   misventas: { key: "mySales", title: "Mis ventas", item: "venta propia", fields: [["cliente", "Cliente"], ["vehiculo", "Vehiculo"], ["etapa", "Etapa"], ["monto", "Monto", "number"], ["proximo", "Proximo paso"]], columns: [["cliente", "Cliente"], ["vehiculo", "Vehiculo"], ["etapa", "Etapa"], ["monto", "Monto"], ["proximo", "Proximo paso"]] },
-  postventa: { key: "afterSales", title: "Postventa", item: "seguimiento", fields: [["cliente", "Cliente"], ["vehiculo", "Vehiculo"], ["entrega", "Entrega", "date"], ["control", "Control"], ["estado", "Estado"]], columns: [["cliente", "Cliente"], ["vehiculo", "Vehiculo"], ["entrega", "Entrega"], ["control", "Control"], ["estado", "Estado"]] },
-  miscomisiones: { key: "commissions", title: "Mis comisiones", item: "comision", fields: [["operacion", "Operacion"], ["cliente", "Cliente"], ["monto", "Monto", "number"], ["estado", "Estado"], ["fecha", "Fecha", "date"]], columns: [["operacion", "Operacion"], ["cliente", "Cliente"], ["monto", "Monto"], ["estado", "Estado"], ["fecha", "Fecha"]] },
-  cobros: { key: "collections", title: "Cobros", item: "cobro", fields: [["cliente", "Cliente"], ["concepto", "Concepto"], ["monto", "Monto", "number"], ["vence", "Vence", "date"], ["estado", "Estado"]], columns: [["cliente", "Cliente"], ["concepto", "Concepto"], ["monto", "Monto"], ["vence", "Vence"], ["estado", "Estado"]] },
-  sugerencias: { key: "suggestions", title: "Sugerencias", item: "sugerencia", fields: [["titulo", "Titulo"], ["area", "Area"], ["detalle", "Detalle"], ["autor", "Autor"], ["estado", "Estado"]], columns: [["titulo", "Titulo"], ["area", "Area"], ["detalle", "Detalle"], ["autor", "Autor"], ["estado", "Estado"]] },
-  autorizaciones: { key: "authorizations", title: "Autorizaciones", item: "autorizacion", fields: [["solicitud", "Solicitud"], ["solicitante", "Solicitante"], ["monto", "Monto", "number"], ["prioridad", "Prioridad"], ["estado", "Estado"]], columns: [["solicitud", "Solicitud"], ["solicitante", "Solicitante"], ["monto", "Monto"], ["prioridad", "Prioridad"], ["estado", "Estado"]] },
-  dormidos: { key: "sleepingLeads", title: "Dormidos", item: "lead dormido", fields: [["cliente", "Cliente"], ["interes", "Interes"], ["ultimoContacto", "Ultimo contacto", "date"], ["dias", "Dias", "number"], ["accion", "Accion"]], columns: [["cliente", "Cliente"], ["interes", "Interes"], ["ultimoContacto", "Ultimo contacto"], ["dias", "Dias"], ["accion", "Accion"]] },
-  miespacio: { key: "workspace", title: "Mi espacio", item: "tarea", fields: [["tarea", "Tarea"], ["prioridad", "Prioridad"], ["vence", "Vence", "date"], ["estado", "Estado"]], columns: [["tarea", "Tarea"], ["prioridad", "Prioridad"], ["vence", "Vence"], ["estado", "Estado"]] },
-  wishlist: { key: "wishlist", title: "Wishlist", item: "busqueda", fields: [["cliente", "Cliente"], ["vehiculo", "Vehiculo buscado"], ["presupuesto", "Presupuesto", "number"], ["match", "Match"], ["estado", "Estado"]], columns: [["cliente", "Cliente"], ["vehiculo", "Vehiculo buscado"], ["presupuesto", "Presupuesto"], ["match", "Match"], ["estado", "Estado"]] },
-  nps: { key: "nps", title: "NPS", item: "encuesta", fields: [["cliente", "Cliente"], ["puntaje", "Puntaje", "number"], ["comentario", "Comentario"], ["fecha", "Fecha", "date"], ["estado", "Estado"]], columns: [["cliente", "Cliente"], ["puntaje", "Puntaje"], ["comentario", "Comentario"], ["fecha", "Fecha"], ["estado", "Estado"]] },
-  papelera: { key: "trash", title: "Papelera", item: "registro eliminado", fields: [["origen", "Origen"], ["detalle", "Detalle"], ["eliminadoPor", "Eliminado por"], ["fecha", "Fecha", "date"]], columns: [["origen", "Origen"], ["detalle", "Detalle"], ["eliminadoPor", "Eliminado por"], ["fecha", "Fecha"]] },
-  telefonos: { key: "phones", title: "Telefonos", item: "telefono", fields: [["nombre", "Nombre"], ["area", "Area"], ["telefono", "Telefono"], ["email", "Email", "email"], ["notas", "Notas"]], columns: [["nombre", "Nombre"], ["area", "Area"], ["telefono", "Telefono"], ["email", "Email"], ["notas", "Notas"]] },
-  oportunidades: { key: "opportunities", title: "Oportunidades", item: "oportunidad", fields: [["cliente", "Cliente"], ["interes", "Interes"], ["probabilidad", "Probabilidad"], ["monto", "Monto", "number"], ["estado", "Estado"]], columns: [["cliente", "Cliente"], ["interes", "Interes"], ["probabilidad", "Probabilidad"], ["monto", "Monto"], ["estado", "Estado"]] },
-  taller: { key: "workshop", title: "Taller", item: "trabajo", fields: [["vehiculo", "Vehiculo"], ["trabajo", "Trabajo"], ["responsable", "Responsable"], ["costo", "Costo", "number"], ["estado", "Estado"]], columns: [["vehiculo", "Vehiculo"], ["trabajo", "Trabajo"], ["responsable", "Responsable"], ["costo", "Costo"], ["estado", "Estado"]] }
+  cobros: { key: "collections", title: "Cobros", item: "cobro", fields: [["cliente", "Cliente"], ["concepto", "Concepto"], ["monto", "Monto", "number"], ["vence", "Vence", "date"], ["estado", "Estado"]], columns: [["cliente", "Cliente"], ["concepto", "Concepto"], ["monto", "Monto"], ["vence", "Vence"], ["estado", "Estado"]] }
 };
 
 const moduleEnhancements = {
@@ -142,19 +117,7 @@ const moduleEnhancements = {
   conversaciones: { fields: [["cliente", "Cliente"], ["telefono", "Telefono"], ["canal", "Canal"], ["ultimoMensaje", "Ultimo mensaje"], ["responsable", "Responsable"], ["proximo", "Proximo paso"], ["estado", "Estado"], ["notas", "Notas", "textarea"]], columns: [["cliente", "Cliente"], ["canal", "Canal"], ["ultimoMensaje", "Ultimo mensaje"], ["responsable", "Responsable"], ["estado", "Estado"]] },
   correos: { fields: [["para", "Para"], ["cliente", "Cliente"], ["asunto", "Asunto"], ["plantilla", "Plantilla"], ["mensaje", "Mensaje", "textarea"], ["fecha", "Fecha", "date"], ["responsable", "Responsable"], ["estado", "Estado"]], columns: [["para", "Para"], ["asunto", "Asunto"], ["plantilla", "Plantilla"], ["fecha", "Fecha"], ["responsable", "Responsable"], ["estado", "Estado"]] },
   misventas: { fields: [["cliente", "Cliente"], ["vehiculo", "Vehiculo"], ["etapa", "Etapa"], ["monto", "Monto", "number"], ["moneda", "Moneda"], ["sena", "Sena", "number"], ["proximo", "Proximo paso"], ["estado", "Estado"], ["notas", "Notas", "textarea"]], columns: [["cliente", "Cliente"], ["vehiculo", "Vehiculo"], ["etapa", "Etapa"], ["monto", "Monto"], ["proximo", "Proximo paso"], ["estado", "Estado"]] },
-  postventa: { fields: [["cliente", "Cliente"], ["telefono", "Telefono"], ["vehiculo", "Vehiculo"], ["entrega", "Entrega", "date"], ["control", "Control"], ["responsable", "Responsable"], ["proximo", "Proximo paso"], ["estado", "Estado"], ["notas", "Notas", "textarea"]], columns: [["cliente", "Cliente"], ["vehiculo", "Vehiculo"], ["entrega", "Entrega"], ["control", "Control"], ["responsable", "Responsable"], ["estado", "Estado"]] },
-  miscomisiones: { fields: [["operacion", "Operacion"], ["cliente", "Cliente"], ["vehiculo", "Vehiculo"], ["monto", "Monto", "number"], ["moneda", "Moneda"], ["porcentaje", "Porcentaje", "number"], ["fecha", "Fecha", "date"], ["estado", "Estado"], ["notas", "Notas", "textarea"]], columns: [["operacion", "Operacion"], ["cliente", "Cliente"], ["monto", "Monto"], ["fecha", "Fecha"], ["estado", "Estado"]] },
-  cobros: { fields: [["cliente", "Cliente"], ["telefono", "Telefono"], ["concepto", "Concepto"], ["vehiculo", "Vehiculo"], ["monto", "Monto", "number"], ["moneda", "Moneda"], ["medio", "Medio"], ["vence", "Vence", "date"], ["estado", "Estado"], ["notas", "Notas", "textarea"]], columns: [["cliente", "Cliente"], ["concepto", "Concepto"], ["monto", "Monto"], ["vence", "Vence"], ["estado", "Estado"]] },
-  sugerencias: { fields: [["titulo", "Titulo"], ["area", "Area"], ["detalle", "Detalle", "textarea"], ["autor", "Autor"], ["prioridad", "Prioridad"], ["fecha", "Fecha", "date"], ["estado", "Estado"]], columns: [["titulo", "Titulo"], ["area", "Area"], ["autor", "Autor"], ["prioridad", "Prioridad"], ["estado", "Estado"]] },
-  autorizaciones: { fields: [["solicitud", "Solicitud"], ["solicitante", "Solicitante"], ["area", "Area"], ["monto", "Monto", "number"], ["moneda", "Moneda"], ["prioridad", "Prioridad"], ["vence", "Vence", "date"], ["estado", "Estado"], ["detalle", "Detalle", "textarea"]], columns: [["solicitud", "Solicitud"], ["solicitante", "Solicitante"], ["monto", "Monto"], ["prioridad", "Prioridad"], ["estado", "Estado"]] },
-  dormidos: { fields: [["cliente", "Cliente"], ["telefono", "Telefono"], ["interes", "Interes"], ["ultimoContacto", "Ultimo contacto", "date"], ["dias", "Dias", "number"], ["responsable", "Responsable"], ["accion", "Accion"], ["estado", "Estado"], ["notas", "Notas", "textarea"]], columns: [["cliente", "Cliente"], ["interes", "Interes"], ["ultimoContacto", "Ultimo contacto"], ["dias", "Dias"], ["accion", "Accion"], ["estado", "Estado"]] },
-  miespacio: { fields: [["tarea", "Tarea"], ["area", "Area"], ["prioridad", "Prioridad"], ["vence", "Vence", "date"], ["responsable", "Responsable"], ["estado", "Estado"], ["notas", "Notas", "textarea"]], columns: [["tarea", "Tarea"], ["area", "Area"], ["prioridad", "Prioridad"], ["vence", "Vence"], ["estado", "Estado"]] },
-  wishlist: { fields: [["cliente", "Cliente"], ["telefono", "Telefono"], ["vehiculo", "Vehiculo buscado"], ["marca", "Marca"], ["modelo", "Modelo"], ["presupuesto", "Presupuesto", "number"], ["moneda", "Moneda"], ["match", "Match"], ["estado", "Estado"], ["notas", "Notas", "textarea"]], columns: [["cliente", "Cliente"], ["vehiculo", "Vehiculo buscado"], ["presupuesto", "Presupuesto"], ["match", "Match"], ["estado", "Estado"]] },
-  nps: { fields: [["cliente", "Cliente"], ["telefono", "Telefono"], ["puntaje", "Puntaje", "number"], ["comentario", "Comentario", "textarea"], ["fecha", "Fecha", "date"], ["responsable", "Responsable"], ["estado", "Estado"]], columns: [["cliente", "Cliente"], ["puntaje", "Puntaje"], ["fecha", "Fecha"], ["responsable", "Responsable"], ["estado", "Estado"]] },
-  papelera: { fields: [["origen", "Origen"], ["detalle", "Detalle", "textarea"], ["eliminadoPor", "Eliminado por"], ["fecha", "Fecha", "date"], ["estado", "Estado"]], columns: [["origen", "Origen"], ["detalle", "Detalle"], ["eliminadoPor", "Eliminado por"], ["fecha", "Fecha"], ["estado", "Estado"]] },
-  telefonos: { fields: [["nombre", "Nombre"], ["area", "Area"], ["telefono", "Telefono"], ["email", "Email", "email"], ["rol", "Rol"], ["horario", "Horario"], ["estado", "Estado"], ["notas", "Notas", "textarea"]], columns: [["nombre", "Nombre"], ["area", "Area"], ["telefono", "Telefono"], ["email", "Email"], ["rol", "Rol"], ["estado", "Estado"]] },
-  oportunidades: { fields: [["cliente", "Cliente"], ["telefono", "Telefono"], ["interes", "Interes"], ["vehiculo", "Vehiculo"], ["probabilidad", "Probabilidad"], ["monto", "Monto", "number"], ["moneda", "Moneda"], ["responsable", "Responsable"], ["proximo", "Proximo paso"], ["estado", "Estado"], ["notas", "Notas", "textarea"]], columns: [["cliente", "Cliente"], ["interes", "Interes"], ["probabilidad", "Probabilidad"], ["monto", "Monto"], ["responsable", "Responsable"], ["estado", "Estado"]] },
-  taller: { fields: [["vehiculo", "Vehiculo"], ["dominio", "Dominio"], ["trabajo", "Trabajo"], ["responsable", "Responsable"], ["proveedor", "Proveedor"], ["costo", "Costo", "number"], ["fechaIngreso", "Fecha ingreso", "date"], ["vence", "Entrega estimada", "date"], ["estado", "Estado"], ["notas", "Notas", "textarea"]], columns: [["vehiculo", "Vehiculo"], ["trabajo", "Trabajo"], ["responsable", "Responsable"], ["costo", "Costo"], ["vence", "Entrega"], ["estado", "Estado"]] }
+  cobros: { fields: [["cliente", "Cliente"], ["telefono", "Telefono"], ["concepto", "Concepto"], ["vehiculo", "Vehiculo"], ["monto", "Monto", "number"], ["moneda", "Moneda"], ["medio", "Medio"], ["vence", "Vence", "date"], ["estado", "Estado"], ["notas", "Notas", "textarea"]], columns: [["cliente", "Cliente"], ["concepto", "Concepto"], ["monto", "Monto"], ["vence", "Vence"], ["estado", "Estado"]] }
 };
 
 const coreModuleData = {
@@ -908,20 +871,12 @@ function openPagoClienteModal(clientId) {
 
 function flowsForModule(moduleId) {
   return {
-    pedidos: [["order-opportunity", "Crear oportunidad"], ["order-calendar", "Agendar busqueda"]],
-    wishlist: [["order-opportunity", "Crear oportunidad"], ["order-calendar", "Agendar busqueda"]],
-    oportunidades: [["opportunity-sale", "Pasar a venta"], ["opportunity-calendar", "Agendar seguimiento"]],
+    pedidos: [["order-calendar", "Agendar busqueda"]],
     cotizaciones: [["quote-message", "Preparar mensaje"], ["quote-sale", "Crear venta"]],
     reclamos: [["claim-calendar", "Agendar reclamo"], ["claim-message", "Avisar cliente"]],
-    postventa: [["after-calendar", "Agendar control"], ["after-message", "Mensaje postventa"]],
-    cobros: [["collection-alert", "Crear alerta"], ["collection-message", "Avisar cobro"]],
-    taller: [["workshop-alert", "Alerta taller"], ["workshop-calendar", "Agendar entrega"]],
     expedientes: [["file-alert", "Alerta tramite"], ["file-calendar", "Agendar gestion"]],
     infracciones: [["ticket-alert", "Alerta multa"]],
-    autorizaciones: [["authorization-alert", "Alerta aprobacion"]],
-    dormidos: [["sleeping-message", "Reactivar lead"], ["sleeping-calendar", "Agendar llamada"]],
-    nps: [["nps-message", "Responder encuesta"]],
-    clientes: [["client-opportunity", "Crear oportunidad"], ["client-calendar", "Agendar contacto"]],
+    clientes: [["client-calendar", "Agendar contacto"]],
     stock: [["stock-quote", "Crear cotizacion"]],
     ventas: [["sale-file", "Generar expediente"]],
     consignaciones: [["consignment-stock", "Pasar a Stock"]]
@@ -1428,12 +1383,7 @@ function aggregatedAgendaItems() {
     { moduleId: "gestoria",      key: "paperwork",     dateField: "vence",          label: "Gestoria",     titleFn: r => [r.tramite, r.cliente].filter(Boolean).join(" - ") || "Tramite" },
     { moduleId: "consignaciones",key: "consignments",  dateField: "vence",          label: "Consignacion", titleFn: r => [r.titular, r.vehiculo].filter(Boolean).join(" - ") || "Consignacion" },
     { moduleId: "cobros",        key: "collections",   dateField: "vence",          label: "Cobro",        titleFn: r => [r.cliente, r.concepto].filter(Boolean).join(" - ") || "Cobro" },
-    { moduleId: "autorizaciones",key: "authorizations",dateField: "vence",          label: "Autorizacion", titleFn: r => r.solicitud || "Autorizacion" },
     { moduleId: "infracciones",  key: "tickets",       dateField: "vence",          label: "Infraccion",   titleFn: r => [r.dominio, r.detalle].filter(Boolean).join(" - ") || "Infraccion" },
-    { moduleId: "postventa",     key: "afterSales",    dateField: "entrega",        label: "Postventa",    titleFn: r => `Entrega: ${[r.cliente, r.vehiculo].filter(Boolean).join(" - ")}` },
-    { moduleId: "taller",        key: "workshop",      dateField: "vence",          label: "Taller",       titleFn: r => [r.vehiculo, r.trabajo].filter(Boolean).join(" - ") || "Taller" },
-    { moduleId: "miespacio",     key: "workspace",     dateField: "vence",          label: "Mi espacio",   titleFn: r => r.tarea || "Tarea" },
-    { moduleId: "dormidos",      key: "sleepingLeads", dateField: "ultimoContacto", label: "Dormido",      titleFn: r => `Reactivar: ${r.cliente || "lead"}` },
   ];
   const virtualItems = sources.flatMap(({ moduleId, key, dateField, label, titleFn }) =>
     (state[key] || [])
