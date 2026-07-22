@@ -575,23 +575,41 @@ function clientProfileCuenta(client) {
     return cName.length > 0 && rName === cName;
   }
 
-  const financeRows = (state.finance || []).filter(matchesCuenta).map(r => ({ fecha: r.fecha || "", concepto: r.concepto || "", tipo: r.tipo || "Ingreso", monto: Number(r.monto || 0), origen: "Finanzas" }));
-  const treasuryRows = (state.treasury || []).filter(matchesCuenta).map(r => ({ fecha: r.fecha || "", concepto: r.concepto || "", tipo: r.tipo || "Ingreso", monto: Number(r.monto || 0), origen: "Tesoreria" }));
-  const collectionRows = (state.collections || []).filter(matchesCuenta).map(r => ({ fecha: r.vence || "", concepto: r.concepto || "Cobro", tipo: "Cobro pendiente", monto: Number(r.monto || 0), origen: "Cobros" }));
+  const today = todayKey();
+  const financeRows = (state.finance || []).filter(matchesCuenta).map(r => ({ fecha: r.fecha || "", concepto: r.concepto || "", tipo: r.tipo || "Ingreso", monto: Number(r.monto || 0), origen: "Finanzas", estado: r.estado || "" }));
+  const treasuryRows = (state.treasury || []).filter(matchesCuenta).map(r => ({ fecha: r.fecha || "", concepto: r.concepto || "", tipo: r.tipo || "Ingreso", monto: Number(r.monto || 0), origen: "Tesoreria", estado: r.estado || "" }));
+  const collectionRows = (state.collections || []).filter(matchesCuenta).map(r => ({ fecha: r.vence || "", concepto: r.concepto || "Cobro", tipo: "Cobro pendiente", monto: Number(r.monto || 0), origen: "Cobros", estado: r.estado || "" }));
   const all = [...financeRows, ...treasuryRows, ...collectionRows].sort((a, b) => a.fecha.localeCompare(b.fecha));
   const emptyState = `<div class="card-body"><p class="muted">Sin movimientos registrados para este cliente.</p></div>`;
+  const totalAdeudado = all.filter(r => /Cargo/i.test(r.tipo)).reduce((s, r) => s + r.monto, 0);
+  const totalPagado = all.filter(r => /Ingreso/i.test(r.tipo)).reduce((s, r) => s + r.monto, 0);
+  const saldoPendiente = totalAdeudado - totalPagado;
   let balance = 0;
   const rows = all.map(r => {
-    balance += /Ingreso/i.test(r.tipo) ? r.monto : /Egreso/i.test(r.tipo) ? -r.monto : 0;
+    balance += /Ingreso/i.test(r.tipo) ? r.monto : /Egreso|Cargo/i.test(r.tipo) ? -r.monto : 0;
     return { ...r, balance };
   });
-  const total = rows[rows.length - 1]?.balance || 0;
+  const headerMetrics = totalAdeudado > 0 ? `
+    <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap">
+      <div style="text-align:center">
+        <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Total adeudado</div>
+        <div style="font-size:15px;font-weight:700;color:var(--text)">${money(totalAdeudado)}</div>
+      </div>
+      <div style="text-align:center">
+        <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Total pagado</div>
+        <div style="font-size:15px;font-weight:700;color:var(--ok)">${money(totalPagado)}</div>
+      </div>
+      <div style="text-align:center">
+        <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Saldo pendiente</div>
+        <div style="font-size:15px;font-weight:700;color:${saldoPendiente > 0 ? "var(--hot)" : "var(--ok)"}">${money(Math.abs(saldoPendiente))} ${saldoPendiente > 0 ? "a cargo" : "al día"}</div>
+      </div>
+    </div>` : "";
   return `
     <section class="card profile-section">
-      <div class="card-head">
+      <div class="card-head" style="flex-wrap:wrap;gap:12px">
         <h2>Cuenta corriente</h2>
-        <div style="display:flex;gap:8px;align-items:center">
-          ${all.length ? `<span class="pill ${total >= 0 ? "ok" : "hot"}">Saldo: ${money(Math.abs(total))} ${total >= 0 ? "a favor" : "a cargo"}</span>` : ""}
+        <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+          ${headerMetrics}
           <button class="btn" data-quick-action="client-payment:${escapeHtml(cId)}">+ Registrar pago</button>
         </div>
       </div>
@@ -599,14 +617,19 @@ function clientProfileCuenta(client) {
         <table>
           <thead><tr><th>Fecha</th><th>Concepto</th><th>Tipo</th><th>Monto</th><th>Origen</th><th>Saldo acum.</th></tr></thead>
           <tbody>
-            ${rows.map(r => `<tr>
+            ${rows.map(r => {
+              const isVencida = r.tipo === "Cobro pendiente" && r.fecha && r.fecha < today && !/Confirmado|Pagado/i.test(r.estado);
+              const tipoPill = isVencida ? `<span class="pill crit">Vencida</span>` : pill(r.tipo);
+              const montoClass = /Ingreso/i.test(r.tipo) ? "cuenta-ingreso" : /Cargo|Egreso/i.test(r.tipo) ? "cuenta-egreso" : "";
+              return `<tr>
               <td>${escapeHtml(r.fecha)}</td>
               <td>${escapeHtml(r.concepto)}</td>
-              <td>${pill(r.tipo)}</td>
-              <td class="${/Ingreso/i.test(r.tipo) ? "cuenta-ingreso" : "cuenta-egreso"}">${money(r.monto)}</td>
+              <td>${tipoPill}</td>
+              <td class="${montoClass}">${money(r.monto)}</td>
               <td><span class="pill info">${escapeHtml(r.origen)}</span></td>
               <td class="${r.balance >= 0 ? "saldo-ok" : "saldo-neg"}">${money(Math.abs(r.balance))} ${r.balance >= 0 ? "+" : "-"}</td>
-            </tr>`).join("")}
+            </tr>`;
+            }).join("")}
           </tbody>
         </table>
       </div>`}
@@ -2108,7 +2131,7 @@ function pill(value) {
     "En revision": "warn", "En Revision": "warn", "En preparacion": "warn",
     // hot — naranja (alerta)
     "Caliente": "hot", "Egreso": "hot", "Preparacion": "hot",
-    "Alerta": "hot", "Demorado": "hot",
+    "Alerta": "hot", "Demorado": "hot", "Cargo": "hot",
     // crit — rojo
     "Cancelado": "crit", "Vencido": "crit", "Critico": "crit",
     "Baja": "crit", "Rechazado": "crit", "Suspendido": "crit",
@@ -2709,30 +2732,8 @@ function closeSaleEffects(sale) {
     if (v) v.estado = "Vendido";
   }
 
-  if (!(state.finance || []).some(f => f.saleRef === sale.id || f.saleId === sale.id)) {
-    state.finance = state.finance || [];
-    state.finance.unshift({
-      id: `fin-${nowId}`,
-      saleId: sale.id,
-      saleRef: sale.id,
-      concepto: `Venta ${vLabel}`,
-      tipo: "Ingreso",
-      categoria: "Venta",
-      cliente: sale.cliente || "",
-      clienteId: sale.clienteId || "",
-      vehiculo: vLabel,
-      vehiculoId: sale.vehiculoId || "",
-      monto: total,
-      moneda: sale.moneda || "ARS",
-      fecha: todayKey(),
-      medio: "",
-      estado: "Confirmado",
-      notas: sena > 0 ? `Seña previa: ${money(sena)} · Saldo: ${money(saldo)}` : ""
-    });
-  }
-
   const saldoYaEnTesoreria = (state.treasury || []).some(t => (t.saleRef === sale.id || t.saleId === sale.id) && /saldo/i.test(t.concepto || ""));
-  if (saldo > 0 && !saldoYaEnTesoreria) {
+  if (sale.formaPago !== "Cuotas" && saldo > 0 && !saldoYaEnTesoreria) {
     state.treasury = state.treasury || [];
     state.treasury.unshift({
       id: `trx-${nowId + 1}`,
@@ -2751,7 +2752,7 @@ function closeSaleEffects(sale) {
     });
   }
 
-  if (saldo > 0) {
+  if (sale.formaPago !== "Cuotas" && saldo > 0) {
     state.collections = state.collections || [];
     const yaEnCobros = state.collections.some(c => c.saleRef === sale.id || c.saleId === sale.id);
     if (!yaEnCobros) {
@@ -2901,6 +2902,26 @@ function applyStageEffects(sale, newEtapa, prevEtapa) {
 function onNewSaleCreated(item, sale) {
   const nowTs = Date.now();
   const anticipo = Number(item.anticipo || 0);
+  // Register total sale price as a debt charge from day one
+  state.finance = state.finance || [];
+  state.finance.unshift({
+    id: `fin-${nowTs - 1}`,
+    saleId: sale.id,
+    saleRef: sale.id,
+    concepto: `Venta ${sale.vehiculo || "vehículo"} — Precio total`,
+    tipo: "Cargo",
+    categoria: "Venta",
+    cliente: sale.cliente || "",
+    clienteId: sale.clienteId || "",
+    vehiculo: sale.vehiculo || "",
+    vehiculoId: sale.vehiculoId || "",
+    monto: Number(sale.monto || 0),
+    moneda: sale.moneda || "ARS",
+    fecha: item.fecha || todayKey(),
+    medio: "",
+    estado: "Pendiente",
+    notas: ""
+  });
   if (item.tieneAnticipo === "1" && anticipo > 0) {
     state.treasury = state.treasury || [];
     state.treasury.unshift({
