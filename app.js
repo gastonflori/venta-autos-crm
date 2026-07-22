@@ -2057,7 +2057,25 @@ function labelForKey(key) {
 
 function pill(value) {
   const s = String(value);
-  const cls = /Disponible|Listo|Confirmado|Ingreso|Enviado|Pagado|Hecho/.test(s) ? "ok" : /Pendiente|Reservado|Programado|Tasacion/.test(s) ? "warn" : /Caliente|Egreso|Preparacion|Cancelado/.test(s) ? "hot" : "info";
+  const STATE_CLASS = {
+    // ok — verde
+    "Disponible": "ok", "Listo": "ok", "Confirmado": "ok", "Ingreso": "ok",
+    "Enviado": "ok", "Pagado": "ok", "Hecho": "ok", "Activo": "ok",
+    "Cerrado": "ok", "Transferido": "ok", "Vigente": "ok", "Aprobado": "ok",
+    "Firmado": "ok",
+    // warn — amarillo
+    "Pendiente": "warn", "Reservado": "warn", "Programado": "warn",
+    "Tasacion": "warn", "En proceso": "warn", "Parcial": "warn",
+    "En revision": "warn", "En Revision": "warn", "En preparacion": "warn",
+    // hot — naranja (alerta)
+    "Caliente": "hot", "Egreso": "hot", "Preparacion": "hot",
+    "Alerta": "hot", "Demorado": "hot",
+    // crit — rojo
+    "Cancelado": "crit", "Vencido": "crit", "Critico": "crit",
+    "Baja": "crit", "Rechazado": "crit", "Suspendido": "crit",
+    // info — azul (default)
+  };
+  const cls = STATE_CLASS[s] || "info";
   return `<span class="pill ${cls}">${escapeHtml(s)}</span>`;
 }
 
