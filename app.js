@@ -10,6 +10,7 @@ let calendarCursor = new Date().toISOString().slice(0, 10);
 let _vehiclePhotosBuf = [];
 let clientProfileId = null;
 let clientProfileTab = "resumen";
+let catalogoVehiculos = {};
 
 const modules = [
   { id: "dashboard", label: "Dashboard", icon: "D", subtitle: "Resumen operativo de la agencia" },
@@ -63,6 +64,7 @@ async function api(path, options = {}) {
 
 async function boot() {
   setTheme();
+  fetch("/data/vehiculos-ar.json").then(r => r.json()).then(data => { catalogoVehiculos = data; }).catch(() => {});
   try {
     publicConfig = await api("/api/public-config");
   } catch {
@@ -1907,8 +1909,8 @@ function orderForm(row = {}) {
     <fieldset class="form-section">
       <legend><span>*</span>AUTO BUSCADO</legend>
       <div class="form-grid">
-        ${fieldControl({ name: "marca", label: "Marca", required: true, placeholder: "Ej. BMW, Toyota, Audi", value: row.marca || "" })}
-        ${fieldControl({ name: "modelo", label: "Modelo", placeholder: "Ej. X3, Hilux, Q5", value: row.modelo || "" })}
+        ${fieldControl({ name: "marca", label: "Marca", required: true, value: row.marca || "", ...fieldConfig("marca") })}
+        ${fieldControl({ name: "modelo", label: "Modelo", value: row.modelo || "", ...fieldConfig("modelo") })}
         ${fieldControl({ name: "anioDesde", label: "Anio desde", type: "number", placeholder: "2020", value: row.anioDesde || "" })}
         ${fieldControl({ name: "anioHasta", label: "Anio hasta", type: "number", placeholder: "2024", value: row.anioHasta || "" })}
         ${fieldControl({ name: "presupuesto", label: "Presupuesto maximo", type: "number", placeholder: "50000", value: row.presupuesto || "" })}
@@ -1980,6 +1982,8 @@ function fieldConfig(name, moduleKey = "") {
     gestor: { type: "datalist", options: staffNames() },
     vehiculo: { type: "datalist", options: vehicleNames() },
     dominio: { type: "datalist", options: vehicleDomains() },
+    marca: { type: "datalist", options: Object.keys(catalogoVehiculos).sort(), extraAttrs: "data-marca-input" },
+    modelo: { type: "datalist", options: [], extraAttrs: "data-modelo-input" },
     telefono: { type: "datalist", options: (state?.clients || []).map(client => client.telefono).filter(Boolean) },
     email: { type: "datalist", options: (state?.clients || []).map(client => client.email).filter(Boolean) },
     para: { type: "datalist", options: (state?.clients || []).map(client => client.email).filter(Boolean) }
@@ -2042,7 +2046,8 @@ function fieldControl(field) {
   }
   if (field.type === "datalist") {
     const listId = `list-${field.name}-${Math.random().toString(36).slice(2)}`;
-    return `<div class="field${wide}"><label>${escapeHtml(field.label)}${field.required ? " *" : ""}</label><input name="${escapeHtml(field.name)}" list="${listId}" value="${escapeHtml(value)}"${placeholder}${required}><datalist id="${listId}">${(field.options || []).map(option => `<option value="${escapeHtml(option)}"></option>`).join("")}</datalist></div>`;
+    const extra = field.extraAttrs ? ` ${field.extraAttrs}` : "";
+    return `<div class="field${wide}"><label>${escapeHtml(field.label)}${field.required ? " *" : ""}</label><input name="${escapeHtml(field.name)}" list="${listId}" value="${escapeHtml(value)}"${placeholder}${required}${extra}><datalist id="${listId}">${(field.options || []).map(option => `<option value="${escapeHtml(option)}"></option>`).join("")}</datalist></div>`;
   }
   if (field.type === "textarea") {
     return `<div class="field${wide}"><label>${escapeHtml(field.label)}${field.required ? " *" : ""}</label><textarea name="${escapeHtml(field.name)}"${placeholder}${required}>${escapeHtml(value)}</textarea></div>`;
@@ -2180,6 +2185,20 @@ function bind() {
   document.querySelectorAll("[data-sale-report]").forEach(btn => btn.addEventListener("click", () => openSaleReport(btn.dataset.saleReport)));
   document.querySelectorAll("[data-mark-cuota]").forEach(btn => btn.addEventListener("click", () => markNextCuota(btn.dataset.markCuota)));
   document.querySelectorAll("[data-quote-pdf]").forEach(btn => btn.addEventListener("click", () => generateQuotePDF(btn.dataset.quotePdf)));
+  document.querySelectorAll("[data-marca-input]").forEach(marcaInput => {
+    function syncModelos() {
+      const marca = marcaInput.value.trim();
+      const container = marcaInput.closest("form") || document;
+      const modeloInput = container.querySelector("[data-modelo-input]");
+      if (!modeloInput) return;
+      const dl = document.getElementById(modeloInput.getAttribute("list"));
+      if (!dl) return;
+      dl.innerHTML = (catalogoVehiculos[marca] || []).map(m => `<option value="${escapeHtml(m)}"></option>`).join("");
+    }
+    marcaInput.addEventListener("input", syncModelos);
+    marcaInput.addEventListener("change", syncModelos);
+    if (marcaInput.value) syncModelos();
+  });
   document.querySelectorAll("[data-calendar-view]").forEach(btn => btn.addEventListener("click", () => {
     calendarView = btn.dataset.calendarView;
     render();
@@ -2435,6 +2454,26 @@ function bindModal() {
     sfAnticipo2.dataset.sfBound = "true";
     sfAnticipo2.addEventListener("input", sfRecalcMontoCuota);
   }
+  document.querySelectorAll("[data-marca-input]").forEach(marcaInput => {
+    if (marcaInput.dataset.bound) return;
+    marcaInput.dataset.bound = "true";
+    function syncModelos() {
+      const marca = marcaInput.value.trim();
+      const container = marcaInput.closest("form") || marcaInput.closest("[data-modal]") || document;
+      const modeloInput = container.querySelector("[data-modelo-input]");
+      if (!modeloInput) return;
+      const listId = modeloInput.getAttribute("list");
+      if (!listId) return;
+      const dl = document.getElementById(listId);
+      if (!dl) return;
+      const modelos = catalogoVehiculos[marca] || [];
+      dl.innerHTML = modelos.map(m => `<option value="${escapeHtml(m)}"></option>`).join("");
+    }
+    marcaInput.addEventListener("input", syncModelos);
+    marcaInput.addEventListener("change", syncModelos);
+    if (marcaInput.value) syncModelos();
+  });
+
   document.querySelectorAll("[data-action='doc-file-upload']").forEach(input => {
     if (input.dataset.bound) return;
     input.dataset.bound = "true";
