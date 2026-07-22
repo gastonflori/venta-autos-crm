@@ -201,6 +201,29 @@ function normalizeState(next = {}) {
     });
     merged.settings.coreSeedV2 = true;
   }
+  if (!merged.settings.coreSeedV3) {
+    const seedVehicles = [
+      { id: "sv3-1", dominio: "AC120BD", marca: "Toyota", modelo: "Hilux", version: "SRV 4x4 AT", anio: 2022, km: 42000, precio: 58000000, moneda: "ARS", estado: "Disponible", ubicacion: "Salon", origen: "Usados", margen: 2200000, notas: "Impecable, unico dueno" },
+      { id: "sv3-2", dominio: "AD987GH", marca: "Volkswagen", modelo: "Golf", version: "Highline 1.4T", anio: 2023, km: 18000, precio: 34500000, moneda: "ARS", estado: "Disponible", ubicacion: "Salon", origen: "Concesionaria", margen: 1400000, notas: "Como nuevo, full equipo" },
+      { id: "sv3-3", dominio: "AB556KL", marca: "Renault", modelo: "Kangoo", version: "Furgon 1.6 SC", anio: 2021, km: 67000, precio: 19800000, moneda: "ARS", estado: "Disponible", ubicacion: "Deposito", origen: "Permuta", margen: 900000, notas: "Optimo para trabajo" },
+      { id: "sv3-4", dominio: "AE301MN", marca: "Jeep", modelo: "Renegade", version: "Sport Plus AT", anio: 2022, km: 29000, precio: 42000000, moneda: "ARS", estado: "Disponible", ubicacion: "Salon", origen: "Usados", margen: 1800000, notas: "Con garantia de fabrica" },
+      { id: "sv3-5", dominio: "AF778PQ", marca: "Chevrolet", modelo: "Onix", version: "Plus Premier AT", anio: 2024, km: 5000, precio: 28500000, moneda: "ARS", estado: "Publicado", ubicacion: "Salon", origen: "Concesionaria", margen: 1100000, notas: "Cero km casi, no usar" },
+      { id: "sv3-6", dominio: "AG445RS", marca: "Ford", modelo: "Territory", version: "Titanium AT AWD", anio: 2023, km: 22000, precio: 51000000, moneda: "ARS", estado: "Disponible", ubicacion: "Salon", origen: "Usados", margen: 2000000, notas: "Full, techo panoramico" }
+    ];
+    const seedClients = [
+      { id: "sc3-1", nombre: "Lucas Fernandez", telefono: "+54 9 11 5501-2233", email: "lucas.fern@mail.com", dni: "33445566", interes: "Hilux", origen: "Instagram", vendedor: authUser?.name || "", proximo: "", estado: "Caliente", notas: "Busca camioneta 4x4 para el campo" },
+      { id: "sc3-2", nombre: "Valentina Rios", telefono: "+54 9 351 601-7788", email: "valen.rios@mail.com", dni: "37112233", interes: "Golf", origen: "WhatsApp", vendedor: authUser?.name || "", proximo: "", estado: "Caliente", notas: "Quiere auto compacto, presupuesto hasta 36M" },
+      { id: "sc3-3", nombre: "Roberto Aguirre", telefono: "+54 9 261 402-5544", email: "roberto.ag@mail.com", dni: "28776655", interes: "Kangoo", origen: "Salon", vendedor: authUser?.name || "", proximo: "", estado: "Seguimiento", notas: "Necesita furgon para negocio de delivery" },
+      { id: "sc3-4", nombre: "Carolina Mendez", telefono: "+54 9 11 6602-9900", email: "caro.mendez@mail.com", dni: "35221144", interes: "Renegade", origen: "MercadoLibre", vendedor: authUser?.name || "", proximo: "", estado: "Nuevo", notas: "Primera camioneta, quiere SUV familiar" },
+      { id: "sc3-5", nombre: "Diego Herrera", telefono: "+54 9 341 703-6611", email: "diego.herr@mail.com", dni: "30998877", interes: "Onix", origen: "Referido", vendedor: authUser?.name || "", proximo: "", estado: "Caliente", notas: "Lo mando su hermano que compro en noviembre" },
+      { id: "sc3-6", nombre: "Florencia Castillo", telefono: "+54 9 11 5803-4422", email: "flor.castillo@mail.com", dni: "38334455", interes: "Territory", origen: "Web", vendedor: authUser?.name || "", proximo: "", estado: "Seguimiento", notas: "Consulto por territorio, espera financiacion" }
+    ];
+    const existingVIds = new Set((merged.vehicles || []).map(v => v.id));
+    const existingCIds = new Set((merged.clients || []).map(c => c.id));
+    seedVehicles.filter(v => !existingVIds.has(v.id)).forEach(v => (merged.vehicles = merged.vehicles || []).push(v));
+    seedClients.filter(c => !existingCIds.has(c.id)).forEach(c => (merged.clients = merged.clients || []).push(c));
+    merged.settings.coreSeedV3 = true;
+  }
   return merged;
 }
 
