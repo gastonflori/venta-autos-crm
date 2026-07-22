@@ -2495,6 +2495,23 @@ function bindModal() {
   });
   // Render existing photos after modal opens
   updatePhotoPreview();
+
+  // Cotizaciones: recalculo automatico monto final y deteccion de moneda
+  const quotesForm = document.querySelector("[data-save='quotes']");
+  if (quotesForm && !quotesForm.dataset.cotizBound) {
+    quotesForm.dataset.cotizBound = "true";
+    function recalcCotizacion() {
+      const lista = Number(quotesForm.elements.precioLista?.value || 0);
+      const boni  = Number(quotesForm.elements.bonificacion?.value || 0);
+      if (lista <= 0) return;
+      const final = Math.max(0, lista - boni);
+      if (quotesForm.elements.monto) quotesForm.elements.monto.value = final;
+      if (quotesForm.elements.moneda) quotesForm.elements.moneda.value = lista < 1000000 ? "USD" : "ARS";
+    }
+    quotesForm.elements.precioLista?.addEventListener("input", recalcCotizacion);
+    quotesForm.elements.bonificacion?.addEventListener("input", recalcCotizacion);
+    recalcCotizacion(); // ejecutar al abrir por si ya habia valores
+  }
   document.querySelectorAll("[data-quote-pdf]").forEach(btn => {
     if (btn.dataset.bound) return;
     btn.dataset.bound = "true";
