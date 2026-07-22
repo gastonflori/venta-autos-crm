@@ -157,7 +157,7 @@ const moduleEnhancements = {
 const coreModuleData = {
   stock: { key: "vehicles", title: "Stock", item: "vehiculo" },
   clientes: { key: "clients", title: "Clientes", item: "cliente" },
-  ventas: { key: "sales", title: "Ventas", item: "oportunidad" },
+  ventas: { key: "sales", title: "Ventas", item: "venta" },
   gestoria: { key: "paperwork", title: "Gestoria", item: "tramite" },
   finanzas: { key: "finance", title: "Finanzas", item: "movimiento" }
 };
@@ -1293,15 +1293,88 @@ function formatDate(date) {
 function salesPage() {
   return `
     <div class="toolbar">
-      <button class="btn" data-add="sales">Nueva oportunidad</button>
+      <button class="btn primary-action" data-add="sales">+ Nueva venta</button>
       <button class="btn ghost" data-action="export">Exportar CSV</button>
     </div>
-    <section class="card">
-      <div class="card-head"><h2>Pipeline comercial</h2><span class="pill info">${state.sales.length} operaciones</span></div>
-      <div class="card-body">${kanban()}</div>
+    ${salesPipelineStrip()}
+    <section class="card" style="margin-top:16px">
+      <div class="card-head">
+        <h2>Historial de ventas</h2>
+        <span class="pill info">${state.sales.length} operaciones</span>
+      </div>
+      <div class="card-body" style="padding:0">${salesHistoryTable()}</div>
     </section>
-    <div style="margin-top:16px">${tablePage("sales", "Operaciones", genericColumns("ventas"), true, "ventas")}</div>
   `;
+}
+
+function salesPipelineStrip() {
+  const stages = ["Contacto", "Tasacion", "Reserva", "Cierre", "Perdida"];
+  const counts = Object.fromEntries(stages.map(s => [s, 0]));
+  (state.sales || []).forEach(s => { if (counts[s.etapa] !== undefined) counts[s.etapa]++; });
+  const active = ["Contacto", "Tasacion", "Reserva", "Cierre"];
+  return `<div class="pipeline-strip">
+    ${active.map((s, i) => {
+      const cls = s === "Cierre" ? "ok" : "info";
+      return `${i > 0 ? '<span class="pipeline-arrow">→</span>' : ""}<div class="pipeline-stage-pill"><span class="pill ${cls}">${s}</span><strong>${counts[s]}</strong></div>`;
+    }).join("")}
+    ${counts["Perdida"] > 0 ? `<span class="pipeline-arrow"> · </span><div class="pipeline-stage-pill"><span class="pill hot">Perdida</span><strong>${counts["Perdida"]}</strong></div>` : ""}
+  </div>`;
+}
+
+function getSaleCuotas(saleId) {
+  return (state.collections || [])
+    .filter(c => c.saleId === saleId)
+    .sort((a, b) => (a.numeroCuota || 0) - (b.numeroCuota || 0));
+}
+
+function salesHistoryTable() {
+  const sales = [...(state.sales || [])].reverse();
+  if (!sales.length) return `<p class="muted" style="padding:24px">No hay ventas registradas. Creá la primera con el botón "+ Nueva venta".</p>`;
+  return `<div style="overflow:auto"><table>
+    <thead><tr>
+      <th>Cliente</th><th>Vehículo</th><th>Monto</th><th>Forma de pago</th>
+      <th>Estado pago</th><th>Etapa</th><th>Vendedor</th><th>Fecha</th><th></th>
+    </tr></thead>
+    <tbody>${sales.map(s => {
+      const cuotas = getSaleCuotas(s.id);
+      const totalCuotas = Number(s.cantCuotas || 0);
+      const pagadas = cuotas.filter(c => /Confirmado/i.test(c.estado || "")).length;
+      const anticipo = Number(s.anticipo || s.sena || 0);
+
+      let estadoPagoHtml;
+      if (s.formaPago === "Cuotas" && totalCuotas > 0) {
+        estadoPagoHtml = `<span class="pill ${pagadas === totalCuotas ? "ok" : "warn"}">${pagadas}/${totalCuotas} cuotas</span>`;
+      } else if (anticipo > 0) {
+        estadoPagoHtml = `<span class="pill ok">Anticipo cobrado</span>`;
+      } else {
+        estadoPagoHtml = `<span class="pill info">Sin cobros</span>`;
+      }
+
+      const nextPending = cuotas.find(c => !/Confirmado/i.test(c.estado || ""));
+      const markBtn = (s.formaPago === "Cuotas" && nextPending)
+        ? `<button class="btn ghost" style="font-size:11px;padding:2px 8px;white-space:nowrap" data-mark-cuota="${escapeHtml(s.id)}" title="Marcar cuota ${nextPending.numeroCuota} como pagada">✓ Cuota ${nextPending.numeroCuota}</button>`
+        : "";
+
+      const fechaDisplay = s.fecha || "—";
+
+      return `<tr>
+        <td>${escapeHtml(s.cliente || "—")}</td>
+        <td>${escapeHtml(s.vehiculo || "—")}</td>
+        <td>${money(s.monto)}</td>
+        <td><span class="pill info">${escapeHtml(s.formaPago || "—")}</span></td>
+        <td>${estadoPagoHtml}</td>
+        <td>${pill(s.etapa || s.estado || "—")}</td>
+        <td>${escapeHtml(s.vendedor || "—")}</td>
+        <td style="white-space:nowrap">${escapeHtml(fechaDisplay)}</td>
+        <td class="record-actions" style="display:flex;gap:4px;flex-wrap:wrap;align-items:center">
+          <button class="icon-btn" data-sale-report="${escapeHtml(s.id)}" title="Ver informe">I</button>
+          <button class="icon-btn" data-edit="sales:${escapeHtml(s.id)}" title="Editar">E</button>
+          <button class="icon-btn" data-delete="sales:${escapeHtml(s.id)}" title="Eliminar">X</button>
+          ${markBtn}
+        </td>
+      </tr>`;
+    }).join("")}</tbody>
+  </table></div>`;
 }
 
 function kanban() {
@@ -1470,7 +1543,7 @@ function modalMeta(key, row = {}) {
     orders: "Cliente que vino preguntando por algo que todavia no tenemos en stock.",
     vehicles: "Unidad disponible, reservada, publicada o en preparacion.",
     clients: "Datos comerciales y seguimiento del cliente.",
-    sales: "Operacion activa dentro del pipeline.",
+    sales: "Datos completos de la venta: cliente, vehículo, forma de pago y cobros.",
     calendar: "Agenda de test drives, entregas, llamados y vencimientos.",
     paperwork: "Tramite administrativo vinculado a cliente y vehiculo.",
     finance: "Movimiento de caja, banco, ingreso o egreso.",
@@ -1515,57 +1588,137 @@ function salesForm(row = {}) {
   );
   const staffListId = "list-vendedor-sales";
   const staffOpts = staffNames().map(n => `<option value="${escapeHtml(n)}"></option>`).join("");
+  const existingClient = clients.find(c => c.id === (row.clienteId || ""));
 
-  const noClients = clients.length === 0;
-  const clientSection = noClients
+  const clientSection = clients.length === 0
     ? `<div class="field full"><div class="sales-hint">Primero cargá el cliente en el módulo <strong>Clientes</strong> antes de crear una venta.</div></div>`
     : `<div class="field full">
         <label>Cliente *</label>
         <select name="clienteId" required data-sales-client>
           <option value="">— Seleccioná un cliente —</option>
-          ${clients.map(c => `<option value="${escapeHtml(c.id)}" ${c.id === (row.clienteId || "") ? "selected" : ""} data-nombre="${escapeHtml(c.nombre)}">${escapeHtml(c.nombre)}${c.telefono ? ` · ${escapeHtml(c.telefono)}` : ""}</option>`).join("")}
+          ${clients.map(c => `<option value="${escapeHtml(c.id)}" ${c.id === (row.clienteId || "") ? "selected" : ""}
+            data-nombre="${escapeHtml(c.nombre)}"
+            data-phone="${escapeHtml(c.telefono || "")}"
+            data-email="${escapeHtml(c.email || "")}"
+            >${escapeHtml(c.nombre)}${c.telefono ? ` · ${escapeHtml(c.telefono)}` : ""}</option>`).join("")}
         </select>
-        <input type="hidden" name="cliente" value="${escapeHtml(row.cliente || clients.find(c => c.id === (row.clienteId || ""))?.nombre || "")}">
-        <small>El cliente debe estar cargado en el módulo Clientes</small>
+        <input type="hidden" name="cliente" value="${escapeHtml(row.cliente || existingClient?.nombre || "")}">
+        <div id="sf-client-info" style="font-size:12px;color:var(--muted);margin-top:4px">
+          ${existingClient ? `Tel: ${escapeHtml(existingClient.telefono || "—")} · Email: ${escapeHtml(existingClient.email || "—")}` : ""}
+        </div>
       </div>`;
 
-  const noVehicles = availableVehicles.length === 0;
-  const vehicleSection = noVehicles
+  const vehicleSection = availableVehicles.length === 0
     ? `<div class="field full"><div class="sales-hint">No hay vehículos disponibles en Stock. Cargá uno en el módulo <strong>Stock</strong> primero.</div></div>`
     : `<div class="field full">
         <label>Vehículo *</label>
         <select name="vehiculoId" required data-sales-vehicle>
           <option value="">— Seleccioná un vehículo —</option>
           ${availableVehicles.map(v => {
-            const nombre = `${v.marca || ""} ${v.modelo || ""}`.trim();
+            const nombre = `${v.marca || ""} ${v.modelo || ""}${v.version ? " " + v.version : ""}`.trim();
             const label = `${nombre}${v.dominio ? ` (${v.dominio})` : ""} — ${money(v.precio)}`;
-            return `<option value="${escapeHtml(v.id)}" ${v.id === (row.vehiculoId || "") ? "selected" : ""} data-nombre="${escapeHtml(nombre)}" data-precio="${v.precio || 0}">${escapeHtml(label)}</option>`;
+            return `<option value="${escapeHtml(v.id)}" ${v.id === (row.vehiculoId || "") ? "selected" : ""}
+              data-nombre="${escapeHtml(nombre)}"
+              data-precio="${v.precio || 0}"
+              >${escapeHtml(label)}</option>`;
           }).join("")}
         </select>
         <input type="hidden" name="vehiculo" value="${escapeHtml(row.vehiculo || "")}">
-        <small>Solo se muestran vehículos Disponible / Publicado / Reservado</small>
+        <small>Solo vehículos Disponible / Publicado / Reservado. El precio se autocompleta del stock.</small>
       </div>`;
 
   const stages = ["Contacto", "Tasacion", "Reserva", "Cierre", "Perdida"];
+  const formaPago = row.formaPago || "Contado";
+  const showCuotas = formaPago === "Cuotas";
+  const anticipo = Number(row.anticipo || row.sena || 0);
+  const showAnticipo = anticipo > 0;
+
   return `
     <fieldset class="form-section">
       <legend><span>+</span>CLIENTE</legend>
       <div class="form-grid">${clientSection}</div>
     </fieldset>
     <fieldset class="form-section">
-      <legend><span>V</span>VEHICULO</legend>
+      <legend><span>A</span>VEHÍCULO</legend>
       <div class="form-grid">${vehicleSection}</div>
     </fieldset>
     <fieldset class="form-section">
-      <legend><span>$</span>OPERACION</legend>
+      <legend><span>$</span>OPERACIÓN</legend>
       <div class="form-grid">
-        <div class="field"><label>Etapa</label><select name="etapa">${stages.map(s => `<option ${(row.etapa || "Contacto") === s ? "selected" : ""}>${s}</option>`).join("")}</select></div>
-        <div class="field"><label>Monto total *</label><input name="monto" type="number" required value="${row.monto || ""}" placeholder="0" min="0"></div>
-        <div class="field"><label>Seña cobrada</label><input name="sena" type="number" value="${row.sena || 0}" placeholder="0" min="0"></div>
-        <div class="field"><label>Moneda</label><select name="moneda"><option ${(row.moneda || "ARS") === "ARS" ? "selected" : ""}>ARS</option><option ${(row.moneda || "") === "USD" ? "selected" : ""}>USD</option></select></div>
-        <div class="field"><label>Vendedor</label><input name="vendedor" list="${staffListId}" value="${escapeHtml(row.vendedor || authUser?.name || "")}"><datalist id="${staffListId}">${staffOpts}</datalist></div>
-        <div class="field"><label>Próximo paso</label><input name="proximo" value="${escapeHtml(row.proximo || "")}"></div>
-        <div class="field full"><label>Notas</label><textarea name="notas">${escapeHtml(row.notas || "")}</textarea></div>
+        <div class="field">
+          <label>Monto total *</label>
+          <input name="monto" id="sf-monto" type="number" required value="${row.monto || ""}" placeholder="0" min="0">
+        </div>
+        <div class="field">
+          <label>Moneda</label>
+          <select name="moneda">
+            <option ${(row.moneda || "ARS") === "ARS" ? "selected" : ""}>ARS</option>
+            <option ${(row.moneda || "") === "USD" ? "selected" : ""}>USD</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Forma de pago</label>
+          <select name="formaPago" id="sf-forma-pago">
+            ${["Contado", "Financiado", "Cuotas"].map(o => `<option ${formaPago === o ? "selected" : ""}>${o}</option>`).join("")}
+          </select>
+        </div>
+        <div class="field">
+          <label>Etapa</label>
+          <select name="etapa">${stages.map(s => `<option ${(row.etapa || "Contacto") === s ? "selected" : ""}>${s}</option>`).join("")}</select>
+        </div>
+        <div class="field">
+          <label>Vendedor</label>
+          <input name="vendedor" list="${staffListId}" value="${escapeHtml(row.vendedor || authUser?.name || "")}">
+          <datalist id="${staffListId}">${staffOpts}</datalist>
+        </div>
+        <div class="field">
+          <label>Fecha de operación</label>
+          <input name="fecha" type="date" value="${escapeHtml(row.fecha || todayKey())}">
+        </div>
+      </div>
+      <div id="sf-cuotas-section" style="display:${showCuotas ? "" : "none"}">
+        <div class="form-grid" style="margin-top:12px">
+          <div class="field">
+            <label>Cantidad de cuotas</label>
+            <input name="cantCuotas" id="sf-cant-cuotas" type="number" min="1" value="${escapeHtml(String(row.cantCuotas || ""))}">
+          </div>
+          <div class="field">
+            <label>Monto por cuota</label>
+            <input name="montoCuota" id="sf-monto-cuota" type="number" min="0" value="${escapeHtml(String(row.montoCuota || ""))}">
+            <small>Auto: (monto − anticipo) ÷ cuotas</small>
+          </div>
+        </div>
+      </div>
+    </fieldset>
+    <fieldset class="form-section">
+      <legend><span>A</span>ANTICIPO / ENTREGA</legend>
+      <div class="form-grid">
+        <div class="field full">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:normal">
+            <input type="checkbox" id="sf-tiene-anticipo" name="tieneAnticipo" value="1" ${showAnticipo ? "checked" : ""} style="width:auto;margin:0">
+            El cliente entrega dinero ahora (seña / anticipo)
+          </label>
+        </div>
+      </div>
+      <div id="sf-anticipo-section" style="display:${showAnticipo ? "" : "none"}">
+        <div class="form-grid" style="margin-top:12px">
+          <div class="field">
+            <label>Monto del anticipo</label>
+            <input name="anticipo" id="sf-anticipo" type="number" min="0" value="${escapeHtml(String(anticipo || ""))}">
+          </div>
+          <div class="field">
+            <label>Medio de pago</label>
+            <select name="medioAnticipo">
+              ${["Efectivo", "Transferencia", "Tarjeta", "Cheque"].map(o => `<option ${(row.medioAnticipo || "Efectivo") === o ? "selected" : ""}>${o}</option>`).join("")}
+            </select>
+          </div>
+        </div>
+      </div>
+    </fieldset>
+    <fieldset class="form-section">
+      <legend><span>-</span>NOTAS</legend>
+      <div class="form-grid">
+        <div class="field full"><textarea name="notas" placeholder="Condiciones especiales, observaciones...">${escapeHtml(row.notas || "")}</textarea></div>
       </div>
     </fieldset>
   `;
@@ -1784,7 +1937,7 @@ function fieldControl(field) {
 
 function labelForKey(key) {
   const dynamicDef = Object.values(sectionData).find(def => def.key === key);
-  return dynamicDef?.item || ({ vehicles: "vehiculo", clients: "cliente", sales: "oportunidad", paperwork: "tramite", finance: "movimiento", messages: "mensaje", calendar: "evento", clientDocs: "documento" }[key] || "registro");
+  return dynamicDef?.item || ({ vehicles: "vehiculo", clients: "cliente", sales: "venta", paperwork: "tramite", finance: "movimiento", messages: "mensaje", calendar: "evento", clientDocs: "documento" }[key] || "registro");
 }
 
 function pill(value) {
@@ -1891,6 +2044,8 @@ function bind() {
 
   document.querySelector("[data-action='export']")?.addEventListener("click", exportCurrent);
   document.querySelectorAll("[data-advance-sale]").forEach(btn => btn.addEventListener("click", () => advanceSaleById(btn.dataset.advanceSale)));
+  document.querySelectorAll("[data-sale-report]").forEach(btn => btn.addEventListener("click", () => openSaleReport(btn.dataset.saleReport)));
+  document.querySelectorAll("[data-mark-cuota]").forEach(btn => btn.addEventListener("click", () => markNextCuota(btn.dataset.markCuota)));
   document.querySelectorAll("[data-calendar-view]").forEach(btn => btn.addEventListener("click", () => {
     calendarView = btn.dataset.calendarView;
     render();
@@ -1970,7 +2125,7 @@ function bindModal() {
         const id = e.target.dataset.id;
         const item = Object.fromEntries(new FormData(e.target).entries());
         Object.keys(item).forEach(k => {
-          if (/^(anio|anioDesde|anioHasta|km|precio|margen|monto|sena|precioPretendido|comision|costo|presupuesto|puntaje|dias)$/.test(k)) item[k] = Number(item[k]);
+          if (/^(anio|anioDesde|anioHasta|km|precio|margen|monto|sena|anticipo|cantCuotas|montoCuota|precioPretendido|comision|costo|presupuesto|puntaje|dias)$/.test(k)) item[k] = Number(item[k]);
         });
         const prevEtapa = (id && key === "sales") ? (state[key].find(x => x.id === id)?.etapa) : null;
         if (key === "vehicles") item.fotos = _vehiclePhotosBuf.slice();
@@ -1990,6 +2145,12 @@ function bindModal() {
           const savedId = id || state[key][0]?.id;
           const saved = state[key].find(x => x.id === savedId);
           if (saved) applyStageEffects(saved, item.etapa, prevEtapa);
+          if (!id && saved) {
+            if (item.tieneAnticipo === "1" && Number(item.anticipo || 0) > 0) {
+              saved.sena = Number(item.anticipo);
+            }
+            onNewSaleCreated(item, saved);
+          }
         }
         addAudit(`${id ? "Actualizado" : "Creado"} ${labelForKey(key)}`);
         await saveState("Datos guardados");
@@ -2049,6 +2210,12 @@ function bindModal() {
       const opt = select.selectedOptions[0];
       const form = select.closest("form");
       if (opt?.dataset.nombre && form?.elements.cliente) form.elements.cliente.value = opt.dataset.nombre;
+      const infoDiv = document.getElementById("sf-client-info");
+      if (infoDiv) {
+        const phone = opt?.dataset.phone || "";
+        const email = opt?.dataset.email || "";
+        infoDiv.textContent = opt?.value ? `Tel: ${phone || "—"} · Email: ${email || "—"}` : "";
+      }
     });
   });
   document.querySelectorAll("[data-sales-vehicle]").forEach(select => {
@@ -2058,11 +2225,65 @@ function bindModal() {
       const opt = select.selectedOptions[0];
       const form = select.closest("form");
       if (opt?.dataset.nombre && form?.elements.vehiculo) form.elements.vehiculo.value = opt.dataset.nombre;
-      if (opt?.dataset.precio && form?.elements.monto && !form.elements.monto.value) {
+      if (opt?.dataset.precio && form?.elements.monto) {
         form.elements.monto.value = opt.dataset.precio;
+        sfRecalcMontoCuota();
       }
     });
   });
+
+  // Sales form: show/hide cuotas section on forma de pago change
+  const sfFormaPago = document.querySelector("#sf-forma-pago");
+  if (sfFormaPago && !sfFormaPago.dataset.bound) {
+    sfFormaPago.dataset.bound = "true";
+    sfFormaPago.addEventListener("change", () => {
+      const sec = document.getElementById("sf-cuotas-section");
+      if (sec) sec.style.display = sfFormaPago.value === "Cuotas" ? "" : "none";
+      sfRecalcMontoCuota();
+    });
+  }
+
+  // Sales form: show/hide anticipo section on checkbox change
+  const sfTieneAnticipo = document.querySelector("#sf-tiene-anticipo");
+  if (sfTieneAnticipo && !sfTieneAnticipo.dataset.bound) {
+    sfTieneAnticipo.dataset.bound = "true";
+    sfTieneAnticipo.addEventListener("change", () => {
+      const sec = document.getElementById("sf-anticipo-section");
+      if (sec) sec.style.display = sfTieneAnticipo.checked ? "" : "none";
+      sfRecalcMontoCuota();
+    });
+  }
+
+  // Auto-recalculate monto per cuota
+  function sfRecalcMontoCuota() {
+    const sfMonto = document.querySelector("#sf-monto");
+    const sfCantCuotas = document.querySelector("#sf-cant-cuotas");
+    const sfMontoCuota = document.querySelector("#sf-monto-cuota");
+    const sfAnticipo = document.querySelector("#sf-anticipo");
+    const sfCheck = document.querySelector("#sf-tiene-anticipo");
+    const sfFP = document.querySelector("#sf-forma-pago");
+    if (!sfCantCuotas || !sfMontoCuota || sfFP?.value !== "Cuotas") return;
+    const monto = Number(sfMonto?.value || 0);
+    const ant = sfCheck?.checked ? Number(sfAnticipo?.value || 0) : 0;
+    const cant = Number(sfCantCuotas.value || 0);
+    if (cant > 0) sfMontoCuota.value = Math.round((monto - ant) / cant);
+  }
+
+  const sfMonto2 = document.querySelector("#sf-monto");
+  if (sfMonto2 && !sfMonto2.dataset.sfBound) {
+    sfMonto2.dataset.sfBound = "true";
+    sfMonto2.addEventListener("input", sfRecalcMontoCuota);
+  }
+  const sfCantCuotas2 = document.querySelector("#sf-cant-cuotas");
+  if (sfCantCuotas2 && !sfCantCuotas2.dataset.sfBound) {
+    sfCantCuotas2.dataset.sfBound = "true";
+    sfCantCuotas2.addEventListener("input", sfRecalcMontoCuota);
+  }
+  const sfAnticipo2 = document.querySelector("#sf-anticipo");
+  if (sfAnticipo2 && !sfAnticipo2.dataset.sfBound) {
+    sfAnticipo2.dataset.sfBound = "true";
+    sfAnticipo2.addEventListener("input", sfRecalcMontoCuota);
+  }
   document.querySelectorAll("[data-action='doc-file-upload']").forEach(input => {
     if (input.dataset.bound) return;
     input.dataset.bound = "true";
@@ -2324,6 +2545,182 @@ function applyStageEffects(sale, newEtapa, prevEtapa) {
   if (newEtapa === "Perdida" && prevEtapa !== "Perdida") {
     revertVehicleFromSale(sale);
   }
+}
+
+function onNewSaleCreated(item, sale) {
+  const nowTs = Date.now();
+  const anticipo = Number(item.anticipo || 0);
+  if (item.tieneAnticipo === "1" && anticipo > 0) {
+    state.treasury = state.treasury || [];
+    state.treasury.unshift({
+      id: `trx-${nowTs}`,
+      saleId: sale.id,
+      saleRef: sale.id,
+      cuenta: "Caja",
+      tipo: "Ingreso",
+      concepto: `Seña — ${sale.vehiculo || "vehículo"}`,
+      cliente: sale.cliente || "",
+      clienteId: sale.clienteId || "",
+      monto: anticipo,
+      moneda: sale.moneda || "ARS",
+      fecha: item.fecha || todayKey(),
+      medio: item.medioAnticipo || "Efectivo",
+      estado: "Confirmado",
+      notas: `Anticipo de venta — forma de pago: ${item.formaPago || "—"}`
+    });
+  }
+  if (item.formaPago === "Cuotas") {
+    const cantCuotas = Number(item.cantCuotas || 0);
+    const montoCuota = Number(item.montoCuota || 0) || (cantCuotas > 0 ? Math.round((Number(sale.monto || 0) - anticipo) / cantCuotas) : 0);
+    if (cantCuotas > 0) {
+      state.collections = state.collections || [];
+      const fechaBase = item.fecha ? new Date(item.fecha + "T12:00:00") : new Date();
+      const telefono = (state.clients || []).find(c => c.id === sale.clienteId)?.telefono || "";
+      for (let i = cantCuotas - 1; i >= 0; i--) {
+        const vence = new Date(fechaBase);
+        vence.setMonth(vence.getMonth() + i + 1);
+        state.collections.unshift({
+          id: `cb-${nowTs + i + 1}`,
+          saleId: sale.id,
+          numeroCuota: i + 1,
+          cliente: sale.cliente || "",
+          clienteId: sale.clienteId || "",
+          telefono,
+          concepto: `Cuota ${i + 1}/${cantCuotas} — ${sale.vehiculo || ""}`,
+          vehiculo: sale.vehiculo || "",
+          monto: montoCuota,
+          moneda: sale.moneda || "ARS",
+          medio: "",
+          vence: vence.toISOString().slice(0, 10),
+          estado: "Pendiente",
+          notas: `Cuota ${i + 1} de ${cantCuotas}`
+        });
+      }
+    }
+  }
+}
+
+function openSaleReport(saleId) {
+  const sale = (state.sales || []).find(s => s.id === saleId);
+  if (!sale) return toast("Venta no encontrada.");
+  const v = sale.vehiculoId ? (state.vehicles || []).find(x => x.id === sale.vehiculoId) : null;
+  const client = sale.clienteId ? (state.clients || []).find(x => x.id === sale.clienteId) : null;
+  const cuotas = getSaleCuotas(saleId);
+  const agencia = state.settings?.businessName || publicConfig.businessName || "Sote Auto";
+  const thumb = v?.fotos?.[0] ? `<img src="${escapeHtml(v.fotos[0])}" style="max-width:180px;border-radius:6px;margin:8px 0">` : "";
+  const vehiculoDesc = v ? `${v.marca || ""} ${v.modelo || ""} ${v.version || ""}`.trim() : (sale.vehiculo || "—");
+  const anticipo = Number(sale.anticipo || sale.sena || 0);
+  const totalCuotas = Number(sale.cantCuotas || 0);
+
+  const cuotasHtml = totalCuotas > 0 && sale.formaPago === "Cuotas" ? `
+    <h4 style="margin:16px 0 8px;font-size:13px;text-transform:uppercase;color:#666">Detalle de cuotas</h4>
+    <table style="width:100%;border-collapse:collapse;font-size:13px">
+      <thead><tr style="background:#f0f0f0">
+        <th style="padding:6px 8px;text-align:left;border:1px solid #ddd">N°</th>
+        <th style="padding:6px 8px;text-align:left;border:1px solid #ddd">Vencimiento</th>
+        <th style="padding:6px 8px;text-align:right;border:1px solid #ddd">Monto</th>
+        <th style="padding:6px 8px;text-align:left;border:1px solid #ddd">Estado</th>
+      </tr></thead>
+      <tbody>${cuotas.map(c => `<tr>
+        <td style="padding:5px 8px;border:1px solid #ddd">${c.numeroCuota || "—"}</td>
+        <td style="padding:5px 8px;border:1px solid #ddd">${c.vence || "—"}</td>
+        <td style="padding:5px 8px;text-align:right;border:1px solid #ddd">${money(c.monto)}</td>
+        <td style="padding:5px 8px;border:1px solid #ddd">${c.estado || "—"}</td>
+      </tr>`).join("")}</tbody>
+    </table>` : "";
+
+  const reportHtml = `
+    <div style="font-family:Georgia,serif;color:#111;padding:8px">
+      <div style="text-align:center;border-bottom:2px solid #111;padding-bottom:12px;margin-bottom:16px">
+        <h2 style="margin:0;font-size:20px">${escapeHtml(agencia)}</h2>
+        <p style="margin:4px 0;font-size:12px;color:#666">Comprobante de operación — ${escapeHtml(sale.fecha || new Date().toLocaleDateString("es-AR"))}</p>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:16px">
+        <div>
+          <p style="margin:0 0 6px;font-size:11px;text-transform:uppercase;color:#888;font-family:sans-serif">Vehículo</p>
+          ${thumb}
+          <p style="margin:4px 0;font-size:15px"><strong>${escapeHtml(vehiculoDesc)}</strong></p>
+          ${v?.dominio ? `<p style="margin:3px 0;font-size:13px">Dominio: <strong>${escapeHtml(v.dominio)}</strong></p>` : ""}
+          ${v?.anio ? `<p style="margin:3px 0;font-size:13px">Año: ${escapeHtml(String(v.anio))}</p>` : ""}
+          ${v?.km ? `<p style="margin:3px 0;font-size:13px">Km: ${Number(v.km).toLocaleString("es-AR")}</p>` : ""}
+        </div>
+        <div>
+          <p style="margin:0 0 6px;font-size:11px;text-transform:uppercase;color:#888;font-family:sans-serif">Cliente</p>
+          <p style="margin:4px 0;font-size:15px"><strong>${escapeHtml(client?.nombre || sale.cliente || "—")}</strong></p>
+          ${client?.telefono ? `<p style="margin:3px 0;font-size:13px">Tel: ${escapeHtml(client.telefono)}</p>` : ""}
+          ${client?.email ? `<p style="margin:3px 0;font-size:13px">Email: ${escapeHtml(client.email)}</p>` : ""}
+          ${client?.dni ? `<p style="margin:3px 0;font-size:13px">DNI/CUIT: ${escapeHtml(client.dni)}</p>` : ""}
+        </div>
+      </div>
+      <div style="border:1px solid #ddd;border-radius:4px;padding:14px;margin-bottom:16px;font-size:13px">
+        <p style="margin:0 0 8px;font-size:11px;text-transform:uppercase;color:#888;font-family:sans-serif">Condiciones de la operación</p>
+        <p style="margin:4px 0">Precio acordado: <strong>${money(sale.monto)} ${escapeHtml(sale.moneda || "ARS")}</strong></p>
+        <p style="margin:4px 0">Forma de pago: <strong>${escapeHtml(sale.formaPago || "—")}</strong></p>
+        ${anticipo > 0 ? `<p style="margin:4px 0">Anticipo entregado: <strong>${money(anticipo)}</strong>${sale.medioAnticipo ? ` (${escapeHtml(sale.medioAnticipo)})` : ""}</p>` : ""}
+        ${sale.formaPago === "Cuotas" && totalCuotas > 0 ? `<p style="margin:4px 0">Plan: <strong>${totalCuotas} cuotas de ${money(sale.montoCuota)}</strong></p>` : ""}
+        <p style="margin:4px 0">Vendedor: ${escapeHtml(sale.vendedor || "—")}</p>
+        <p style="margin:4px 0">Fecha de operación: ${escapeHtml(sale.fecha || "—")}</p>
+        <p style="margin:4px 0">Etapa: ${escapeHtml(sale.etapa || "—")}</p>
+        ${sale.notas ? `<p style="margin:4px 0;color:#555"><em>${escapeHtml(sale.notas)}</em></p>` : ""}
+      </div>
+      ${cuotasHtml}
+      <div style="text-align:center;margin-top:20px;font-size:11px;color:#aaa;font-family:sans-serif">Generado por Sote CRM · ${escapeHtml(agencia)}</div>
+    </div>
+  `;
+
+  document.body.insertAdjacentHTML("beforeend", `
+    <div class="modal-backdrop" data-modal>
+      <section class="modal" style="max-width:680px;max-height:88vh;overflow-y:auto">
+        <div class="modal-head">
+          <div><h2>Informe de venta</h2><p>${escapeHtml(vehiculoDesc)}</p></div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <button class="btn ghost" onclick="window.print()">Imprimir</button>
+            <button class="icon-btn" data-close>X</button>
+          </div>
+        </div>
+        <div style="padding:16px">${reportHtml}</div>
+      </section>
+    </div>
+  `);
+  document.querySelectorAll("[data-close]").forEach(btn => {
+    if (btn.dataset.bound) return;
+    btn.dataset.bound = "true";
+    btn.addEventListener("click", () => btn.closest("[data-modal]")?.remove());
+  });
+}
+
+async function markNextCuota(saleId) {
+  const cuotas = getSaleCuotas(saleId);
+  const next = cuotas.find(c => !/Confirmado/i.test(c.estado || ""));
+  if (!next) return toast("No hay cuotas pendientes.");
+  next.estado = "Confirmado";
+  const sale = (state.sales || []).find(s => s.id === saleId);
+  const nowTs = Date.now();
+  state.treasury = state.treasury || [];
+  state.treasury.unshift({
+    id: `trx-${nowTs}`,
+    saleId,
+    cuenta: "Caja",
+    tipo: "Ingreso",
+    concepto: `Cuota ${next.numeroCuota}/${sale?.cantCuotas || "?"} — ${sale?.vehiculo || ""}`,
+    cliente: next.cliente || sale?.cliente || "",
+    clienteId: next.clienteId || sale?.clienteId || "",
+    monto: next.monto,
+    moneda: next.moneda || sale?.moneda || "ARS",
+    fecha: todayKey(),
+    medio: "",
+    estado: "Confirmado",
+    notas: `Pago de cuota ${next.numeroCuota}`
+  });
+  const totalPagadas = cuotas.filter(c => /Confirmado/i.test(c.estado || "")).length;
+  const totalCuotas = Number(sale?.cantCuotas || cuotas.length);
+  if (totalPagadas >= totalCuotas && sale && sale.etapa !== "Cierre") {
+    sale.etapa = "Cierre";
+    closeSaleEffects(sale);
+  }
+  addAudit(`Cuota ${next.numeroCuota} pagada — ${next.cliente || ""}`);
+  await saveState(`Cuota ${next.numeroCuota} marcada como pagada`);
+  render();
 }
 
 function addAudit(text) {
