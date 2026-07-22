@@ -624,7 +624,7 @@ function clientProfileCuenta(client) {
       </div>
       <div style="text-align:center">
         <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Saldo pendiente</div>
-        <div style="font-size:15px;font-weight:700;color:${saldoPendiente > 0 ? "var(--hot)" : "var(--ok)"}">${money(Math.abs(saldoPendiente))} ${saldoPendiente > 0 ? "a cargo" : "al día"}</div>
+        <div style="font-size:15px;font-weight:700;color:${saldoPendiente > 0 ? "var(--crit)" : "var(--ok)"}">${saldoPendiente > 0 ? "-" : "+"}${money(Math.abs(saldoPendiente))}</div>
       </div>
     </div>` : "";
   return `
@@ -650,7 +650,7 @@ function clientProfileCuenta(client) {
               <td>${tipoPill}</td>
               <td class="${montoClass}">${money(r.monto)}</td>
               <td><span class="pill info">${escapeHtml(r.origen)}</span></td>
-              <td class="${r.balance >= 0 ? "saldo-ok" : "saldo-neg"}">${money(Math.abs(r.balance))} ${r.balance >= 0 ? "+" : "-"}</td>
+              <td style="font-weight:700;color:${r.balance >= 0 ? "var(--ok)" : "var(--crit)"}">${r.balance >= 0 ? "+" : "-"}${money(Math.abs(r.balance))}</td>
             </tr>`;
             }).join("")}
           </tbody>
