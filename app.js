@@ -632,11 +632,22 @@ function clientProfileResumen(client) {
 }
 
 function clientProfileCuenta(client) {
-  const financeRows = clientRelated("finance", client).map(r => ({ fecha: r.fecha || "", concepto: r.concepto, tipo: r.tipo, monto: Number(r.monto || 0), origen: "Finanzas" }));
-  const treasuryRows = clientRelated("treasury", client).map(r => ({ fecha: r.fecha || "", concepto: r.concepto, tipo: r.tipo, monto: Number(r.monto || 0), origen: "Tesoreria" }));
-  const collectionRows = clientRelated("collections", client).map(r => ({ fecha: r.vence || "", concepto: r.concepto || "Cobro", tipo: "Cobro pendiente", monto: Number(r.monto || 0), origen: "Cobros" }));
+  const cId = client.id || "";
+  const cName = (client.nombre || "").toLowerCase().trim();
+
+  // Strict filter: ID match when record has clienteId; exact name match only for legacy records without clienteId
+  function matchesCuenta(r) {
+    if (!cId) return false;
+    if (r.clienteId) return r.clienteId === cId;
+    const rName = (r.cliente || "").toLowerCase().trim();
+    return cName.length > 0 && rName === cName;
+  }
+
+  const financeRows = (state.finance || []).filter(matchesCuenta).map(r => ({ fecha: r.fecha || "", concepto: r.concepto || "", tipo: r.tipo || "Ingreso", monto: Number(r.monto || 0), origen: "Finanzas" }));
+  const treasuryRows = (state.treasury || []).filter(matchesCuenta).map(r => ({ fecha: r.fecha || "", concepto: r.concepto || "", tipo: r.tipo || "Ingreso", monto: Number(r.monto || 0), origen: "Tesoreria" }));
+  const collectionRows = (state.collections || []).filter(matchesCuenta).map(r => ({ fecha: r.vence || "", concepto: r.concepto || "Cobro", tipo: "Cobro pendiente", monto: Number(r.monto || 0), origen: "Cobros" }));
   const all = [...financeRows, ...treasuryRows, ...collectionRows].sort((a, b) => a.fecha.localeCompare(b.fecha));
-  if (!all.length) return `<section class="card profile-section"><div class="card-head"><h2>Cuenta corriente</h2></div><div class="card-body"><p class="muted">Sin movimientos registrados para este cliente.</p></div></section>`;
+  const emptyState = `<div class="card-body"><p class="muted">Sin movimientos registrados para este cliente.</p></div>`;
   let balance = 0;
   const rows = all.map(r => {
     balance += /Ingreso/i.test(r.tipo) ? r.monto : /Egreso/i.test(r.tipo) ? -r.monto : 0;
@@ -647,11 +658,14 @@ function clientProfileCuenta(client) {
     <section class="card profile-section">
       <div class="card-head">
         <h2>Cuenta corriente</h2>
-        <span class="pill ${total >= 0 ? "ok" : "hot"}">Saldo: ${money(Math.abs(total))} ${total >= 0 ? "a favor" : "a cargo"}</span>
+        <div style="display:flex;gap:8px;align-items:center">
+          ${all.length ? `<span class="pill ${total >= 0 ? "ok" : "hot"}">Saldo: ${money(Math.abs(total))} ${total >= 0 ? "a favor" : "a cargo"}</span>` : ""}
+          <button class="btn" data-quick-action="client-payment:${escapeHtml(cId)}">+ Registrar pago</button>
+        </div>
       </div>
-      <div style="overflow:auto">
+      ${!all.length ? emptyState : `<div style="overflow:auto">
         <table>
-          <thead><tr><th>Fecha</th><th>Concepto</th><th>Tipo</th><th>Monto</th><th>Origen</th><th>Saldo</th></tr></thead>
+          <thead><tr><th>Fecha</th><th>Concepto</th><th>Tipo</th><th>Monto</th><th>Origen</th><th>Saldo acum.</th></tr></thead>
           <tbody>
             ${rows.map(r => `<tr>
               <td>${escapeHtml(r.fecha)}</td>
@@ -663,7 +677,7 @@ function clientProfileCuenta(client) {
             </tr>`).join("")}
           </tbody>
         </table>
-      </div>
+      </div>`}
     </section>
   `;
 }
@@ -807,6 +821,79 @@ function handleQuickAction(action) {
   if (type === "new-calendar")  return openModal("calendar", { ...prefill, titulo: `Contacto con ${client.nombre}`, tipo: "Llamado", hora: "10:00", fecha: todayKey() });
   if (type === "new-message")   return openModal("messages", { ...prefill, canal: "WhatsApp", plantilla: "Seguimiento" });
   if (type === "new-client-doc") return openModal("clientDocs", { clienteId: client.id, cliente: client.nombre });
+  if (type === "client-payment") return openPagoClienteModal(clientId);
+}
+
+function openPagoClienteModal(clientId) {
+  const client = (state.clients || []).find(c => c.id === clientId);
+  if (!client) return;
+  const today = todayKey();
+  document.body.insertAdjacentHTML("beforeend", `
+    <div class="modal-backdrop" data-modal>
+      <section class="modal">
+        <div class="modal-head">
+          <div><h2>Registrar pago</h2><p>Movimiento en cuenta corriente de ${escapeHtml(client.nombre)}</p></div>
+          <button class="icon-btn" data-close>X</button>
+        </div>
+        <form data-save="treasury" data-id="">
+          <input type="hidden" name="clienteId" value="${escapeHtml(clientId)}">
+          <input type="hidden" name="cliente" value="${escapeHtml(client.nombre)}">
+          <input type="hidden" name="cuenta" value="Caja">
+          <input type="hidden" name="estado" value="Confirmado">
+          <fieldset class="form-section">
+            <legend>Detalle del movimiento</legend>
+            <div class="form-grid">
+              <label class="field-wrap">
+                <span>Tipo</span>
+                <select name="tipo">
+                  <option value="Ingreso">Ingreso (pago recibido)</option>
+                  <option value="Egreso">Egreso (devolucion / descuento)</option>
+                </select>
+              </label>
+              <label class="field-wrap">
+                <span>Concepto</span>
+                <input name="concepto" value="Pago — ${escapeHtml(client.nombre)}" required>
+              </label>
+              <label class="field-wrap">
+                <span>Monto</span>
+                <input name="monto" type="number" min="0" step="0.01" placeholder="0" required>
+              </label>
+              <label class="field-wrap">
+                <span>Moneda</span>
+                <select name="moneda">
+                  <option value="ARS">ARS</option>
+                  <option value="USD">USD</option>
+                </select>
+              </label>
+              <label class="field-wrap">
+                <span>Medio de pago</span>
+                <select name="medio">
+                  <option value="Efectivo">Efectivo</option>
+                  <option value="Transferencia">Transferencia</option>
+                  <option value="Tarjeta">Tarjeta</option>
+                  <option value="Cheque">Cheque</option>
+                  <option value="Otro">Otro</option>
+                </select>
+              </label>
+              <label class="field-wrap">
+                <span>Fecha</span>
+                <input name="fecha" type="date" value="${escapeHtml(today)}">
+              </label>
+              <label class="field-wrap" style="grid-column:1/-1">
+                <span>Notas</span>
+                <textarea name="notas" rows="2"></textarea>
+              </label>
+            </div>
+          </fieldset>
+          <div class="modal-actions">
+            <button class="btn ghost" type="button" data-close>Cancelar</button>
+            <button class="btn primary-action" type="submit">Registrar pago</button>
+          </div>
+        </form>
+      </section>
+    </div>
+  `);
+  bindModal();
 }
 
 function flowsForModule(moduleId) {
@@ -2492,6 +2579,51 @@ function closeSaleEffects(sale) {
   if (sale.clienteId) {
     const c = (state.clients || []).find(x => x.id === sale.clienteId);
     if (c) c.estado = "Cerrado";
+  }
+
+  // Auto-create gestoria expediente
+  if (!(state.files || []).some(f => f.saleRef === sale.id)) {
+    state.files = state.files || [];
+    const vDom = (state.vehicles || []).find(x => x.id === sale.vehiculoId)?.dominio || "";
+    state.files.unshift({
+      id: `ex-${nowId + 10}`,
+      saleRef: sale.id,
+      numero: `EXP-${new Date().getFullYear()}-${String((state.files.length + 1)).padStart(4, "0")}`,
+      cliente: sale.cliente || "",
+      clienteId: sale.clienteId || "",
+      telefono: (state.clients || []).find(c => c.id === sale.clienteId)?.telefono || "",
+      vehiculo: vLabel,
+      vehiculoId: sale.vehiculoId || "",
+      dominio: vDom,
+      tramite: "Transferencia",
+      responsable: "Gestoria",
+      fechaAlta: todayKey(),
+      vence: "",
+      estado: "Pendiente",
+      detalle: `Expediente generado al cerrar venta. Total: ${money(total)}.`
+    });
+  }
+
+  // Auto-create liquidacion de comision para el vendedor
+  if (sale.vendedor && !(state.settlements || []).some(s => s.saleRef === sale.id)) {
+    const comision = Math.round(Number(sale.monto || 0) * 0.02);
+    state.settlements = state.settlements || [];
+    state.settlements.unshift({
+      id: `li-${nowId + 11}`,
+      saleRef: sale.id,
+      beneficiario: sale.vendedor || "",
+      operacion: vLabel,
+      cliente: sale.cliente || "",
+      clienteId: sale.clienteId || "",
+      vehiculo: vLabel,
+      vehiculoId: sale.vehiculoId || "",
+      concepto: `Comision venta — ${vLabel}`,
+      monto: comision,
+      moneda: sale.moneda || "ARS",
+      fecha: todayKey(),
+      estado: "Pendiente",
+      notas: `2% sobre ${money(Number(sale.monto || 0))}`
+    });
   }
 
   addAudit(`Cierre: ${sale.cliente || "cliente"} — ${vLabel} — Total ${money(total)}`);
