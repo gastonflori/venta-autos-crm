@@ -381,7 +381,43 @@ function page() {
   if (currentModule === "whatsapp") return whatsappPage();
   if (currentModule === "config" || currentModule === "configuracion") return configPage();
   if (currentModule === "clientes" && clientProfileId) return clientProfilePage(clientProfileId);
+  if (currentModule === "finanzas") return finanzasPage();
   return genericSectionPage(currentModule);
+}
+
+function finanzasPage() {
+  const pipelineEtapas = ["Contacto", "Tasacion", "Reserva"];
+  const pipelineSales = (state.sales || []).filter(s => pipelineEtapas.includes(s.etapa));
+  const proyectado = pipelineSales.reduce((sum, s) => sum + Number(s.monto || 0), 0);
+  const byEtapa = pipelineEtapas.map(etapa => ({
+    etapa,
+    ventas: pipelineSales.filter(s => s.etapa === etapa),
+    monto: pipelineSales.filter(s => s.etapa === etapa).reduce((a, s) => a + Number(s.monto || 0), 0)
+  }));
+  const pipelineSection = `
+    <section class="card" style="margin-top:16px">
+      <div class="card-head">
+        <h2>Pipeline de ventas en curso</h2>
+        <span class="pill info">${pipelineSales.length} operaciones · Proyectado: ${money(proyectado)}</span>
+      </div>
+      <div class="card-body">
+        <p class="muted" style="margin-bottom:12px;font-size:12px">Ingresos proyectados de ventas en etapa Contacto, Tasacion y Reserva. No incluye Cierre (ya confirmados).</p>
+        <div class="grid stats" style="margin-bottom:16px">
+          ${byEtapa.map(({ etapa, ventas, monto }) => stat(etapa, money(monto), `${ventas.length} venta${ventas.length !== 1 ? "s" : ""}`)).join("")}
+        </div>
+        ${pipelineSales.length ? `<div style="overflow:auto"><table>
+          <thead><tr><th>Cliente</th><th>Vehiculo</th><th>Etapa</th><th>Monto</th><th>Vendedor</th></tr></thead>
+          <tbody>${pipelineSales.map(s => `<tr>
+            <td>${escapeHtml(s.cliente)}</td>
+            <td>${escapeHtml(s.vehiculo)}</td>
+            <td>${pill(s.etapa)}</td>
+            <td>${money(s.monto)}</td>
+            <td>${escapeHtml(s.vendedor || "")}</td>
+          </tr>`).join("")}</tbody>
+        </table></div>` : `<p class="muted">No hay ventas en curso en el pipeline.</p>`}
+      </div>
+    </section>`;
+  return genericSectionPage("finanzas") + pipelineSection;
 }
 
 function dashboard() {
