@@ -1597,10 +1597,8 @@ function formFor(key, row = {}) {
   if (key === "sales") return salesForm(row);
   if (key === "clientDocs") return clientDocForm(row);
   const linkedKeys = ["paperwork", "calendar", "quotes", "files", "consignments"];
-  const linkedHtml = linkedKeys.includes(key)
-    ? `<fieldset class="form-section"><legend><span>+</span>VINCULOS</legend><div class="form-grid">${linkedClientVehicleFields(row)}</div></fieldset>`
-    : "";
-  return linkedHtml + groupedForm(key, fields, row);
+  if (linkedKeys.includes(key)) return groupedFormWithLinks(key, fields, row);
+  return groupedForm(key, fields, row);
 }
 
 function openModal(key, row = {}) {
@@ -1655,17 +1653,46 @@ function groupedForm(key, fields, row = {}) {
   `).join("");
 }
 
-function linkedClientVehicleFields(row = {}) {
-  const clientOptions = [`<option value="">— Sin vincular —</option>`]
-    .concat((state.clients || []).map(c => `<option value="${escapeHtml(c.id)}" ${c.id === (row.clienteId || "") ? "selected" : ""} data-name="${escapeHtml(c.nombre)}" data-phone="${escapeHtml(c.telefono)}">${escapeHtml(c.nombre)} · ${escapeHtml(c.telefono)}</option>`))
+function linkedClientSelectHtml(row = {}) {
+  const clientOptions = [`<option value="">— Sin vincular cliente —</option>`]
+    .concat((state.clients || []).map(c =>
+      `<option value="${escapeHtml(c.id)}" ${c.id === (row.clienteId || "") ? "selected" : ""} data-name="${escapeHtml(c.nombre)}" data-phone="${escapeHtml(c.telefono || "")}">${escapeHtml(c.nombre)} · ${escapeHtml(c.telefono || "")}</option>`
+    ))
     .join("");
-  const vehicleOptions = [`<option value="">— Sin vincular —</option>`]
+  return `<div class="field full"><label>Cliente del sistema (opcional)</label><select name="clienteId" data-client-link>${clientOptions}</select><small>Al elegir un cliente se autocompletan nombre y telefono en los campos de abajo</small></div>`;
+}
+
+function linkedVehicleSelectHtml(row = {}, moduleKey = "") {
+  const vehicleOptions = [`<option value="">— Vehiculo fuera de stock / cotizacion externa —</option>`]
     .concat((state.vehicles || []).map(v => {
-      const label = `${v.marca || ""} ${v.modelo || ""}${v.dominio ? ` (${v.dominio})` : ""}`.trim();
-      return `<option value="${escapeHtml(v.id)}" ${v.id === (row.vehiculoId || "") ? "selected" : ""} data-nombre="${escapeHtml(`${v.marca || ""} ${v.modelo || ""}`.trim())}" data-dominio="${escapeHtml(v.dominio || "")}">${escapeHtml(label)}</option>`;
+      const nombre = `${v.marca || ""} ${v.modelo || ""}`.trim();
+      const label = `${nombre}${v.dominio ? ` (${v.dominio})` : ""} — ${money(v.precio)}`;
+      return `<option value="${escapeHtml(v.id)}" ${v.id === (row.vehiculoId || "") ? "selected" : ""} data-nombre="${escapeHtml(nombre)}" data-dominio="${escapeHtml(v.dominio || "")}" data-precio="${v.precio || 0}">${escapeHtml(label)}</option>`;
     }))
     .join("");
-  return `<div class="field"><label>Cliente vinculado</label><select name="clienteId" data-client-link>${clientOptions}</select><small>Autocompleta nombre y telefono</small></div><div class="field"><label>Vehiculo vinculado</label><select name="vehiculoId" data-vehicle-link>${vehicleOptions}</select><small>Autocompleta nombre del vehiculo</small></div>`;
+  return `<div class="field full"><label>Vehiculo del stock (opcional)</label><select name="vehiculoId" data-vehicle-link>${vehicleOptions}</select><small>Elige un auto del stock para autocompletar nombre y precio. Si el auto no es tuyo todavia, deja esta opcion y completa los campos a mano.</small></div>`;
+}
+
+function groupedFormWithLinks(key, fields, row = {}) {
+  const normalized = fields.map(field => normalizeField(field, row, key));
+  const mainFields = normalized.filter(f => !/notas|detalle|comentario|mensaje/i.test(f.name));
+  const noteFields = normalized.filter(f => /notas|detalle|comentario|mensaje/i.test(f.name));
+  const clientSel = linkedClientSelectHtml(row);
+  const vehicleSel = linkedVehicleSelectHtml(row, key);
+  const mainHtml = mainFields.map(f => {
+    let prefix = "";
+    if (f.name === "cliente" || f.name === "titular") prefix = clientSel;
+    if (f.name === "vehiculo") prefix = vehicleSel;
+    return prefix + fieldControl(f);
+  }).join("");
+  const noteHtml = noteFields.map(f => fieldControl(f)).join("");
+  return `
+    <fieldset class="form-section">
+      <legend><span>${escapeHtml(iconForKey(key))}</span>${escapeHtml(sectionTitleForKey(key))}</legend>
+      <div class="form-grid">${mainHtml}</div>
+    </fieldset>
+    ${noteHtml ? `<fieldset class="form-section"><legend><span>-</span>OBSERVACIONES</legend><div class="form-grid">${noteHtml}</div></fieldset>` : ""}
+  `;
 }
 
 function salesForm(row = {}) {
@@ -2255,10 +2282,14 @@ function bindModal() {
     select.addEventListener("change", () => {
       const option = select.selectedOptions[0];
       const form = select.closest("form");
+      if (!form) return;
       const name = option?.dataset.name || "";
       const phone = option?.dataset.phone || "";
-      if (name && form?.elements.cliente) form.elements.cliente.value = name;
-      if (phone && form?.elements.telefono) form.elements.telefono.value = phone;
+      if (name) {
+        if (form.elements.cliente) form.elements.cliente.value = name;
+        else if (form.elements.titular) form.elements.titular.value = name;
+      }
+      if (phone && form.elements.telefono) form.elements.telefono.value = phone;
     });
   });
   document.querySelectorAll("[data-action='vehicle-photo-upload']").forEach(input => {
@@ -2284,10 +2315,18 @@ function bindModal() {
     select.addEventListener("change", () => {
       const option = select.selectedOptions[0];
       const form = select.closest("form");
-      const nombre = option?.dataset.nombre || "";
-      const dominio = option?.dataset.dominio || "";
-      if (nombre && form?.elements.vehiculo) form.elements.vehiculo.value = nombre;
-      if (dominio && form?.elements.dominio) form.elements.dominio.value = dominio;
+      if (!form || !option?.value) return; // "fuera de stock" selected: don't overwrite manual input
+      const nombre = option.dataset.nombre || "";
+      const dominio = option.dataset.dominio || "";
+      const precio = option.dataset.precio;
+      if (nombre && form.elements.vehiculo) form.elements.vehiculo.value = nombre;
+      if (dominio && form.elements.dominio) form.elements.dominio.value = dominio;
+      // Autocomplete price based on module
+      if (precio !== undefined) {
+        const priceFieldMap = { quotes: "precioLista", consignments: "precioPretendido" };
+        const priceField = priceFieldMap[form.dataset.save || ""];
+        if (priceField && form.elements[priceField]) form.elements[priceField].value = precio;
+      }
     });
   });
   document.querySelectorAll("[data-sales-client]").forEach(select => {
