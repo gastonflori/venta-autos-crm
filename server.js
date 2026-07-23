@@ -61,13 +61,13 @@ const seedState = {
     { id: "cal4", fecha: "2026-07-03", hora: "16:00", tipo: "Entrega", titulo: "Entrega Ranger XLS", cliente: "Nicolas Paz", vehiculo: "Ford Ranger XLS", vendedor: "Gaston", estado: "Programado", notas: "Confirmar transferencia antes de entregar." }
   ],
   audit: [
-    "Sesion iniciada en Sote CRM",
+    "Sesion iniciada en Lake Motors CRM",
     "Reserva cargada para Toyota Corolla",
     "Nuevo cliente desde WhatsApp",
     "Tramite de transferencia actualizado"
   ],
   settings: {
-    businessName: "Sote Auto",
+    businessName: "Lake Motors",
     ownerName: "",
     phone: "",
     email: "",
