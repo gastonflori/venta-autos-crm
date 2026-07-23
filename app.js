@@ -2281,7 +2281,19 @@ function fieldConfig(name, moduleKey = "") {
     urgencia: { type: "select", options: ["Alta", "Media", "Baja"] },
     match: { type: "select", options: ["Sin match", "Posible", "Exacto", "Enviado"] },
     probabilidad: { type: "select", options: ["Alta", "Media", "Baja"] },
-    tipoOperacion: { type: "select", options: ["Venta", "Recibir vehiculo"] }
+    tipoOperacion: { type: "select", options: ["Venta", "Recibir vehiculo"] },
+    precio: { type: "money" },
+    monto: { type: "money" },
+    sena: { type: "money" },
+    anticipo: { type: "money" },
+    montoCuota: { type: "money" },
+    precioPretendido: { type: "money" },
+    comision: { type: "money" },
+    costo: { type: "money" },
+    presupuesto: { type: "money" },
+    margen: { type: "money" },
+    precioLista: { type: "money" },
+    bonificacion: { type: "money" }
   };
   const relationFields = {
     cliente: { type: "datalist", options: clientNames() },
@@ -2364,6 +2376,11 @@ function fieldControl(field) {
   }
   if (field.type === "textarea") {
     return `<div class="field${wide}"><label>${escapeHtml(field.label)}${field.required ? " *" : ""}</label><textarea name="${escapeHtml(field.name)}"${placeholder}${required}>${escapeHtml(value)}</textarea></div>`;
+  }
+  if (field.type === "money") {
+    const raw = String(value || "").replace(/[^\d]/g, "");
+    const display = raw ? Number(raw).toLocaleString("es-AR") : "";
+    return `<div class="field${wide}"><label>${escapeHtml(field.label)}${field.required ? " *" : ""}</label><input type="text" inputmode="numeric" class="money-field" data-money-input value="${escapeHtml(display)}" placeholder="0"${required}><input type="hidden" name="${escapeHtml(field.name)}" value="${escapeHtml(raw)}"></div>`;
   }
   return `<div class="field${wide}"><label>${escapeHtml(field.label)}${field.required ? " *" : ""}</label><input name="${escapeHtml(field.name)}" type="${escapeHtml(field.type || "text")}" value="${escapeHtml(value)}"${placeholder}${required}></div>`;
 }
@@ -2620,6 +2637,16 @@ function bindModal() {
     btn.dataset.bound = "true";
     btn.addEventListener("click", () => btn.closest("[data-modal]")?.remove());
   });
+  document.querySelectorAll("[data-money-input]").forEach(input => {
+    if (input.dataset.bound) return;
+    input.dataset.bound = "true";
+    const hidden = input.nextElementSibling;
+    input.addEventListener("input", () => {
+      const digits = input.value.replace(/[^\d]/g, "");
+      if (hidden) hidden.value = digits;
+      input.value = digits ? Number(digits).toLocaleString("es-AR") : "";
+    });
+  });
   document.querySelectorAll("[data-save]").forEach(form => {
     if (form.dataset.bound) return;
     form.dataset.bound = "true";
@@ -2633,7 +2660,7 @@ function bindModal() {
         const id = e.target.dataset.id;
         const item = Object.fromEntries(new FormData(e.target).entries());
         Object.keys(item).forEach(k => {
-          if (/^(anio|anioDesde|anioHasta|km|precio|margen|monto|sena|anticipo|cantCuotas|montoCuota|precioPretendido|comision|costo|presupuesto|puntaje|dias)$/.test(k)) item[k] = Number(item[k]);
+          if (/^(anio|anioDesde|anioHasta|km|precio|margen|monto|sena|anticipo|cantCuotas|montoCuota|precioPretendido|comision|costo|presupuesto|puntaje|dias|precioLista|bonificacion)$/.test(k)) item[k] = Number(item[k]);
         });
         const prevSale = (id && key === "sales") ? (state[key].find(x => x.id === id)) : null;
         const prevEtapa = prevSale?.etapa || null;
