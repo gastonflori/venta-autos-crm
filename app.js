@@ -725,6 +725,8 @@ function getClientAccountMovements(client) {
 }
 
 function clientProfileCuenta(client) {
+  const cId = client.id || "";
+  const today = todayKey();
   const { rows: all, totalAdeudado, totalPagado, saldoPendiente } = getClientAccountMovements(client);
   const emptyState = `<div class="card-body"><p class="muted">Sin movimientos registrados para este cliente.</p></div>`;
   let balance = 0;
