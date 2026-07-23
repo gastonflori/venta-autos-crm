@@ -36,6 +36,7 @@ const modules = [
   { id: "correos", label: "Correos", icon: "@", subtitle: "Emails enviados y pendientes" },
   { id: "configuracion", label: "Configuracion", icon: "*", subtitle: "Preferencias de agencia y cuenta" },
   { id: "misventas", label: "Mis ventas", icon: "MV", subtitle: "Operaciones asignadas al usuario" },
+  { id: "expedientetecnico", label: "Expediente tecnico", icon: "ET", subtitle: "VTV, seguro y estado tecnico por vehiculo" },
 ];
 
 async function api(path, options = {}) {
@@ -374,6 +375,7 @@ function page() {
   if (currentModule === "config" || currentModule === "configuracion") return configPage();
   if (currentModule === "clientes" && clientProfileId) return clientProfilePage(clientProfileId);
   if (currentModule === "finanzas") return finanzasPage();
+  if (currentModule === "expedientetecnico") return expedienteTecnicoPage();
   return genericSectionPage(currentModule);
 }
 
@@ -410,6 +412,74 @@ function finanzasPage() {
       </div>
     </section>`;
   return genericSectionPage("finanzas") + pipelineSection;
+}
+
+function vtvPill(vtvVence) {
+  if (!vtvVence) return `<span class="pill ok">Sin fecha</span>`;
+  const today = new Date(todayKey() + "T00:00:00");
+  const vence = new Date(vtvVence + "T00:00:00");
+  const diff = Math.floor((vence - today) / 86400000);
+  if (diff < 0) return `<span class="pill crit">Vencida</span>`;
+  if (diff <= 30) return `<span class="pill warn">Vence en ${diff}d</span>`;
+  return `<span class="pill ok">Vigente</span>`;
+}
+
+function expedienteTecnicoPage() {
+  const expVehiculos = (state.files || []).filter(f => f.tipo === "Vehiculo");
+  const vehiculosConExp = new Set(expVehiculos.map(f => f.vehiculoId).filter(Boolean));
+  const vehiculosSinExp = (state.vehicles || []).filter(v => !vehiculosConExp.has(v.id));
+
+  const rows = expVehiculos.map(f => {
+    const veh = (state.vehicles || []).find(v => v.id === f.vehiculoId) || {};
+    const ultimaEntrada = (f.historial || []).slice(-1)[0];
+    return { f, veh, ultimaEntrada };
+  });
+
+  const newExpSelector = vehiculosSinExp.length
+    ? `<select id="et-new-vehiculo" style="min-width:200px">
+        <option value="">— Elegí un vehículo —</option>
+        ${vehiculosSinExp.map(v => {
+          const nombre = `${v.marca || ""} ${v.modelo || ""}${v.version ? " " + v.version : ""}`.trim();
+          return `<option value="${escapeHtml(v.id)}" data-ref="${escapeHtml(nombre)}">${escapeHtml(nombre)}${v.dominio ? " (" + v.dominio + ")" : ""}</option>`;
+        }).join("")}
+      </select>
+      <button class="btn" id="et-new-btn">+ Nuevo expediente</button>`
+    : `<span class="muted" style="font-size:13px">Todos los vehiculos tienen expediente.</span>`;
+
+  return `
+    <div class="grid stats module-stats">
+      ${stat("Expedientes", expVehiculos.length, "Vehiculos con ficha tecnica")}
+      ${stat("Sin expediente", vehiculosSinExp.length, "Vehiculos sin ficha")}
+      ${stat("VTV por vencer", expVehiculos.filter(f => { if (!f.vtvVence) return false; const d = Math.floor((new Date(f.vtvVence + "T00:00:00") - new Date(todayKey() + "T00:00:00")) / 86400000); return d >= 0 && d <= 30; }).length, "Vencen en ≤ 30 dias")}
+      ${stat("Seguro vigente", expVehiculos.filter(f => f.seguroVigente === "Vigente").length, "Con seguro activo")}
+    </div>
+    <section class="card" style="margin-top:16px">
+      <div class="card-head">
+        <h2>Expedientes tecnicos</h2>
+        <div style="display:flex;gap:8px;align-items:center">${newExpSelector}</div>
+      </div>
+      <div style="overflow:auto">
+        <table>
+          <thead><tr><th>Vehiculo</th><th>Seguro</th><th>VTV vence</th><th>Ultima entrada</th><th></th></tr></thead>
+          <tbody>
+            ${rows.length ? rows.map(({ f, veh, ultimaEntrada }) => {
+              const nombre = veh.id
+                ? `${veh.marca || ""} ${veh.modelo || ""}${veh.version ? " " + veh.version : ""}`.trim()
+                : escapeHtml(f.vehiculoRef || "—");
+              const dominio = veh.dominio ? ` (${veh.dominio})` : "";
+              return `<tr>
+                <td><strong>${escapeHtml(nombre)}</strong>${escapeHtml(dominio)}</td>
+                <td>${pill(f.seguroVigente || "Sin seguro")}</td>
+                <td>${vtvPill(f.vtvVence)}${f.vtvVence ? ` <small class="muted">${escapeHtml(f.vtvVence)}</small>` : ""}</td>
+                <td>${ultimaEntrada ? `<small class="muted">${escapeHtml(ultimaEntrada.fecha || "")}</small> ${escapeHtml((ultimaEntrada.notas || "").slice(0, 40)).replace(/\n/g, " ")}${(ultimaEntrada.notas || "").length > 40 ? "..." : ""}` : `<span class="muted">Sin entradas</span>`}</td>
+                <td><button class="btn ghost" data-et-open="${escapeHtml(f.id)}">Ver / Editar</button></td>
+              </tr>`;
+            }).join("") : `<tr><td colspan="5" class="empty">No hay expedientes tecnicos cargados.</td></tr>`}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  `;
 }
 
 function dashboard() {
@@ -1116,15 +1186,30 @@ function openExpedienteTecnicoModal(vehiculoId = "", vehiculoRef = "", consignac
           <div><h2>Expediente tecnico</h2><p>${escapeHtml(label)}</p></div>
           <button class="icon-btn" data-close>X</button>
         </div>
-        <div style="max-height:35vh;overflow-y:auto;padding:0 2px 12px;border-bottom:1px solid var(--border);margin-bottom:16px">
+        <div style="max-height:30vh;overflow-y:auto;padding:0 2px 12px;border-bottom:1px solid var(--border);margin-bottom:16px">
           <h3 style="font-size:12px;font-weight:700;letter-spacing:.06em;color:var(--muted);margin-bottom:10px">HISTORIAL (${historial.length} ${historial.length === 1 ? "entrada" : "entradas"})</h3>
           ${histHtml}
+        </div>
+        <div style="border-bottom:1px solid var(--border);padding-bottom:16px;margin-bottom:16px">
+          <h3 style="font-size:12px;font-weight:700;letter-spacing:.06em;color:var(--muted);margin-bottom:10px">ESTADO TECNICO</h3>
+          <div class="form-grid">
+            <div class="field">
+              <label>Seguro</label>
+              <select id="exp-seguro">
+                ${["Vigente", "Vencido", "Sin seguro"].map(o => `<option ${(existing?.seguroVigente || "Sin seguro") === o ? "selected" : ""}>${escapeHtml(o)}</option>`).join("")}
+              </select>
+            </div>
+            <div class="field">
+              <label>VTV vence</label>
+              <input type="date" id="exp-vtv-vence" value="${escapeHtml(existing?.vtvVence || "")}">
+            </div>
+          </div>
         </div>
         <div>
           <h3 style="font-size:12px;font-weight:700;letter-spacing:.06em;color:var(--muted);margin-bottom:10px">NUEVA ENTRADA</h3>
           <div class="field full" style="margin-bottom:12px">
             <label>Notas de estado (mecanico, chapa, interior, documentacion)</label>
-            <textarea id="exp-notas" rows="4" placeholder="Ej: Golpe en paragolpes trasero. Motor sin observaciones. Cedula verde presente. VTV vence 10/2026."></textarea>
+            <textarea id="exp-notas" rows="3" placeholder="Ej: Golpe en paragolpes trasero. Motor sin observaciones. Cedula verde presente."></textarea>
           </div>
           ${expPhotoSection()}
         </div>
@@ -1150,6 +1235,8 @@ function openExpedienteTecnicoModal(vehiculoId = "", vehiculoRef = "", consignac
   });
   document.getElementById("exp-save-btn")?.addEventListener("click", async () => {
     const notas = document.getElementById("exp-notas")?.value?.trim() || "";
+    const seguroVigente = document.getElementById("exp-seguro")?.value || "Sin seguro";
+    const vtvVence = document.getElementById("exp-vtv-vence")?.value || "";
     if (!notas && _expPhotosBuf.length === 0) return toast("Escribi una nota o agrega al menos una foto.");
     const entrada = {
       id: `h-${Date.now()}`,
@@ -1159,24 +1246,57 @@ function openExpedienteTecnicoModal(vehiculoId = "", vehiculoRef = "", consignac
       fotos: _expPhotosBuf.slice()
     };
     state.files = state.files || [];
+    let expediente;
     if (existing) {
       existing.historial = existing.historial || [];
       existing.historial.push(entrada);
+      existing.seguroVigente = seguroVigente;
+      existing.vtvVence = vtvVence;
+      expediente = existing;
     } else {
-      state.files.unshift({
+      const newExp = {
         id: `ex-V-${Date.now()}`,
         tipo: "Vehiculo",
         vehiculoId: vehiculoId || "",
         vehiculoRef: label,
         consignacionId: consignacionId || "",
         estado: "Activo",
+        seguroVigente,
+        vtvVence,
         historial: [entrada]
-      });
+      };
+      state.files.unshift(newExp);
+      expediente = newExp;
+    }
+    // Sync vtvVence to calendar — upsert by expedienteRef
+    if (vtvVence) {
+      state.calendar = state.calendar || [];
+      const existingCal = state.calendar.find(e => e.expedienteRef === expediente.id);
+      if (existingCal) {
+        existingCal.fecha = vtvVence;
+        existingCal.titulo = `Vence VTV — ${label}`;
+      } else {
+        state.calendar.unshift({
+          id: `vtv-${Date.now()}`,
+          tipo: "Vencimiento VTV",
+          titulo: `Vence VTV — ${label}`,
+          fecha: vtvVence,
+          hora: "",
+          vehiculo: label,
+          vehiculoId: vehiculoId || "",
+          estado: "Programado",
+          expedienteRef: expediente.id,
+          cliente: "",
+          notas: ""
+        });
+      }
+    } else if (existing) {
+      state.calendar = (state.calendar || []).filter(e => e.expedienteRef !== expediente.id);
     }
     addAudit(`Expediente tecnico actualizado: ${label}`);
-    await saveState("Entrada guardada en expediente tecnico");
+    await saveState("Expediente tecnico guardado");
     document.querySelector("[data-modal]")?.remove();
-    toast("Entrada guardada correctamente");
+    render();
   });
 }
 
@@ -2246,8 +2366,10 @@ function pill(value) {
     "Caliente": "hot", "Egreso": "hot", "Preparacion": "hot",
     "Alerta": "hot", "Demorado": "hot", "Cargo": "hot",
     // crit — rojo
-    "Cancelado": "crit", "Vencido": "crit", "Critico": "crit",
+    "Cancelado": "crit", "Cancelada": "crit", "Vencido": "crit", "Vencida": "crit", "Critico": "crit",
     "Baja": "crit", "Rechazado": "crit", "Suspendido": "crit",
+    // estados de cotizacion y expediente tecnico
+    "Vendido": "ok", "Sin seguro": "warn", "Por vencer": "warn",
     // tipos de expediente
     "Tramite": "info", "Vehiculo": "ok",
     // info — azul (default)
@@ -2335,6 +2457,27 @@ function bind() {
     if (!f) return;
     openExpedienteTecnicoModal(f.vehiculoId || "", f.vehiculoRef || "", f.consignacionId || "");
   }));
+
+  // Expediente tecnico page: open existing
+  document.querySelectorAll("[data-et-open]").forEach(btn => btn.addEventListener("click", () => {
+    const f = (state.files || []).find(x => x.id === btn.dataset.etOpen);
+    if (!f) return;
+    openExpedienteTecnicoModal(f.vehiculoId || "", f.vehiculoRef || "", f.consignacionId || "");
+  }));
+
+  // Expediente tecnico page: create new
+  const etNewBtn = document.getElementById("et-new-btn");
+  if (etNewBtn && !etNewBtn.dataset.bound) {
+    etNewBtn.dataset.bound = "true";
+    etNewBtn.addEventListener("click", () => {
+      const sel = document.getElementById("et-new-vehiculo");
+      const vId = sel?.value;
+      if (!vId) return toast("Seleccioná un vehículo primero.");
+      const opt = sel.selectedOptions[0];
+      const vRef = opt?.dataset.ref || opt?.text || "";
+      openExpedienteTecnicoModal(vId, vRef, "");
+    });
+  }
   document.querySelectorAll("[data-edit]").forEach(btn => btn.addEventListener("click", () => {
     const [key, id] = btn.dataset.edit.split(":");
     const row = state[key]?.find(x => x.id === id);
