@@ -993,7 +993,7 @@ function generatePeritajePDF(consignmentId, _override = null) {
     doc.setFont("helvetica","normal").setFontSize(7.5).setTextColor(180,195,220);
     doc.text(l,W-M,12+i*4.8,{align:"right"});
   });
-  doc.setFont("helvetica","bold").setFontSize(8).setTextColor(...BLUE);
+  doc.setFont("helvetica","bold").setFontSize(8).setTextColor(180,195,220);
   doc.text("PERITAJE VEHICULAR", W-M, hdrH-7, {align:"right"});
   y=hdrH+10;
 
@@ -1003,8 +1003,7 @@ function generatePeritajePDF(consignmentId, _override = null) {
   doc.setFont("helvetica","normal").setFontSize(8.5).setTextColor(...GRAY);
   doc.text(`Emitido el ${new Date().toLocaleDateString("es-AR",{day:"2-digit",month:"long",year:"numeric"})}`, M, y+5);
   y+=12;
-  doc.setDrawColor(...BLUE).setLineWidth(0.5).line(M,y,M+50,y);
-  doc.setDrawColor(...LGRAY).setLineWidth(0.3).line(M+50,y,W-M,y);
+  doc.setDrawColor(...LGRAY).setLineWidth(0.4).line(M,y,W-M,y);
   y+=8;
 
   // ─── CARD: TITULAR + VEHICULO ─────────────────────────────────────────────
@@ -1014,11 +1013,11 @@ function generatePeritajePDF(consignmentId, _override = null) {
   const vLines=[vNombre, cs.dominio&&`Dominio: ${cs.dominio}`, cs.anio&&`Año: ${cs.anio}`, cs.km&&`KM: ${Number(cs.km||0).toLocaleString("es-AR")}`, cs.precioPretendido&&`Precio pretendido: ${fmt(cs.precioPretendido)}`].filter(Boolean);
   const maxLines=Math.max(tLines.length, vLines.length);
   const cH=8+maxLines*5.5+2;
-  [[M, tLines,"TITULAR",...BLUE],[M+colW+6, vLines,"VEHICULO",...BLUE]].forEach(([bx,lines,ttl,...col]) => {
+  [[M, tLines,"TITULAR"],[M+colW+6, vLines,"VEHICULO"]].forEach(([bx,lines,ttl]) => {
     doc.setFillColor(...LIGHT).roundedRect(bx,y,colW,cH,2,2,"F");
     doc.setDrawColor(...LGRAY).setLineWidth(0.25).roundedRect(bx,y,colW,cH,2,2,"S");
-    doc.setFillColor(BLUE[0],BLUE[1],BLUE[2]).rect(bx,y,2.5,cH,"F");
-    doc.setFont("helvetica","bold").setFontSize(7).setTextColor(BLUE[0],BLUE[1],BLUE[2]); doc.text(ttl,bx+5,y+5);
+    doc.setFillColor(...LGRAY).rect(bx,y,2.5,cH,"F");
+    doc.setFont("helvetica","bold").setFontSize(7).setTextColor(...GRAY); doc.text(ttl,bx+5,y+5);
     let iy=y+10.5;
     lines.forEach((l,i) => {
       doc.setFont("helvetica",i===0?"bold":"normal").setFontSize(i===0?9:8.5).setTextColor(...(i===0?DARK:GRAY));
@@ -1031,7 +1030,7 @@ function generatePeritajePDF(consignmentId, _override = null) {
   const section = (title, num, pairs) => {
     if (y+12+pairs.length*6.5>268) { doc.addPage(); y=18; }
     doc.setFillColor(...DARK).roundedRect(M,y,W-2*M,8,1,1,"F");
-    doc.setFont("helvetica","bold").setFontSize(8).setTextColor(...BLUE); doc.text(`${num}.`,M+4,y+5.5);
+    doc.setFont("helvetica","bold").setFontSize(8).setTextColor(...GRAY); doc.text(`${num}.`,M+4,y+5.5);
     doc.setFont("helvetica","bold").setFontSize(8).setTextColor(...WHITE); doc.text(title,M+12,y+5.5);
     y+=8;
     pairs.forEach(([lbl,val,col],i) => {
@@ -1161,7 +1160,7 @@ function generateClientStatementPDF(clientId) {
   if (defaultLogoPdfDataUrl) { try { doc.addImage(defaultLogoPdfDataUrl,"PNG",M,3,30,30,undefined,"FAST"); logoLoaded=true; } catch(_e){} }
   if (!logoLoaded) { doc.setFont("helvetica","bold").setFontSize(17).setTextColor(...WHITE); doc.text(agencia,M,20); }
   [cfg.phone,cfg.email,cfg.address].filter(Boolean).forEach((l,i) => { doc.setFont("helvetica","normal").setFontSize(7.5).setTextColor(180,195,220); doc.text(l,W-M,12+i*4.8,{align:"right"}); });
-  doc.setFont("helvetica","bold").setFontSize(8).setTextColor(...BLUE);
+  doc.setFont("helvetica","bold").setFontSize(8).setTextColor(180,195,220);
   doc.text("ESTADO DE CUENTA", W-M, hdrH-7, {align:"right"});
   y = hdrH + 10;
 
@@ -1171,8 +1170,7 @@ function generateClientStatementPDF(clientId) {
   doc.setFont("helvetica","normal").setFontSize(8.5).setTextColor(...GRAY);
   doc.text(`Generado el ${new Date().toLocaleDateString("es-AR",{day:"2-digit",month:"long",year:"numeric"})}`, M, y+5);
   y += 12;
-  doc.setDrawColor(...BLUE).setLineWidth(0.5).line(M,y,M+40,y);
-  doc.setDrawColor(...LGRAY).setLineWidth(0.3).line(M+40,y,W-M,y);
+  doc.setDrawColor(...LGRAY).setLineWidth(0.4).line(M,y,W-M,y);
   y += 8;
 
   // Cliente card
@@ -1180,8 +1178,8 @@ function generateClientStatementPDF(clientId) {
   const cardH = 8 + cardLines.length * 5.5;
   doc.setFillColor(...LIGHT).roundedRect(M,y,W-2*M,cardH,2,2,"F");
   doc.setDrawColor(...LGRAY).setLineWidth(0.25).roundedRect(M,y,W-2*M,cardH,2,2,"S");
-  doc.setFillColor(...RED).rect(M,y,2.5,cardH,"F");
-  doc.setFont("helvetica","bold").setFontSize(7).setTextColor(...BLUE); doc.text("CLIENTE", M+5, y+5);
+  doc.setFillColor(...LGRAY).rect(M,y,2.5,cardH,"F");
+  doc.setFont("helvetica","bold").setFontSize(7).setTextColor(...GRAY); doc.text("CLIENTE", M+5, y+5);
   doc.setFont("helvetica","bold").setFontSize(11).setTextColor(...DARK); doc.text(client.nombre, M+5, y+10.5);
   let cy = y+10.5;
   [client.telefono && `Tel: ${client.telefono}`, client.email && `Email: ${client.email}`, client.dni && `DNI/CUIT: ${client.dni}`].filter(Boolean).forEach(l => { cy+=5.5; doc.setFont("helvetica","normal").setFontSize(8.5).setTextColor(...GRAY); doc.text(l,M+5,cy); });
@@ -1190,7 +1188,7 @@ function generateClientStatementPDF(clientId) {
   // Resumen saldo
   const summaryH = 18;
   doc.setFillColor(...DARK).roundedRect(M,y,W-2*M,summaryH,2,2,"F");
-  doc.setFillColor(...RED).rect(M,y,4,summaryH,"F");
+  doc.setFillColor(...DARK).rect(M,y,4,summaryH,"F");
   const thirds = (W-2*M)/3;
   [[`Total adeudado`, totalAdeudado, [160,185,220]], [`Total pagado`, totalPagado, [100,210,130]], [`Saldo pendiente`, saldoPendiente, saldoPendiente>0?[220,90,90]:[100,210,130]]].forEach(([lbl,val,col],i) => {
     const bx = M + i*thirds;
@@ -1261,7 +1259,7 @@ function generatePaymentReceiptPDF(clientId, rowIdx) {
   if (!ll) { doc.setFont("helvetica","bold").setFontSize(17).setTextColor(...WHITE); doc.text(agencia,M,20); }
   [cfg.phone,cfg.email].filter(Boolean).forEach((l,i) => { doc.setFont("helvetica","normal").setFontSize(7.5).setTextColor(180,195,220); doc.text(l,W-M,12+i*4.8,{align:"right"}); });
   const recNum = String(Date.now()).slice(-6);
-  doc.setFont("helvetica","bold").setFontSize(8).setTextColor(...BLUE);
+  doc.setFont("helvetica","bold").setFontSize(8).setTextColor(180,195,220);
   doc.text(`RECIBO  #${recNum}`, W-M, hdrH-7, {align:"right"});
   y = hdrH+10;
 
@@ -1270,8 +1268,7 @@ function generatePaymentReceiptPDF(clientId, rowIdx) {
   const fechaDoc = r.fecha ? new Date(r.fecha+"T12:00:00").toLocaleDateString("es-AR",{day:"2-digit",month:"long",year:"numeric"}) : new Date().toLocaleDateString("es-AR",{day:"2-digit",month:"long",year:"numeric"});
   doc.setFont("helvetica","normal").setFontSize(8.5).setTextColor(...GRAY); doc.text(`Fecha: ${fechaDoc}`, M, y+5);
   y+=12;
-  doc.setDrawColor(...BLUE).setLineWidth(0.5).line(M,y,M+40,y);
-  doc.setDrawColor(...LGRAY).setLineWidth(0.3).line(M+40,y,W-M,y);
+  doc.setDrawColor(...LGRAY).setLineWidth(0.4).line(M,y,W-M,y);
   y+=8;
 
   // Cliente card
@@ -1279,8 +1276,8 @@ function generatePaymentReceiptPDF(clientId, rowIdx) {
   const cardH=8+cardLines.length*5.5;
   doc.setFillColor(...LIGHT).roundedRect(M,y,W-2*M,cardH,2,2,"F");
   doc.setDrawColor(...LGRAY).setLineWidth(0.25).roundedRect(M,y,W-2*M,cardH,2,2,"S");
-  doc.setFillColor(...RED).rect(M,y,2.5,cardH,"F");
-  doc.setFont("helvetica","bold").setFontSize(7).setTextColor(...BLUE); doc.text("CLIENTE",M+5,y+5);
+  doc.setFillColor(...LGRAY).rect(M,y,2.5,cardH,"F");
+  doc.setFont("helvetica","bold").setFontSize(7).setTextColor(...GRAY); doc.text("CLIENTE",M+5,y+5);
   doc.setFont("helvetica","bold").setFontSize(11).setTextColor(...DARK); doc.text(client.nombre,M+5,y+10.5);
   let ry=y+10.5;
   [client.telefono&&`Tel: ${client.telefono}`, client.email&&`Email: ${client.email}`, client.dni&&`DNI/CUIT: ${client.dni}`].filter(Boolean).forEach(l=>{ry+=5.5;doc.setFont("helvetica","normal").setFontSize(8.5).setTextColor(...GRAY);doc.text(l,M+5,ry);});
@@ -1298,8 +1295,7 @@ function generatePaymentReceiptPDF(clientId, rowIdx) {
   });
   const finalBoxY=y+detH-14;
   doc.setFillColor(...DARK).roundedRect(M+2,finalBoxY,W-2*M-4,13,1.5,1.5,"F");
-  doc.setFillColor(...BLUE).roundedRect(M+2,finalBoxY,4,13,1.5,1.5,"F");
-  doc.setFont("helvetica","bold").setFontSize(9).setTextColor(160,185,220); doc.text("MONTO",M+9,finalBoxY+8.5);
+  doc.setFont("helvetica","bold").setFontSize(9).setTextColor(180,195,220); doc.text("MONTO",M+9,finalBoxY+8.5);
   doc.setFont("helvetica","bold").setFontSize(16).setTextColor(...WHITE); doc.text(fmt(r.monto),W-M-6,finalBoxY+8.5,{align:"right"});
   y+=detH+10;
 
@@ -4440,7 +4436,7 @@ function openSaleReport(saleId) {
   doc.setFont("helvetica", "normal").setFontSize(7.5).setTextColor(180, 195, 220);
   contactLines.forEach((line, i) => doc.text(line, W - M, 12 + i * 4.8, { align: "right" }));
   const saleNum = saleId.replace(/\D/g, "").slice(-6).padStart(6, "0") || "000001";
-  doc.setFont("helvetica", "bold").setFontSize(8).setTextColor(...BLUE);
+  doc.setFont("helvetica", "bold").setFontSize(8).setTextColor(180, 195, 220);
   doc.text(`VENTA  #${saleNum}`, W - M, hdrH - 7, { align: "right" });
   y = hdrH + 10;
 
@@ -4453,11 +4449,10 @@ function openSaleReport(saleId) {
     : new Date().toLocaleDateString("es-AR", { day: "2-digit", month: "long", year: "numeric" });
   doc.setFont("helvetica", "normal").setFontSize(8.5).setTextColor(...GRAY);
   doc.text(`Fecha de operacion: ${fechaDoc}`, M, y + 5);
-  doc.setFont("helvetica", "bold").setFontSize(8.5).setTextColor(...BLUE);
+  doc.setFont("helvetica", "bold").setFontSize(8.5).setTextColor(...GRAY);
   doc.text(`Etapa: ${sale.etapa || "—"}`, W - M, y + 5, { align: "right" });
   y += 12;
-  doc.setDrawColor(...BLUE).setLineWidth(0.5).line(M, y, M + 40, y);
-  doc.setDrawColor(...LGRAY).setLineWidth(0.3).line(M + 40, y, W - M, y);
+  doc.setDrawColor(...LGRAY).setLineWidth(0.4).line(M, y, W - M, y);
   y += 8;
 
   // ─── CLIENTE + VEHICULO ──────────────────────────────────────────────────────
@@ -4472,8 +4467,8 @@ function openSaleReport(saleId) {
 
   doc.setFillColor(...LIGHT).roundedRect(M, y, colW, cardH, 2, 2, "F");
   doc.setDrawColor(...LGRAY).setLineWidth(0.25).roundedRect(M, y, colW, cardH, 2, 2, "S");
-  doc.setFillColor(...BLUE).rect(M, y, 2.5, cardH, "F");
-  doc.setFont("helvetica", "bold").setFontSize(7).setTextColor(...BLUE);
+  doc.setFillColor(...LGRAY).rect(M, y, 2.5, cardH, "F");
+  doc.setFont("helvetica", "bold").setFontSize(7).setTextColor(...GRAY);
   doc.text("CLIENTE", M + 5, y + 5);
   doc.setFont("helvetica", "bold").setFontSize(10.5).setTextColor(...DARK);
   doc.text(clientName, M + 5, y + 10.5);
@@ -4539,8 +4534,7 @@ function openSaleReport(saleId) {
   });
   const finalBoxY = y + condCardH - 14;
   doc.setFillColor(...DARK).roundedRect(M + 2, finalBoxY, W - 2 * M - 4, 13, 1.5, 1.5, "F");
-  doc.setFillColor(...BLUE).roundedRect(M + 2, finalBoxY, 4, 13, 1.5, 1.5, "F");
-  doc.setFont("helvetica", "bold").setFontSize(9).setTextColor(160, 185, 220);
+  doc.setFont("helvetica", "bold").setFontSize(9).setTextColor(180, 195, 220);
   doc.text("PRECIO ACORDADO", M + 9, finalBoxY + 8.5);
   doc.setFont("helvetica", "bold").setFontSize(16).setTextColor(...WHITE);
   doc.text(fmt(sale.monto), W - M - 6, finalBoxY + 8.5, { align: "right" });
@@ -4586,7 +4580,7 @@ function openSaleReport(saleId) {
   // ─── PIE ─────────────────────────────────────────────────────────────────────
   const footerY = H - 14;
   doc.setFillColor(...DARK).rect(0, footerY - 8, W, 22, "F");
-  doc.setFillColor(...BLUE).rect(0, footerY - 8, W, 1.5, "F");
+  doc.setFillColor(...RED).rect(0, footerY - 8, W, 1.5, "F");
   if (sale.vendedor) {
     doc.setFont("helvetica", "bold").setFontSize(7.5).setTextColor(...WHITE);
     doc.text(`Asesor: ${sale.vendedor}`, M, footerY + 3);
@@ -4696,7 +4690,7 @@ function generateQuotePDF(quoteId) {
 
   // Quote label in header
   const quoteNum = quoteId.replace(/\D/g, "").slice(-6).padStart(6, "0") || "000001";
-  doc.setFont("helvetica", "bold").setFontSize(8).setTextColor(...BLUE);
+  doc.setFont("helvetica", "bold").setFontSize(8).setTextColor(180, 195, 220);
   doc.text(`COTIZACION  #${quoteNum}`, W - M, hdrH - 7, { align: "right" });
 
   y = hdrH + 10;
@@ -4711,14 +4705,13 @@ function generateQuotePDF(quoteId) {
   doc.text(`Emitida el ${today}`, M, y + 5);
   if (quote.validez) {
     const vDate = new Date(quote.validez + "T12:00:00").toLocaleDateString("es-AR", { day: "2-digit", month: "long", year: "numeric" });
-    doc.setFont("helvetica", "bold").setFontSize(8.5).setTextColor(...BLUE);
+    doc.setFont("helvetica", "bold").setFontSize(8.5).setTextColor(...GRAY);
     doc.text(`Valida hasta: ${vDate}`, W - M, y + 5, { align: "right" });
   }
   y += 12;
 
-  // thin accent rule
-  doc.setDrawColor(...BLUE).setLineWidth(0.5).line(M, y, M + 40, y);
-  doc.setDrawColor(...LGRAY).setLineWidth(0.3).line(M + 40, y, W - M, y);
+  // thin separator
+  doc.setDrawColor(...LGRAY).setLineWidth(0.4).line(M, y, W - M, y);
   y += 8;
 
   // ─── DOS COLUMNAS: CLIENTE + VEHICULO ───────────────────────────────────────
@@ -4734,8 +4727,8 @@ function generateQuotePDF(quoteId) {
 
   doc.setFillColor(...LIGHT).roundedRect(M, y, colW, cardH, 2, 2, "F");
   doc.setDrawColor(...LGRAY).setLineWidth(0.25).roundedRect(M, y, colW, cardH, 2, 2, "S");
-  doc.setFillColor(...BLUE).rect(M, y, 2.5, cardH, "F");
-  doc.setFont("helvetica", "bold").setFontSize(7).setTextColor(...BLUE);
+  doc.setFillColor(...LGRAY).rect(M, y, 2.5, cardH, "F");
+  doc.setFont("helvetica", "bold").setFontSize(7).setTextColor(...GRAY);
   doc.text("CLIENTE", M + 5, y + 5);
   doc.setFont("helvetica", "bold").setFontSize(10.5).setTextColor(...DARK);
   doc.text(clientName, M + 5, y + 5 + 5.5);
@@ -4807,12 +4800,10 @@ function generateQuotePDF(quoteId) {
     doc.setDrawColor(...LGRAY).setLineWidth(0.2).line(M + 5, py - 2, W - M - 5, py - 2); py += 1;
   }
 
-  // Precio final — caja azul oscuro
+  // Precio final
   const finalBoxY = y + priceCardH - 14;
   doc.setFillColor(...DARK).roundedRect(M + 2, finalBoxY, W - 2 * M - 4, 13, 1.5, 1.5, "F");
-  // Left accent strip
-  doc.setFillColor(...BLUE).roundedRect(M + 2, finalBoxY, 4, 13, 1.5, 1.5, "F");
-  doc.setFont("helvetica", "bold").setFontSize(9).setTextColor(160, 185, 220);
+  doc.setFont("helvetica", "bold").setFontSize(9).setTextColor(180, 195, 220);
   doc.text("PRECIO FINAL", M + 9, finalBoxY + 8.5);
   doc.setFont("helvetica", "bold").setFontSize(16).setTextColor(...WHITE);
   doc.text(fmt(quote.monto), W - M - 6, finalBoxY + 8.5, { align: "right" });
@@ -4834,7 +4825,7 @@ function generateQuotePDF(quoteId) {
   // ─── PIE ────────────────────────────────────────────────────────────────────
   const footerY = H - 14;
   doc.setFillColor(...DARK).rect(0, footerY - 8, W, 22, "F");
-  doc.setFillColor(...BLUE).rect(0, footerY - 8, W, 1.5, "F");
+  doc.setFillColor(...RED).rect(0, footerY - 8, W, 1.5, "F");
   doc.setFont("helvetica", "normal").setFontSize(7.5).setTextColor(160, 185, 220);
   if (quote.vendedor) {
     doc.setFont("helvetica", "bold").setTextColor(...WHITE);
