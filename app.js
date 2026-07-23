@@ -82,7 +82,7 @@ async function loadState() {
 const sectionData = {
   calendario: { key: "calendarItems", title: "Calendario", item: "evento", fields: [["fecha", "Fecha", "date"], ["hora", "Hora"], ["tipo", "Tipo"], ["cliente", "Cliente"], ["vehiculo", "Vehiculo"], ["estado", "Estado"]], columns: [["fecha", "Fecha"], ["hora", "Hora"], ["tipo", "Tipo"], ["cliente", "Cliente"], ["vehiculo", "Vehiculo"], ["estado", "Estado"]] },
   alertas: { key: "alerts", title: "Alertas", item: "alerta", fields: [["titulo", "Titulo"], ["prioridad", "Prioridad"], ["area", "Area"], ["vence", "Vence", "date"], ["estado", "Estado"]], columns: [["titulo", "Titulo"], ["prioridad", "Prioridad"], ["area", "Area"], ["vence", "Vence"], ["estado", "Estado"]] },
-  cotizaciones: { key: "quotes", title: "Cotizaciones", item: "cotizacion", fields: [["cliente", "Cliente"], ["vehiculo", "Vehiculo"], ["monto", "Monto", "number"], ["moneda", "Moneda"], ["estado", "Estado"], ["fecha", "Fecha", "date"]], columns: [["cliente", "Cliente"], ["vehiculo", "Vehiculo"], ["monto", "Monto"], ["moneda", "Moneda"], ["estado", "Estado"], ["fecha", "Fecha"]] },
+  cotizaciones: { key: "quotes", title: "Cotizaciones", item: "cotizacion", fields: [["cliente", "Cliente"], ["vehiculo", "Vehiculo"], ["monto", "Monto", "number"], ["moneda", "Moneda"], ["tipoOperacion", "Tipo"], ["estado", "Estado"], ["fecha", "Fecha", "date"]], columns: [["cliente", "Cliente"], ["vehiculo", "Vehiculo"], ["tipoOperacion", "Tipo"], ["monto", "Monto"], ["moneda", "Moneda"], ["estado", "Estado"], ["fecha", "Fecha"]] },
   cobros: { key: "collections", title: "Cobros", item: "cobro", fields: [["cliente", "Cliente"], ["concepto", "Concepto"], ["monto", "Monto", "number"], ["vence", "Vence", "date"], ["estado", "Estado"]], columns: [["cliente", "Cliente"], ["concepto", "Concepto"], ["monto", "Monto"], ["vence", "Vence"], ["estado", "Estado"]] },
   expedientes: { key: "files", title: "Expedientes", item: "expediente", fields: [["numero", "Numero"], ["cliente", "Cliente"], ["vehiculo", "Vehiculo"], ["tramite", "Tramite"], ["estado", "Estado"], ["responsable", "Responsable"]], columns: [["numero", "Numero"], ["cliente", "Cliente"], ["vehiculo", "Vehiculo"], ["tramite", "Tramite"], ["estado", "Estado"], ["responsable", "Responsable"]] },
   reclamos: { key: "claims", title: "Reclamos", item: "reclamo", fields: [["cliente", "Cliente"], ["motivo", "Motivo"], ["canal", "Canal"], ["prioridad", "Prioridad"], ["estado", "Estado"], ["proximo", "Proximo paso"]], columns: [["cliente", "Cliente"], ["motivo", "Motivo"], ["canal", "Canal"], ["prioridad", "Prioridad"], ["estado", "Estado"], ["proximo", "Proximo paso"]] },
@@ -103,7 +103,7 @@ const moduleEnhancements = {
   stock: { fields: [["dominio", "Dominio"], ["marca", "Marca"], ["modelo", "Modelo"], ["version", "Version"], ["anio", "Anio", "number"], ["km", "Kilometros", "number"], ["precio", "Precio", "number"], ["moneda", "Moneda"], ["estado", "Estado"], ["ubicacion", "Ubicacion"], ["origen", "Origen"], ["margen", "Margen", "number"], ["notas", "Notas", "textarea"]], columns: [["dominio", "Dominio"], ["marca", "Marca"], ["modelo", "Modelo"], ["anio", "Anio"], ["precio", "Precio"], ["estado", "Estado"]] },
   clientes: { fields: [["nombre", "Nombre"], ["telefono", "Telefono"], ["email", "Email", "email"], ["dni", "DNI/CUIT"], ["interes", "Interes"], ["origen", "Origen"], ["vendedor", "Vendedor"], ["proximo", "Proximo contacto"], ["estado", "Estado"], ["notas", "Notas", "textarea"]], columns: [["nombre", "Nombre"], ["telefono", "Telefono"], ["interes", "Interes"], ["origen", "Origen"], ["estado", "Estado"]] },
   ventas: { fields: [["cliente", "Cliente"], ["vehiculo", "Vehiculo"], ["etapa", "Etapa"], ["monto", "Monto", "number"], ["moneda", "Moneda"], ["sena", "Sena", "number"], ["vendedor", "Vendedor"], ["proximo", "Proximo paso"], ["estado", "Estado"], ["notas", "Notas", "textarea"]], columns: [["cliente", "Cliente"], ["vehiculo", "Vehiculo"], ["etapa", "Etapa"], ["monto", "Monto"], ["vendedor", "Vendedor"], ["estado", "Estado"]] },
-  cotizaciones: { fields: [["cliente", "Cliente"], ["telefono", "Telefono"], ["vehiculo", "Vehiculo"], ["precioLista", "Precio lista", "number"], ["bonificacion", "Bonificacion", "number"], ["monto", "Monto final", "number"], ["moneda", "Moneda"], ["validez", "Validez hasta", "date"], ["vendedor", "Vendedor"], ["estado", "Estado"], ["notas", "Condiciones", "textarea"]], columns: [["cliente", "Cliente"], ["vehiculo", "Vehiculo"], ["monto", "Monto"], ["moneda", "Moneda"], ["validez", "Validez"], ["estado", "Estado"]] },
+  cotizaciones: { fields: [["cliente", "Cliente"], ["telefono", "Telefono"], ["vehiculo", "Vehiculo"], ["tipoOperacion", "Tipo", "select"], ["precioLista", "Precio lista", "number"], ["bonificacion", "Bonificacion", "number"], ["monto", "Monto final", "number"], ["moneda", "Moneda"], ["validez", "Validez hasta", "date"], ["vendedor", "Vendedor"], ["estado", "Estado"], ["notas", "Condiciones", "textarea"]], columns: [["cliente", "Cliente"], ["vehiculo", "Vehiculo"], ["tipoOperacion", "Tipo"], ["monto", "Monto"], ["moneda", "Moneda"], ["validez", "Validez"], ["estado", "Estado"]] },
   cobros: { fields: [["cliente", "Cliente"], ["telefono", "Telefono"], ["concepto", "Concepto"], ["vehiculo", "Vehiculo"], ["monto", "Monto", "number"], ["moneda", "Moneda"], ["medio", "Medio"], ["vence", "Vence", "date"], ["estado", "Estado"], ["notas", "Notas", "textarea"]], columns: [["cliente", "Cliente"], ["concepto", "Concepto"], ["monto", "Monto"], ["vence", "Vence"], ["estado", "Estado"]] },
   gestoria: { fields: [["tramite", "Tramite"], ["cliente", "Cliente"], ["vehiculo", "Vehiculo"], ["dominio", "Dominio"], ["gestor", "Gestor"], ["vence", "Vence", "date"], ["costo", "Costo", "number"], ["estado", "Estado"], ["notas", "Observaciones", "textarea"]], columns: [["tramite", "Tramite"], ["cliente", "Cliente"], ["vehiculo", "Vehiculo"], ["estado", "Estado"], ["vence", "Vence"]] },
   finanzas: { fields: [["concepto", "Concepto"], ["tipo", "Tipo"], ["categoria", "Categoria"], ["cliente", "Cliente"], ["vehiculo", "Vehiculo"], ["monto", "Monto", "number"], ["moneda", "Moneda"], ["fecha", "Fecha", "date"], ["medio", "Medio de pago"], ["estado", "Estado"], ["notas", "Notas", "textarea"]], columns: [["concepto", "Concepto"], ["tipo", "Tipo"], ["monto", "Monto"], ["fecha", "Fecha"], ["estado", "Estado"]] },
@@ -1885,6 +1885,11 @@ function formFor(key, row = {}) {
     _vehiclePhotosBuf = (row.fotos || []).slice();
     return groupedFormWithLinks(key, fields, row) + vehiclePhotoSection(row);
   }
+  if (key === "quotes") {
+    _vehiclePhotosBuf = (row.fotos || []).slice();
+    if (!row.tipoOperacion) row = { tipoOperacion: "Venta", ...row };
+    return groupedFormWithLinks(key, fields, row) + vehiclePhotoSection(row);
+  }
   if (key === "sales") return salesForm(row);
   if (key === "clientDocs") return clientDocForm(row);
   const linkedKeys = ["paperwork", "calendar", "quotes", "files", "consignments"];
@@ -2036,8 +2041,15 @@ function salesForm(row = {}) {
   const stages = ["Contacto", "Tasacion", "Reserva", "Cierre", "Perdida"];
   const formaPago = row.formaPago || "Contado";
   const showCuotas = formaPago === "Cuotas";
+  const showPermuta = formaPago === "Permuta";
   const anticipo = Number(row.anticipo || row.sena || 0);
   const showAnticipo = anticipo > 0;
+  const availablePermutaQuotes = (state.quotes || []).filter(q =>
+    q.tipoOperacion === "Recibir vehiculo" && q.estado !== "Vendido" && q.estado !== "Cancelada"
+  );
+  const selectedPermuta = availablePermutaQuotes.find(q => q.id === (row.cotizacionPermutaId || ""));
+  const permutaMonto = Number(selectedPermuta?.monto || 0);
+  const saldoTrasPermuta = Math.max(0, Number(row.monto || 0) - permutaMonto);
 
   return `
     <fieldset class="form-section">
@@ -2065,7 +2077,7 @@ function salesForm(row = {}) {
         <div class="field">
           <label>Forma de pago</label>
           <select name="formaPago" id="sf-forma-pago">
-            ${["Contado", "Financiado", "Cuotas"].map(o => `<option ${formaPago === o ? "selected" : ""}>${o}</option>`).join("")}
+            ${["Contado", "Financiado", "Cuotas", "Permuta"].map(o => `<option ${formaPago === o ? "selected" : ""}>${o}</option>`).join("")}
           </select>
         </div>
         <div class="field">
@@ -2094,6 +2106,27 @@ function salesForm(row = {}) {
             <small>Auto: (monto − anticipo) ÷ cuotas</small>
           </div>
         </div>
+      </div>
+      <div id="sf-permuta-section" style="display:${showPermuta ? "" : "none"}">
+        <div class="form-grid" style="margin-top:12px">
+          <div class="field full">
+            <label>Cotizacion de permuta</label>
+            <select name="cotizacionPermutaId" id="sf-cotizacion-permuta">
+              <option value="">— Seleccioná una cotizacion de recepcion —</option>
+              ${availablePermutaQuotes.map(q => `<option value="${escapeHtml(q.id)}" data-monto="${q.monto || 0}" ${(row.cotizacionPermutaId || "") === q.id ? "selected" : ""}>${escapeHtml(q.vehiculo || q.cliente || q.id)} — ${money(q.monto)}</option>`).join("")}
+            </select>
+            <small>Solo cotizaciones de tipo "Recibir vehiculo" activas.</small>
+          </div>
+          <div class="field">
+            <label>Valor de la permuta</label>
+            <input type="text" id="sf-permuta-valor" value="${permutaMonto ? money(permutaMonto) : "—"}" readonly style="background:var(--surface2);color:var(--muted)">
+          </div>
+          <div class="field">
+            <label>Saldo a cobrar (monto − permuta)</label>
+            <input type="text" id="sf-permuta-saldo" value="${showPermuta && permutaMonto ? money(saldoTrasPermuta) : "—"}" readonly style="background:var(--surface2);color:var(--accent);font-weight:700">
+          </div>
+        </div>
+        <input type="hidden" name="cotizacionPermutaRef" value="${escapeHtml(selectedPermuta?.vehiculo || selectedPermuta?.cliente || "")}">
       </div>
     </fieldset>
     <fieldset class="form-section">
@@ -2259,7 +2292,8 @@ function fieldConfig(name, moduleKey = "") {
     origen: { type: "select", options: ["WhatsApp", "Instagram", "MercadoLibre", "Salon", "Referido", "Web"] },
     urgencia: { type: "select", options: ["Alta", "Media", "Baja"] },
     match: { type: "select", options: ["Sin match", "Posible", "Exacto", "Enviado"] },
-    probabilidad: { type: "select", options: ["Alta", "Media", "Baja"] }
+    probabilidad: { type: "select", options: ["Alta", "Media", "Baja"] },
+    tipoOperacion: { type: "select", options: ["Venta", "Recibir vehiculo"] }
   };
   const relationFields = {
     cliente: { type: "datalist", options: clientNames() },
@@ -2321,7 +2355,8 @@ function statusOptions(moduleKey) {
     finance: ["Pendiente", "Confirmado", "Pagado", "Rechazado"],
     paperwork: ["Pendiente", "En curso", "Listo", "Observado"],
     messages: ["Borrador", "Listo para enviar", "Programado", "Enviado"],
-    orders: ["Activo", "Buscando", "Pausado", "Con match", "Cerrado"]
+    orders: ["Activo", "Buscando", "Pausado", "Con match", "Cerrado"],
+    quotes: ["Activo", "Vendido", "Vencida", "Cancelada"]
   };
   return map[moduleKey] || ["Pendiente", "Activo", "En curso", "Hecho", "Cancelado"];
 }
@@ -2615,7 +2650,7 @@ function bindModal() {
         const prevSale = (id && key === "sales") ? (state[key].find(x => x.id === id)) : null;
         const prevEtapa = prevSale?.etapa || null;
         const prevClienteId = prevSale?.clienteId || null;
-        if (key === "vehicles" || key === "consignments") item.fotos = _vehiclePhotosBuf.slice();
+        if (key === "vehicles" || key === "consignments" || key === "quotes") item.fotos = _vehiclePhotosBuf.slice();
         if (key === "sales") {
           const cSel = e.target.querySelector("[data-sales-client]");
           const vSel = e.target.querySelector("[data-sales-vehicle]");
@@ -2758,16 +2793,40 @@ function bindModal() {
     });
   });
 
-  // Sales form: show/hide cuotas section on forma de pago change
+  // Sales form: show/hide cuotas/permuta sections on forma de pago change
   const sfFormaPago = document.querySelector("#sf-forma-pago");
   if (sfFormaPago && !sfFormaPago.dataset.bound) {
     sfFormaPago.dataset.bound = "true";
     sfFormaPago.addEventListener("change", () => {
       const sec = document.getElementById("sf-cuotas-section");
       if (sec) sec.style.display = sfFormaPago.value === "Cuotas" ? "" : "none";
+      const secP = document.getElementById("sf-permuta-section");
+      if (secP) secP.style.display = sfFormaPago.value === "Permuta" ? "" : "none";
       sfRecalcMontoCuota();
+      sfRecalcPermutaSaldo();
     });
   }
+
+  // Permuta: update saldo display when cotizacion or monto changes
+  function sfRecalcPermutaSaldo() {
+    const sfMonto = document.querySelector("#sf-monto");
+    const sfPSel = document.querySelector("#sf-cotizacion-permuta");
+    const sfPValor = document.querySelector("#sf-permuta-valor");
+    const sfPSaldo = document.querySelector("#sf-permuta-saldo");
+    if (!sfPSel || !sfPValor || !sfPSaldo) return;
+    const opt = sfPSel.selectedOptions[0];
+    const permutaM = opt?.value ? Number(opt.dataset.monto || 0) : 0;
+    const totalM = Number(sfMonto?.value || 0);
+    const saldo = Math.max(0, totalM - permutaM);
+    sfPValor.value = permutaM ? money(permutaM) : "—";
+    sfPSaldo.value = (opt?.value && totalM) ? money(saldo) : "—";
+  }
+  const sfPermutaSel = document.querySelector("#sf-cotizacion-permuta");
+  if (sfPermutaSel && !sfPermutaSel.dataset.bound) {
+    sfPermutaSel.dataset.bound = "true";
+    sfPermutaSel.addEventListener("change", sfRecalcPermutaSaldo);
+  }
+  if (sfPermutaSel) sfRecalcPermutaSaldo();
 
   // Sales form: show/hide anticipo section on checkbox change
   const sfTieneAnticipo = document.querySelector("#sf-tiene-anticipo");
@@ -2798,7 +2857,7 @@ function bindModal() {
   const sfMonto2 = document.querySelector("#sf-monto");
   if (sfMonto2 && !sfMonto2.dataset.sfBound) {
     sfMonto2.dataset.sfBound = "true";
-    sfMonto2.addEventListener("input", sfRecalcMontoCuota);
+    sfMonto2.addEventListener("input", () => { sfRecalcMontoCuota(); sfRecalcPermutaSaldo(); });
   }
   const sfCantCuotas2 = document.querySelector("#sf-cant-cuotas");
   if (sfCantCuotas2 && !sfCantCuotas2.dataset.sfBound) {
@@ -3197,6 +3256,32 @@ function onNewSaleCreated(item, sale) {
       estado: "Confirmado",
       notas: `Anticipo de venta — forma de pago: ${item.formaPago || "—"}`
     });
+  }
+  if (item.formaPago === "Permuta" && item.cotizacionPermutaId) {
+    const srcQuote = (state.quotes || []).find(q => q.id === item.cotizacionPermutaId);
+    if (srcQuote) {
+      const nowTs2 = Date.now();
+      state.finance.unshift({
+        id: `fin-perm-${nowTs2}`,
+        saleId: sale.id,
+        saleRef: sale.id,
+        concepto: `Permuta — ${srcQuote.vehiculo || srcQuote.cliente || "vehiculo"}`,
+        tipo: "Ingreso",
+        categoria: "Permuta",
+        cliente: sale.cliente || "",
+        clienteId: sale.clienteId || "",
+        vehiculo: srcQuote.vehiculo || "",
+        vehiculoId: srcQuote.vehiculoId || "",
+        monto: Number(srcQuote.monto || 0),
+        moneda: sale.moneda || "ARS",
+        fecha: item.fecha || todayKey(),
+        medio: "Permuta",
+        estado: "Confirmado",
+        notas: `Permuta de vehiculo — cotizacion ${srcQuote.id}`
+      });
+      srcQuote.estado = "Vendido";
+      srcQuote.saleId = sale.id;
+    }
   }
   if (item.formaPago === "Cuotas") {
     const cantCuotas = Number(item.cantCuotas || 0);
