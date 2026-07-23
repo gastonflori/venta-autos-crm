@@ -348,6 +348,12 @@ function normalizeState(next = {}) {
     });
     merged.settings.coreSeedV4 = true;
   }
+  if (!merged.settings.brandingV1) {
+    if (!merged.settings.businessName || /^Sote Auto$/i.test(merged.settings.businessName)) {
+      merged.settings.businessName = "Lake Motors";
+    }
+    merged.settings.brandingV1 = true;
+  }
   return merged;
 }
 
