@@ -255,6 +255,73 @@ function normalizeState(next = {}) {
     seedClients.filter(c => !existingCIds.has(c.id)).forEach(c => (merged.clients = merged.clients || []).push(c));
     merged.settings.coreSeedV3 = true;
   }
+  if (!merged.settings.coreSeedV4) {
+    const now = "2026-07-23";
+    const adds = {
+      vehicles: [
+        { id: "sv4-1", condicion: "0km", dominio: "AF112KR", marca: "Toyota", modelo: "Yaris", version: "XLS CVT", anio: 2026, km: 0, precio: 21500000, moneda: "ARS", estado: "Disponible", ubicacion: "Salon", origen: "Concesionaria", margen: 900000, notas: "0km, color blanco perla, sin uso" },
+        { id: "sv4-2", condicion: "Usado", dominio: "AG885TL", marca: "Renault", modelo: "Duster", version: "Intens 1.6 4x2", anio: 2022, km: 44000, precio: 31000000, moneda: "ARS", estado: "Disponible", ubicacion: "Salon", origen: "Usados", margen: 1500000, notas: "Muy buen estado general",
+          numeroMotor: "K4M-8854331", numeroChasis: "VF1HSRC0B56544872", numeroVin: "VF1HSRC0B56544872",
+          coincideDocumentacion: "Si", improntasTomadas: "Si",
+          estadoChapa: "Bueno", detalleChapa: "Tope de puerta leve en puerta trasera izquierda",
+          danosEstructurales: "No", detalleDanosEstructurales: "", modificacionesNoAutorizadas: "No",
+          nivelCombustible: "1/2", cubiertaDelIzq: "Buena", cubiertaDelDer: "Buena", cubiertaTraIzq: "Regular", cubiertaTraDer: "Regular",
+          auxilio: "Si", cantidadLlaves: 2, estadoMecanico: "Motor y caja sin novedades. Frenos OK. Suspension original.",
+          reporteRobo: "Sin registro", embargoPrenda: "Sin registro", siniestrosAnteriores: "Sin registro", limitacionesPropiedad: "Sin registro",
+          documentacion: "Completa", vtvVigente: "Si", seguroVigente: "Si", matafuego: "Si", balizas: "Si", llaveRuedaGato: "Si",
+          notas: "Un solo dueno desde 0km. Documentacion al dia." }
+      ],
+      clients: [
+        { id: "sc4-1", nombre: "Maria Alvarez", telefono: "+54 9 11 5901-2200", email: "malvarez@mail.com", dni: "27334455", interes: "Yaris 0km", origen: "Instagram", vendedor: authUser?.name||"Gastoonfloori", proximo: "2026-07-25", estado: "Caliente", notas: "Presupuesto hasta 22M. Quiere color claro." },
+        { id: "sc4-2", nombre: "Pablo Gimenez", telefono: "+54 9 341 803-7711", email: "pablo.gim@mail.com", dni: "31556677", interes: "Duster 4x4", origen: "MercadoLibre", vendedor: authUser?.name||"Gastoonfloori", proximo: "2026-07-28", estado: "Nuevo", notas: "Consulta por Duster. Vive en zona rural." },
+        { id: "sc4-3", nombre: "Silvana Morales", telefono: "+54 9 11 6103-5588", email: "smorales@mail.com", dni: "34778899", interes: "SUV familiar", origen: "Referido", vendedor: authUser?.name||"Gastoonfloori", proximo: "2026-07-30", estado: "Seguimiento", notas: "La refirió Lucas Fernandez. Familia con 2 hijos." }
+      ],
+      consignments: [
+        { id: "cs4-1", titular: "Juan Benitez", telefono: "+54 11 5555 3344", marca: "Honda", modelo: "Civic", version: "EXL CVT", dominio: "AC771XY", anio: 2021, km: 38000, precioPretendido: 29000000, comision: 1200000, estado: "Activa", vence: "2026-08-31",
+          numeroMotor: "R18A-7734521", numeroChasis: "2HGFC1F37MH543210", numeroVin: "2HGFC1F37MH543210", coincideDocumentacion: "Si", improntasTomadas: "Si",
+          estadoChapa: "Bueno", detalleChapa: "Leve rayado en aleta trasera derecha", danosEstructurales: "No", detalleDanosEstructurales: "", modificacionesNoAutorizadas: "No",
+          nivelCombustible: "1/2", cubiertaDelIzq: "Buena", cubiertaDelDer: "Buena", cubiertaTraIzq: "Regular", cubiertaTraDer: "Regular",
+          auxilio: "Si", cantidadLlaves: 2, estadoMecanico: "Motor y caja excelente. Frenos al 80%. Suspension sin novedades.",
+          reporteRobo: "Sin registro", embargoPrenda: "Sin registro", siniestrosAnteriores: "Sin registro", limitacionesPropiedad: "Sin registro",
+          documentacion: "Completa", vtvVigente: "Si", seguroVigente: "Si", matafuego: "Si", balizas: "Si", llaveRuedaGato: "Si",
+          notas: "Unico dueno desde 0km. Excelente conservacion." }
+      ],
+      sales: [
+        { id: "sa4-1", cliente: "Maria Alvarez", clienteId: "sc4-1", vehiculo: "Toyota Yaris XLS CVT", vehiculoId: "sv4-1", etapa: "Contacto", monto: 21500000, moneda: "ARS", sena: 0, formaPago: "Contado", vendedor: authUser?.name||"Gastoonfloori", proximo: "Enviar cotizacion", estado: "Contacto", notas: "" }
+      ],
+      calendar: [
+        { id: "cal4-1", fecha: "2026-07-25", hora: "10:00", tipo: "Test drive", titulo: "Test drive Yaris con Maria", cliente: "Maria Alvarez", vehiculo: "Toyota Yaris XLS CVT", vendedor: authUser?.name||"Gastoonfloori", estado: "Programado", notas: "" },
+        { id: "cal4-2", fecha: "2026-07-28", hora: "15:30", tipo: "Entrega", titulo: "Entrega Duster Pablo Gimenez", cliente: "Pablo Gimenez", vehiculo: "Renault Duster Intens", vendedor: authUser?.name||"Gastoonfloori", estado: "Confirmado", notas: "Llevar documentacion completa" },
+        { id: "cal4-3", fecha: "2026-07-30", hora: "09:00", tipo: "Llamado", titulo: "Seguimiento Silvana Morales", cliente: "Silvana Morales", vehiculo: "", vendedor: authUser?.name||"Gastoonfloori", estado: "Programado", notas: "Consultar si decidio con financiacion" }
+      ],
+      treasury: [
+        { id: "tv4-1", cuenta: "Caja principal", tipo: "Ingreso", concepto: "Sena Toyota Yaris — Maria Alvarez", cliente: "Maria Alvarez", clienteId: "sc4-1", vehiculo: "Toyota Yaris XLS CVT", monto: 500000, moneda: "ARS", fecha: now, medio: "Transferencia", estado: "Confirmado", notas: "" },
+        { id: "tv4-2", cuenta: "Caja principal", tipo: "Egreso", concepto: "Gastos de preparacion Duster", cliente: "", vehiculo: "Renault Duster Intens", monto: 85000, moneda: "ARS", fecha: now, medio: "Efectivo", estado: "Confirmado", notas: "" },
+        { id: "tv4-3", cuenta: "Caja principal", tipo: "Ingreso", concepto: "Comision consignacion Civic", cliente: "Juan Benitez", vehiculo: "Honda Civic EXL CVT", monto: 1200000, moneda: "ARS", fecha: now, medio: "Transferencia", estado: "Pendiente", notas: "" }
+      ],
+      finance: [
+        { id: "fn4-1", concepto: "Venta Toyota Yaris — precio total", tipo: "Ingreso", categoria: "Venta", cliente: "Maria Alvarez", clienteId: "sc4-1", vehiculo: "Toyota Yaris XLS CVT", monto: 21500000, moneda: "ARS", fecha: now, medio: "Transferencia", estado: "Pendiente", notas: "" },
+        { id: "fn4-2", concepto: "Costo adquisicion Renault Duster", tipo: "Egreso", categoria: "Compra", cliente: "", vehiculo: "Renault Duster Intens", monto: 29500000, moneda: "ARS", fecha: now, medio: "Transferencia", estado: "Confirmado", notas: "" }
+      ],
+      paperwork: [
+        { id: "pw4-1", tramite: "Transferencia", cliente: "Maria Alvarez", clienteId: "sc4-1", vehiculo: "Toyota Yaris XLS CVT", vehiculoId: "sv4-1", dominio: "AF112KR", gestor: "Gestoria Central", vence: "2026-08-20", costo: 150000, estado: "Pendiente", notas: "Esperar firma del comprador" }
+      ],
+      alerts: [
+        { id: "al4-1", titulo: "VTV vence esta semana — Duster", tipo: "Vencimiento", prioridad: "Alta", area: "Stock", cliente: "", vehiculo: "Renault Duster Intens", vence: "2026-07-26", responsable: authUser?.name||"Gastoonfloori", estado: "Pendiente", detalle: "Renovar VTV antes de la entrega" },
+        { id: "al4-2", titulo: "Sena pendiente — Maria Alvarez", tipo: "Cobro", prioridad: "Alta", area: "Finanzas", cliente: "Maria Alvarez", vehiculo: "Toyota Yaris", vence: "2026-07-25", responsable: authUser?.name||"Gastoonfloori", estado: "Pendiente", detalle: "Confirmar recepcion de sena" }
+      ],
+      quotes: [
+        { id: "co4-1", cliente: "Maria Alvarez", clienteId: "sc4-1", vehiculo: "Toyota Yaris XLS CVT", vehiculoId: "sv4-1", monto: 21500000, moneda: "ARS", estado: "Activo", fecha: now, validez: "2026-07-31", notas: "Con financiacion disponible" },
+        { id: "co4-2", cliente: "Pablo Gimenez", vehiculo: "Renault Duster Intens 1.6", monto: 31000000, moneda: "ARS", estado: "Activo", fecha: now, validez: "2026-07-30", notas: "Precio lista, sin descuento" }
+      ]
+    };
+    Object.entries(adds).forEach(([key, rows]) => {
+      merged[key] = merged[key] || [];
+      const existingIds = new Set(merged[key].map(r => r.id));
+      rows.filter(r => !existingIds.has(r.id)).forEach(r => merged[key].push(r));
+    });
+    merged.settings.coreSeedV4 = true;
+  }
   return merged;
 }
 
@@ -522,7 +589,7 @@ function tablePage(key, title, columns, embedded = false, moduleId = "", rowsOve
         <table>
           <thead><tr>${columns.map(c => `<th>${c.label}</th>`).join("")}<th></th></tr></thead>
           <tbody>
-            ${rows.length ? rows.map(row => `<tr${key === "clients" ? ` data-client-row="${escapeHtml(row.id)}" class="clickable-row"` : key === "vehicles" ? ` data-vehicle-row="${escapeHtml(row.id)}" class="clickable-row"` : row._montoEditado ? ` style="border-left:3px solid var(--crit)"` : ""}>${columns.map(c => `<td>${c.render ? c.render(row[c.key], row) : escapeHtml(row[c.key] ?? "")}</td>`).join("")}<td class="record-actions">${flows.map(([flow, label]) => `<button class="icon-btn" data-module-flow="${flow}:${key}:${row.id}" title="${escapeHtml(label)}">${escapeHtml(label.split(" ").map(w => w[0]).join("").slice(0,2).toUpperCase())}</button>`).join("")}${moduleId === "cotizaciones" ? `<button class="icon-btn" data-quote-pdf="${escapeHtml(row.id)}" title="Descargar PDF" style="font-weight:700;color:var(--accent)">PDF</button>` : ""}${moduleId === "consignaciones" ? `<button class="icon-btn" data-peritaje-pdf="${escapeHtml(row.id)}" title="Descargar informe peritaje" style="font-weight:700;color:var(--accent)">PDF</button><button class="icon-btn" data-consign-exp="${escapeHtml(row.id)}" title="Expediente tecnico">ET</button>` : ""}${key === "files" && row.tipo === "Vehiculo" ? `<button class="icon-btn" data-file-exp="${escapeHtml(row.id)}" title="Ver expediente">ET</button>` : ""}<button class="icon-btn" data-edit="${key}:${row.id}" title="Editar">E</button><button class="icon-btn" data-delete="${key}:${row.id}" title="Eliminar">X</button></td></tr>`).join("") : `<tr><td colspan="${columns.length + 1}" class="empty">No hay registros para mostrar.</td></tr>`}
+            ${rows.length ? rows.map(row => `<tr${key === "clients" ? ` data-client-row="${escapeHtml(row.id)}" class="clickable-row"` : key === "vehicles" ? ` data-vehicle-row="${escapeHtml(row.id)}" class="clickable-row"` : row._montoEditado ? ` style="border-left:3px solid var(--crit)"` : ""}>${columns.map(c => `<td>${c.render ? c.render(row[c.key], row) : escapeHtml(row[c.key] ?? "")}</td>`).join("")}<td class="record-actions">${flows.map(([flow, label]) => `<button class="icon-btn" data-module-flow="${flow}:${key}:${row.id}" title="${escapeHtml(label)}">${escapeHtml(label.split(" ").map(w => w[0]).join("").slice(0,2).toUpperCase())}</button>`).join("")}${moduleId === "cotizaciones" ? `<button class="icon-btn" data-quote-pdf="${escapeHtml(row.id)}" title="Descargar PDF" style="font-weight:700;color:var(--accent)">PDF</button>` : ""}${moduleId === "stock" && (row.numeroMotor || row.estadoChapa || row.reporteRobo || row.numeroVin) ? `<button class="icon-btn" data-vehicle-peritaje="${escapeHtml(row.id)}" title="Informe peritaje" style="font-weight:700;color:var(--accent)">PDF</button>` : ""}${moduleId === "consignaciones" ? `<button class="icon-btn" data-peritaje-pdf="${escapeHtml(row.id)}" title="Descargar informe peritaje" style="font-weight:700;color:var(--accent)">PDF</button><button class="icon-btn" data-consign-exp="${escapeHtml(row.id)}" title="Expediente tecnico">ET</button>` : ""}${key === "files" && row.tipo === "Vehiculo" ? `<button class="icon-btn" data-file-exp="${escapeHtml(row.id)}" title="Ver expediente">ET</button>` : ""}<button class="icon-btn" data-edit="${key}:${row.id}" title="Editar">E</button><button class="icon-btn" data-delete="${key}:${row.id}" title="Eliminar">X</button></td></tr>`).join("") : `<tr><td colspan="${columns.length + 1}" class="empty">No hay registros para mostrar.</td></tr>`}
           </tbody>
         </table>
       </div>
@@ -846,11 +913,20 @@ function clientProfileCuenta(client) {
   `;
 }
 
-function generatePeritajePDF(consignmentId) {
+function generateVehiclePeritajePDF(vehicleId) {
+  const vehicle = (state.vehicles || []).find(v => v.id === vehicleId);
+  if (!vehicle) return toast("Vehiculo no encontrado.");
+  const cs = vehicle;
+  const vNombre = `${cs.marca||""} ${cs.modelo||""}${cs.version?" "+cs.version:""}`.trim()||"—";
+  const mockCs = { ...cs, titular: `${vNombre} — ${cs.dominio||""}`, precioPretendido: cs.precio };
+  generatePeritajePDF(vehicleId, mockCs);
+}
+
+function generatePeritajePDF(consignmentId, _override = null) {
   try {
   const JsPDF = window.jspdf?.jsPDF;
   if (!JsPDF) return toast("No se pudo generar el PDF. Verificá tu conexion a internet.");
-  const cs = (state.consignments || []).find(c => c.id === consignmentId);
+  const cs = _override || (state.consignments || []).find(c => c.id === consignmentId);
   if (!cs) return toast("Consignacion no encontrada.");
   const cfg = state.settings || {};
   const agencia = cfg.businessName || publicConfig.businessName || "Sote Auto";
@@ -2320,7 +2396,7 @@ function formFor(key, row = {}) {
   if (key === "orders") return orderForm(row);
   if (key === "vehicles") {
     _vehiclePhotosBuf = (row.fotos || []).slice();
-    return groupedForm(key, fields, row) + vehiclePhotoSection(row);
+    return vehicleForm(row);
   }
   if (key === "consignments") {
     _vehiclePhotosBuf = (row.fotos || []).slice();
@@ -2783,6 +2859,141 @@ function consignmentForm(row = {}) {
   `;
 }
 
+function peritajeFieldsets(row = {}) {
+  const sel = (name, label, opts, val) =>
+    fieldControl({ name, label, type: "select", options: opts, value: (val !== undefined && val !== null && val !== "") ? val : (row[name] ?? opts[0]) });
+  const inp = (name, label, extra = {}) =>
+    fieldControl({ name, label, value: row[name] ?? "", ...extra });
+  const area = (name, label, val, ph = "") =>
+    fieldControl({ name, label, type: "textarea", value: val ?? "", placeholder: ph, wide: true });
+  const cubiertaLabels = [["cubiertaDelIzq","Del. Izq."],["cubiertaDelDer","Del. Der."],["cubiertaTraIzq","Tras. Izq."],["cubiertaTraDer","Tras. Der."]];
+  const cubiertasHtml = cubiertaLabels.map(([name, lbl]) => {
+    const val = row[name] || "Buena";
+    return `<div class="field"><label>Cubierta ${escapeHtml(lbl)}</label><select name="${name}">${["Buena","Regular","Cambiar"].map(o => `<option${val===o?" selected":""}>${o}</option>`).join("")}</select></div>`;
+  }).join("");
+  return `
+    <fieldset class="form-section">
+      <legend><span>1</span>IDENTIFICACION DEL VEHICULO</legend>
+      <div class="form-grid">
+        ${inp("numeroMotor","N° Motor",{placeholder:"Ej. F18A1-1234567"})}
+        ${inp("numeroChasis","N° Chasis",{placeholder:"Ej. 9BWZZZ377VT004251"})}
+        ${inp("numeroVin","N° VIN",{placeholder:"17 caracteres"})}
+        ${sel("coincideDocumentacion","Coincide con titulo / cedula",["Sin verificar","Si","No"],row.coincideDocumentacion)}
+      </div>
+    </fieldset>
+    <fieldset class="form-section">
+      <legend><span>2</span>TOMA DE IMPRONTAS</legend>
+      <div class="form-grid">
+        ${sel("improntasTomadas","Improntas tomadas (motor/chasis/VIN)",["No","Si"],row.improntasTomadas)}
+      </div>
+      <p class="muted" style="margin:8px 16px 12px;font-size:12px">La evidencia fotografica de las improntas se puede cargar en la seccion de fotos mas arriba.</p>
+    </fieldset>
+    <fieldset class="form-section">
+      <legend><span>3</span>REVISION FISICA Y ESTRUCTURAL</legend>
+      <div class="form-grid">
+        ${sel("estadoChapa","Estado de chapa y pintura",["Excelente","Bueno","Regular","Con detalles"],row.estadoChapa)}
+        ${area("detalleChapa","Detalle de chapa (golpes, rayones, zonas)",row.detalleChapa,"Ej. Rayones puerta trasera izq., golpe paragolpes delantero")}
+        ${sel("danosEstructurales","Danos estructurales evidentes",["No","Si"],row.danosEstructurales)}
+        ${area("detalleDanosEstructurales","Detalle de danos estructurales",row.detalleDanosEstructurales,"Descripcion de danos y zonas afectadas")}
+        ${sel("modificacionesNoAutorizadas","Modificaciones no autorizadas",["No","Si"],row.modificacionesNoAutorizadas)}
+        ${sel("nivelCombustible","Nivel de combustible",["Vacio","Reserva","1/4","1/2","3/4","Lleno"],row.nivelCombustible)}
+      </div>
+      <div class="form-grid" style="margin-top:4px">
+        ${cubiertasHtml}
+        ${sel("auxilio","Rueda de auxilio",["Si","No","Usada"],row.auxilio)}
+        ${inp("cantidadLlaves","Cantidad de llaves",{type:"number",placeholder:"2"})}
+      </div>
+      ${area("estadoMecanico","Estado mecanico (motor, caja, frenos, suspension)",row.estadoMecanico,"Estado general del motor, caja de cambios, frenos, suspension")}
+    </fieldset>
+    <fieldset class="form-section">
+      <legend><span>4</span>COMPARACION CON BASES DE DATOS</legend>
+      <div class="form-grid">
+        ${sel("reporteRobo","Reporte de robo",["Sin verificar","Sin registro","Con alerta"],row.reporteRobo)}
+        ${sel("embargoPrenda","Embargo / Prenda",["Sin verificar","Sin registro","Con gravamen"],row.embargoPrenda)}
+        ${sel("siniestrosAnteriores","Siniestros anteriores",["Sin verificar","Sin registro","Con antecedentes"],row.siniestrosAnteriores)}
+        ${area("detalleSiniestros","Detalle de siniestros",row.detalleSiniestros,"Descripcion de antecedentes de siniestros")}
+        ${sel("limitacionesPropiedad","Limitaciones a la propiedad",["Sin verificar","Sin registro","Con limitacion"],row.limitacionesPropiedad)}
+      </div>
+      <p class="muted" style="margin:8px 16px 12px;font-size:12px">Datos de consulta al Registro de la Propiedad Automotor u otra fuente externa.</p>
+    </fieldset>
+    <fieldset class="form-section">
+      <legend><span>5</span>DOCUMENTACION Y ACCESORIOS</legend>
+      <div class="form-grid">
+        ${sel("documentacion","Documentacion (titulo / cedula)",["Sin verificar","Completa","Incompleta"],row.documentacion)}
+        ${sel("vtvVigente","VTV vigente",["Sin verificar","Si","No","No aplica"],row.vtvVigente)}
+        ${sel("seguroVigente","Seguro vigente",["Si","No"],row.seguroVigente)}
+        ${sel("matafuego","Matafuego",["Si","No","Vencido"],row.matafuego)}
+        ${sel("balizas","Balizas / triangulos",["Si","No"],row.balizas)}
+        ${sel("llaveRuedaGato","Llave de ruedas y gato",["Si","No"],row.llaveRuedaGato)}
+      </div>
+    </fieldset>
+  `;
+}
+
+function vehicleForm(row = {}) {
+  const condicion = row.condicion || (row.id && Number(row.km) > 0 ? "Usado" : (!row.id ? "0km" : "Usado"));
+  const is0km = condicion === "0km";
+
+  const inp = (name, label, extra = {}) =>
+    fieldControl({ name, label, value: row[name] ?? "", ...extra });
+  const mon = (name, label) =>
+    fieldControl({ name, label, type: "money", value: row[name] ?? "" });
+  const area = (name, label, val, placeholder = "") =>
+    fieldControl({ name, label, type: "textarea", value: val ?? "", placeholder, wide: true });
+
+  const marcaListId = `list-marca-veh-${Math.random().toString(36).slice(2)}`;
+  const modeloListId = `list-modelo-veh-${Math.random().toString(36).slice(2)}`;
+  const marcaOpts = Object.keys(catalogoVehiculos).sort().map(m => `<option value="${escapeHtml(m)}"></option>`).join("");
+  const modeloOpts = (catalogoVehiculos[row.marca || ""] || []).map(m => `<option value="${escapeHtml(m)}"></option>`).join("");
+
+  const hasPeritaje = !!(row.numeroMotor || row.estadoChapa || row.reporteRobo || row.numeroVin);
+
+  return `
+    <fieldset class="form-section">
+      <legend><span>A</span>VEHICULO</legend>
+      <div class="field full" style="display:flex;gap:20px;align-items:center;padding:4px 0 8px">
+        <span style="font-weight:600;font-size:13px">Condicion:</span>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px">
+          <input type="radio" name="condicion" value="0km" ${is0km?"checked":""} data-condicion-radio> 0km (nuevo)
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px">
+          <input type="radio" name="condicion" value="Usado" ${!is0km?"checked":""} data-condicion-radio> Usado
+        </label>
+      </div>
+      <div class="form-grid">
+        ${inp("dominio","Dominio",{placeholder:"AE000AA"})}
+        <div class="field"><label>Marca *</label><input name="marca" list="${marcaListId}" value="${escapeHtml(row.marca||"")}" data-marca-input placeholder="Ej. Toyota" required><datalist id="${marcaListId}">${marcaOpts}</datalist></div>
+        <div class="field"><label>Modelo</label><input name="modelo" list="${modeloListId}" value="${escapeHtml(row.modelo||"")}" data-modelo-input placeholder="Ej. Corolla XEI"><datalist id="${modeloListId}">${modeloOpts}</datalist></div>
+        ${inp("version","Version / Trim",{placeholder:"Ej. 1.8 XEI AT"})}
+        ${inp("anio","Año",{type:"number",placeholder:String(new Date().getFullYear())})}
+        <div class="field" id="km-field-wrap" ${is0km?'style="display:none"':""}>
+          <label>Kilometros</label>
+          <input name="km" id="km-input" type="number" placeholder="50000" value="${escapeHtml(String(row.km ?? (is0km?"0":"")))}">
+        </div>
+        ${mon("precio","Precio")}
+        ${fieldControl({name:"moneda",label:"Moneda",type:"select",options:["ARS","USD"],value:row.moneda||"ARS"})}
+        ${fieldControl({name:"estado",label:"Estado",type:"select",options:["Disponible","Publicado","Reservado","Preparacion"],value:row.estado||"Disponible"})}
+        ${inp("ubicacion","Ubicacion",{placeholder:"Salon, deposito, taller..."})}
+        ${fieldControl({name:"origen",label:"Origen",type:"select",options:["WhatsApp","Instagram","MercadoLibre","Salon","Referido","Web","Concesionaria","Particular"],value:row.origen||"Salon"})}
+        ${mon("margen","Margen")}
+      </div>
+      ${area("notas","Notas",row.notas,"Notas internas, condiciones, urgencia o proximo paso.")}
+    </fieldset>
+
+    ${vehiclePhotoSection(row)}
+
+    <fieldset class="form-section" style="border:2px dashed var(--border)">
+      <legend style="cursor:pointer;user-select:none;display:flex;align-items:center;justify-content:space-between;width:100%" data-toggle-peritaje>
+        <span style="display:flex;align-items:center;gap:8px"><span style="background:var(--accent);color:#fff;border-radius:4px;padding:0 6px;font-size:11px">P</span>PERITAJE VEHICULAR</span>
+        <span style="font-size:11px;color:var(--muted);font-weight:400" id="peritaje-toggle-label">${hasPeritaje?"▲ Ocultar peritaje":"▼ Completar peritaje"}</span>
+      </legend>
+      <div id="peritaje-body" ${hasPeritaje?"":'style="display:none"'}>
+        ${peritajeFieldsets(row)}
+      </div>
+    </fieldset>
+  `;
+}
+
 function orderForm(row = {}) {
   const clientValue = row.clienteId || "";
   const clientOptions = [`<option value="">— Cliente nuevo / no vinculado —</option>`]
@@ -3155,6 +3366,7 @@ function bind() {
   document.querySelectorAll("[data-mark-cuota]").forEach(btn => btn.addEventListener("click", () => markNextCuota(btn.dataset.markCuota)));
   document.querySelectorAll("[data-pay-cuota]").forEach(btn => btn.addEventListener("click", () => payCuota(btn.dataset.payCuota)));
   document.querySelectorAll("[data-quote-pdf]").forEach(btn => btn.addEventListener("click", () => generateQuotePDF(btn.dataset.quotePdf)));
+  document.querySelectorAll("[data-vehicle-peritaje]").forEach(btn => btn.addEventListener("click", () => generateVehiclePeritajePDF(btn.dataset.vehiclePeritaje)));
   document.querySelectorAll("[data-peritaje-pdf]").forEach(btn => btn.addEventListener("click", () => generatePeritajePDF(btn.dataset.peritajePdf)));
   document.querySelectorAll("[data-client-statement]").forEach(btn => btn.addEventListener("click", () => generateClientStatementPDF(btn.dataset.clientStatement)));
   document.querySelectorAll("[data-payment-receipt]").forEach(btn => btn.addEventListener("click", () => {
@@ -3498,6 +3710,32 @@ function bindModal() {
     sfAnticipo2.dataset.sfBound = "true";
     sfAnticipo2.addEventListener("input", sfRecalcMontoCuota);
   }
+  document.querySelectorAll("[data-condicion-radio]").forEach(radio => {
+    if (radio.dataset.bound) return;
+    radio.dataset.bound = "true";
+    radio.addEventListener("change", () => {
+      const wrap = document.getElementById("km-field-wrap");
+      const kmInput = document.getElementById("km-input");
+      if (!wrap || !kmInput) return;
+      const is0km = document.querySelector("[data-condicion-radio][value='0km']")?.checked;
+      wrap.style.display = is0km ? "none" : "";
+      if (is0km) kmInput.value = "0";
+    });
+  });
+
+  document.querySelectorAll("[data-toggle-peritaje]").forEach(el => {
+    if (el.dataset.bound) return;
+    el.dataset.bound = "true";
+    el.addEventListener("click", () => {
+      const body = document.getElementById("peritaje-body");
+      const label = document.getElementById("peritaje-toggle-label");
+      if (!body) return;
+      const willShow = body.style.display === "none";
+      body.style.display = willShow ? "" : "none";
+      if (label) label.textContent = willShow ? "▲ Ocultar peritaje" : "▼ Completar peritaje";
+    });
+  });
+
   document.querySelectorAll("[data-marca-input]").forEach(marcaInput => {
     if (marcaInput.dataset.bound) return;
     marcaInput.dataset.bound = "true";
