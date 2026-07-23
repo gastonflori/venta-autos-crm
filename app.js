@@ -1,5 +1,7 @@
 const THEME_KEY = "autos-crm-theme";
 
+let defaultLogoDataUrl = "";
+
 let state = null;
 let authUser = null;
 let currentModule = "dashboard";
@@ -43,6 +45,7 @@ async function api(path, options = {}) {
 async function boot() {
   setTheme();
   fetch("/data/vehiculos-ar.json").then(r => r.json()).then(data => { catalogoVehiculos = data; }).catch(() => {});
+  fetch("/logo.png").then(r => r.blob()).then(blob => new Promise(res => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.readAsDataURL(blob); })).then(d => { defaultLogoDataUrl = d; }).catch(() => {});
   try {
     publicConfig = await api("/api/public-config");
   } catch {
@@ -395,16 +398,11 @@ function shell() {
       <aside class="sidebar">
         <div class="brand">
           ${logo}
-          <div><strong>${escapeHtml(state.settings?.businessName || "Sote CRM")}</strong><span>Agencia automotor</span></div>
+          <div><strong>${escapeHtml(state.settings?.businessName || "Lake Motors")}</strong><span>Agencia automotor</span></div>
         </div>
         <nav class="nav">
           ${modules.map(m => `<button class="${m.id === currentModule ? "active" : ""}" data-module="${m.id}" title="${m.label}"><span class="ico">${m.icon}</span><span class="label">${m.label}</span></button>`).join("")}
         </nav>
-        <div class="side-bottom">
-          <a class="btn ghost" href="/api/backup" download>Backup JSON</a>
-          <button class="btn ghost" data-action="theme">Cambiar tema</button>
-          <button class="btn ghost" data-action="logout">Cerrar sesion</button>
-        </div>
       </aside>
       <section class="content">
         <header class="topbar">
@@ -589,7 +587,7 @@ function tablePage(key, title, columns, embedded = false, moduleId = "", rowsOve
         <table>
           <thead><tr>${columns.map(c => `<th>${c.label}</th>`).join("")}<th></th></tr></thead>
           <tbody>
-            ${rows.length ? rows.map(row => `<tr${key === "clients" ? ` data-client-row="${escapeHtml(row.id)}" class="clickable-row"` : key === "vehicles" ? ` data-vehicle-row="${escapeHtml(row.id)}" class="clickable-row"` : row._montoEditado ? ` style="border-left:3px solid var(--crit)"` : ""}>${columns.map(c => `<td>${c.render ? c.render(row[c.key], row) : escapeHtml(row[c.key] ?? "")}</td>`).join("")}<td class="record-actions">${flows.map(([flow, label]) => `<button class="icon-btn" data-module-flow="${flow}:${key}:${row.id}" title="${escapeHtml(label)}">${escapeHtml(label.split(" ").map(w => w[0]).join("").slice(0,2).toUpperCase())}</button>`).join("")}${moduleId === "cotizaciones" ? `<button class="icon-btn" data-quote-pdf="${escapeHtml(row.id)}" title="Descargar PDF" style="font-weight:700;color:var(--accent)">PDF</button>` : ""}${moduleId === "stock" && (row.numeroMotor || row.estadoChapa || row.reporteRobo || row.numeroVin) ? `<button class="icon-btn" data-vehicle-peritaje="${escapeHtml(row.id)}" title="Informe peritaje" style="font-weight:700;color:var(--accent)">PDF</button>` : ""}${moduleId === "consignaciones" ? `<button class="icon-btn" data-peritaje-pdf="${escapeHtml(row.id)}" title="Descargar informe peritaje" style="font-weight:700;color:var(--accent)">PDF</button><button class="icon-btn" data-consign-exp="${escapeHtml(row.id)}" title="Expediente tecnico">ET</button>` : ""}${key === "files" && row.tipo === "Vehiculo" ? `<button class="icon-btn" data-file-exp="${escapeHtml(row.id)}" title="Ver expediente">ET</button>` : ""}<button class="icon-btn" data-edit="${key}:${row.id}" title="Editar">E</button><button class="icon-btn" data-delete="${key}:${row.id}" title="Eliminar">X</button></td></tr>`).join("") : `<tr><td colspan="${columns.length + 1}" class="empty">No hay registros para mostrar.</td></tr>`}
+            ${rows.length ? rows.map(row => `<tr${key === "clients" ? ` data-client-row="${escapeHtml(row.id)}" class="clickable-row"` : key === "vehicles" ? ` data-vehicle-row="${escapeHtml(row.id)}" class="clickable-row"` : key === "quotes" ? ` data-quote-row="${escapeHtml(row.id)}" class="clickable-row"` : key === "consignments" ? ` data-consign-row="${escapeHtml(row.id)}" class="clickable-row"` : row._montoEditado ? ` style="border-left:3px solid var(--crit)"` : ""}>${columns.map(c => `<td>${c.render ? c.render(row[c.key], row) : escapeHtml(row[c.key] ?? "")}</td>`).join("")}<td class="record-actions">${flows.map(([flow, label]) => `<button class="icon-btn" data-module-flow="${flow}:${key}:${row.id}" title="${escapeHtml(label)}">${escapeHtml(label.split(" ").map(w => w[0]).join("").slice(0,2).toUpperCase())}</button>`).join("")}${moduleId === "cotizaciones" ? `<button class="icon-btn" data-quote-pdf="${escapeHtml(row.id)}" title="Descargar PDF" style="font-weight:700;color:var(--accent)">PDF</button>` : ""}${moduleId === "stock" && (row.numeroMotor || row.estadoChapa || row.reporteRobo || row.numeroVin) ? `<button class="icon-btn" data-vehicle-peritaje="${escapeHtml(row.id)}" title="Informe peritaje" style="font-weight:700;color:var(--accent)">PDF</button>` : ""}${moduleId === "consignaciones" ? `<button class="icon-btn" data-peritaje-pdf="${escapeHtml(row.id)}" title="Descargar informe peritaje" style="font-weight:700;color:var(--accent)">PDF</button><button class="icon-btn" data-consign-exp="${escapeHtml(row.id)}" title="Expediente tecnico">ET</button>` : ""}${key === "files" && row.tipo === "Vehiculo" ? `<button class="icon-btn" data-file-exp="${escapeHtml(row.id)}" title="Ver expediente">ET</button>` : ""}<button class="icon-btn" data-edit="${key}:${row.id}" title="Editar">E</button><button class="icon-btn" data-delete="${key}:${row.id}" title="Eliminar">X</button></td></tr>`).join("") : `<tr><td colspan="${columns.length + 1}" class="empty">No hay registros para mostrar.</td></tr>`}
           </tbody>
         </table>
       </div>
@@ -616,7 +614,18 @@ function genericColumns(moduleId) {
 function consignacionColumns() {
   return [
     { key: "fotos", label: "", render: (fotos) => fotos?.length ? `<img class="row-thumb" src="${escapeHtml(fotos[0])}" alt="foto">` : `<div class="row-thumb-placeholder"></div>` },
-    ...genericColumns("consignaciones")
+    { key: "_vehiculo", label: "Vehiculo", render: (_, r) => {
+      const marca = r.marca || "";
+      const modelo = r.modelo || "";
+      const version = r.version || "";
+      const nombre = [marca, modelo, version].filter(Boolean).join(" ") || r.vehiculo || "—";
+      return `<strong>${escapeHtml(nombre)}</strong>${r.dominio ? `<br><span class="muted">${escapeHtml(r.dominio)}</span>` : ""}`;
+    }},
+    { key: "titular", label: "Titular", render: v => escapeHtml(v || "—") },
+    { key: "precioPretendido", label: "Precio pretendido", render: v => money(v) },
+    { key: "comision", label: "Comision", render: v => money(v) },
+    { key: "vence", label: "Vence", render: v => escapeHtml(v || "—") },
+    { key: "estado", label: "Estado", render: v => pill(v) },
   ];
 }
 
@@ -929,12 +938,12 @@ function generatePeritajePDF(consignmentId, _override = null) {
   const cs = _override || (state.consignments || []).find(c => c.id === consignmentId);
   if (!cs) return toast("Consignacion no encontrada.");
   const cfg = state.settings || {};
-  const agencia = cfg.businessName || publicConfig.businessName || "Sote Auto";
+  const agencia = cfg.businessName || publicConfig.businessName || "Lake Motors";
   const clean = (s) => (s || "").replace(/[^a-zA-Z0-9ÁÉÍÓÚáéíóúÑñ]/g, "_").replace(/_+/g, "_").replace(/^_|_$/g, "");
   const safe = (v) => String(v || "—");
   const fmt = (v) => `$ ${Math.round(Number(v||0)).toLocaleString("es-AR")}`;
 
-  const DARK=[11,17,32], BLUE=[42,120,214], LIGHT=[248,250,253], GRAY=[98,108,126], LGRAY=[210,216,226], WHITE=[255,255,255];
+  const DARK=[11,17,32], BLUE=[204,17,17], LIGHT=[248,250,253], GRAY=[98,108,126], LGRAY=[210,216,226], WHITE=[255,255,255];
   const GREEN=[22,163,74], RED=[220,60,60], ORANGE=[234,88,12];
 
   const doc = new JsPDF({ unit:"mm", format:"a4" });
@@ -946,7 +955,7 @@ function generatePeritajePDF(consignmentId, _override = null) {
   doc.setFillColor(...DARK).rect(0,0,W,hdrH,"F");
   doc.setFillColor(...BLUE).rect(0,0,W,2.5,"F");
   let logoLoaded=false;
-  if (cfg.logoDataUrl) { try { doc.addImage(cfg.logoDataUrl,undefined,M,7,34,16,undefined,"FAST"); logoLoaded=true; } catch(_){} }
+  const _pdfLogo = cfg.logoDataUrl || defaultLogoDataUrl; if (_pdfLogo) { try { doc.addImage(_pdfLogo,undefined,M,5,26,26,undefined,"FAST"); logoLoaded=true; } catch(_){} }
   if (!logoLoaded) { doc.setFont("helvetica","bold").setFontSize(17).setTextColor(...WHITE); doc.text(agencia,M,20); }
   [cfg.phone,cfg.email,cfg.address].filter(Boolean).forEach((l,i) => {
     doc.setFont("helvetica","normal").setFontSize(7.5).setTextColor(180,195,220);
@@ -1103,10 +1112,10 @@ function generateClientStatementPDF(clientId) {
   if (!client) return;
   const { rows, totalAdeudado, totalPagado, saldoPendiente } = getClientAccountMovements(client);
   const cfg = state.settings || {};
-  const agencia = cfg.businessName || publicConfig.businessName || "Sote Auto";
+  const agencia = cfg.businessName || publicConfig.businessName || "Lake Motors";
   const clean = (s) => (s || "").replace(/[^a-zA-Z0-9ÁÉÍÓÚáéíóúÑñ]/g, "_").replace(/_+/g, "_").replace(/^_|_$/g, "");
 
-  const DARK = [11,17,32], BLUE = [42,120,214], LIGHT = [248,250,253], GRAY = [98,108,126], LGRAY = [210,216,226], WHITE = [255,255,255];
+  const DARK = [11,17,32], BLUE = [204,17,17], LIGHT = [248,250,253], GRAY = [98,108,126], LGRAY = [210,216,226], WHITE = [255,255,255];
   const fmt = (v) => `$ ${Math.round(Number(v||0)).toLocaleString("es-AR")}`;
   const doc = new JsPDF({ unit: "mm", format: "a4" });
   const W = 210, H = 297, M = 14;
@@ -1117,7 +1126,7 @@ function generateClientStatementPDF(clientId) {
   doc.setFillColor(...DARK).rect(0,0,W,hdrH,"F");
   doc.setFillColor(...BLUE).rect(0,0,W,2.5,"F");
   let logoLoaded = false;
-  if (cfg.logoDataUrl) { try { doc.addImage(cfg.logoDataUrl,undefined,M,7,34,16,undefined,"FAST"); logoLoaded=true; } catch(_){} }
+  const _pdfLogo = cfg.logoDataUrl || defaultLogoDataUrl; if (_pdfLogo) { try { doc.addImage(_pdfLogo,undefined,M,5,26,26,undefined,"FAST"); logoLoaded=true; } catch(_){} }
   if (!logoLoaded) { doc.setFont("helvetica","bold").setFontSize(17).setTextColor(...WHITE); doc.text(agencia,M,20); }
   [cfg.phone,cfg.email,cfg.address].filter(Boolean).forEach((l,i) => { doc.setFont("helvetica","normal").setFontSize(7.5).setTextColor(180,195,220); doc.text(l,W-M,12+i*4.8,{align:"right"}); });
   doc.setFont("helvetica","bold").setFontSize(8).setTextColor(...BLUE);
@@ -1202,10 +1211,10 @@ function generatePaymentReceiptPDF(clientId, rowIdx) {
   const r = rows[rowIdx];
   if (!r) return toast("Movimiento no encontrado.");
   const cfg = state.settings || {};
-  const agencia = cfg.businessName || publicConfig.businessName || "Sote Auto";
+  const agencia = cfg.businessName || publicConfig.businessName || "Lake Motors";
   const clean = (s) => (s||"").replace(/[^a-zA-Z0-9ÁÉÍÓÚáéíóúÑñ]/g,"_").replace(/_+/g,"_").replace(/^_|_$/g,"");
 
-  const DARK=[11,17,32], BLUE=[42,120,214], LIGHT=[248,250,253], GRAY=[98,108,126], LGRAY=[210,216,226], WHITE=[255,255,255];
+  const DARK=[11,17,32], BLUE=[204,17,17], LIGHT=[248,250,253], GRAY=[98,108,126], LGRAY=[210,216,226], WHITE=[255,255,255];
   const fmt = (v) => `$ ${Math.round(Number(v||0)).toLocaleString("es-AR")}`;
   const doc = new JsPDF({ unit:"mm", format:"a4" });
   const W=210, H=297, M=14;
@@ -1216,7 +1225,7 @@ function generatePaymentReceiptPDF(clientId, rowIdx) {
   doc.setFillColor(...DARK).rect(0,0,W,hdrH,"F");
   doc.setFillColor(...BLUE).rect(0,0,W,2.5,"F");
   let ll=false;
-  if (cfg.logoDataUrl) { try { doc.addImage(cfg.logoDataUrl,undefined,M,7,34,16,undefined,"FAST"); ll=true; } catch(_){} }
+  const _pdfLogoR = cfg.logoDataUrl || defaultLogoDataUrl; if (_pdfLogoR) { try { doc.addImage(_pdfLogoR,undefined,M,5,26,26,undefined,"FAST"); ll=true; } catch(_){} }
   if (!ll) { doc.setFont("helvetica","bold").setFontSize(17).setTextColor(...WHITE); doc.text(agencia,M,20); }
   [cfg.phone,cfg.email].filter(Boolean).forEach((l,i) => { doc.setFont("helvetica","normal").setFontSize(7.5).setTextColor(180,195,220); doc.text(l,W-M,12+i*4.8,{align:"right"}); });
   const recNum = String(Date.now()).slice(-6);
@@ -1817,6 +1826,94 @@ function openExpedienteTecnicoModal(vehiculoId = "", vehiculoRef = "", consignac
   });
 }
 
+function openQuotePreview(id) {
+  const q = (state.quotes || []).find(x => x.id === id);
+  if (!q) return;
+  const client = q.clienteId ? (state.clients || []).find(c => c.id === q.clienteId) : null;
+  const vehicle = q.vehiculoId ? (state.vehicles || []).find(v => v.id === q.vehiculoId) : null;
+  const photos = vehicle?.fotos || [];
+  const galleryHtml = photos.length
+    ? `<div class="vp-gallery">${photos.map((src, i) => `<img src="${escapeHtml(src)}" alt="Foto ${i+1}">`).join("")}</div>`
+    : "";
+  const row = (label, val) => val ? `<div class="vp-spec"><span>${escapeHtml(label)}</span><strong>${escapeHtml(String(val))}</strong></div>` : "";
+  document.body.insertAdjacentHTML("beforeend", `
+    <div class="modal-backdrop" data-modal>
+      <section class="modal vp-modal">
+        <div class="modal-head">
+          <div>
+            <h2>${escapeHtml(q.vehiculo || "Cotizacion")}</h2>
+            <p>${escapeHtml(q.cliente || "—")} &middot; ${escapeHtml(q.tipoOperacion || q.tipo || "Tramite")} &middot; ${escapeHtml(q.moneda || "ARS")}</p>
+          </div>
+          <button class="icon-btn" data-close>X</button>
+        </div>
+        ${galleryHtml}
+        <div class="vp-body">
+          <div class="vp-specs">
+            <div class="vp-spec price-spec"><span>Monto</span><strong>${money(q.monto)}</strong></div>
+            <div class="vp-spec"><span>Estado</span><strong>${pill(q.estado || "—")}</strong></div>
+            ${row("Precio lista", q.precioLista ? money(q.precioLista) : "")}
+            ${row("Bonificacion", q.bonificacion ? money(q.bonificacion) : "")}
+            ${row("Validez", q.validez)}
+            ${row("Vendedor", q.vendedor)}
+            ${row("Telefono cliente", q.telefono || client?.telefono)}
+            ${q.notas ? `<div class="vp-spec vp-spec-full"><span>Condiciones</span><strong>${escapeHtml(q.notas)}</strong></div>` : ""}
+          </div>
+          <div class="modal-actions">
+            <button class="btn ghost" data-close>Cerrar</button>
+            <button class="btn ghost" data-edit="quotes:${escapeHtml(id)}">Editar</button>
+            <button class="btn primary-action" data-quote-pdf="${escapeHtml(id)}">Descargar PDF</button>
+          </div>
+        </div>
+      </section>
+    </div>
+  `);
+  bindModal();
+}
+
+function openConsignPreview(id) {
+  const cs = (state.consignments || []).find(x => x.id === id);
+  if (!cs) return;
+  const photos = cs.fotos || [];
+  const galleryHtml = photos.length
+    ? `<div class="vp-gallery">${photos.map((src, i) => `<img src="${escapeHtml(src)}" alt="Foto ${i+1}">`).join("")}</div>`
+    : "";
+  const row = (label, val) => val ? `<div class="vp-spec"><span>${escapeHtml(label)}</span><strong>${escapeHtml(String(val))}</strong></div>` : "";
+  const vehiculo = `${cs.marca||""} ${cs.modelo||""}${cs.version?" "+cs.version:""}`.trim() || cs.vehiculo || "—";
+  document.body.insertAdjacentHTML("beforeend", `
+    <div class="modal-backdrop" data-modal>
+      <section class="modal vp-modal">
+        <div class="modal-head">
+          <div>
+            <h2>${escapeHtml(vehiculo)}</h2>
+            <p>${escapeHtml(cs.titular || "—")} &middot; ${escapeHtml(cs.dominio || "")} &middot; ${cs.anio || ""}</p>
+          </div>
+          <button class="icon-btn" data-close>X</button>
+        </div>
+        ${galleryHtml}
+        <div class="vp-body">
+          <div class="vp-specs">
+            <div class="vp-spec price-spec"><span>Precio pretendido</span><strong>${money(cs.precioPretendido)}</strong></div>
+            <div class="vp-spec"><span>Estado</span><strong>${pill(cs.estado || "—")}</strong></div>
+            ${row("Titular", cs.titular)}
+            ${row("Telefono", cs.telefono)}
+            ${row("Dominio", cs.dominio)}
+            ${row("Km", cs.km ? Number(cs.km).toLocaleString("es-AR") + " km" : "")}
+            ${row("Comision", cs.comision ? money(cs.comision) : "")}
+            ${row("Vence", cs.vence)}
+            ${cs.notas ? `<div class="vp-spec vp-spec-full"><span>Notas</span><strong>${escapeHtml(cs.notas)}</strong></div>` : ""}
+          </div>
+          <div class="modal-actions">
+            <button class="btn ghost" data-close>Cerrar</button>
+            <button class="btn ghost" data-edit="consignments:${escapeHtml(id)}">Editar</button>
+            <button class="btn primary-action" data-peritaje-pdf="${escapeHtml(id)}">PDF Peritaje</button>
+          </div>
+        </div>
+      </section>
+    </div>
+  `);
+  bindModal();
+}
+
 function openVehiclePreview(id) {
   const v = (state.vehicles || []).find(x => x.id === id);
   if (!v) return;
@@ -1880,7 +1977,7 @@ function sendVehicleToClient(v) {
       <td style="padding:11px 14px;color:#6b7280;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;border-bottom:1px solid #f0f2f8;">${label}</td>
       <td style="padding:11px 14px;font-weight:600;font-size:14px;border-bottom:1px solid #f0f2f8;">${val}</td>
     </tr>`).join("");
-  const agencyName = publicConfig.businessName || state?.settings?.businessName || "Sote CRM";
+  const agencyName = publicConfig.businessName || state?.settings?.businessName || "Lake Motors";
   const agencyLogo = publicConfig.logoDataUrl || state?.settings?.logoDataUrl || "";
   const html = `<!DOCTYPE html>
 <html lang="es">
@@ -2353,7 +2450,7 @@ function configPage() {
             </div>
           </div>
           <div class="form-grid">
-            ${input("businessName", "Nombre de agencia", s.businessName || "Sote Auto")}
+            ${input("businessName", "Nombre de agencia", s.businessName || "Lake Motors")}
             ${input("ownerName", "Responsable", s.ownerName || "")}
             ${input("phone", "Telefono", s.phone || "")}
             ${input("email", "Email", s.email || "", "email")}
@@ -2362,6 +2459,7 @@ function configPage() {
           </div>
           <div class="toolbar">
             <button class="btn" type="submit">Guardar configuracion</button>
+            <a class="btn ghost" href="/api/backup" download>Backup JSON</a>
             <button class="btn ghost" type="button" data-action="theme">Cambiar tema</button>
             <button class="btn danger" type="button" data-action="logout">Cerrar sesion</button>
           </div>
@@ -2376,9 +2474,8 @@ function input(name, label, value, type = "text") {
 }
 
 function logoMarkup(className) {
-  const src = state?.settings?.logoDataUrl || publicConfig.logoDataUrl;
-  if (!src) return "";
-  return `<img class="${className}" src="${escapeHtml(src)}" alt="Logo de la agencia">`;
+  const src = state?.settings?.logoDataUrl || publicConfig.logoDataUrl || defaultLogoDataUrl || "/logo.png";
+  return `<img class="${className}" src="${escapeHtml(src)}" alt="Lake Motors">`;
 }
 
 function formFor(key, row = {}) {
@@ -3238,7 +3335,7 @@ function bind() {
       await loadState();
       state.audit = state.audit || [];
       state.audit.unshift(`Ingreso ${authUser.email}`);
-      await saveState("Bienvenido a Sote CRM");
+      await saveState("Bienvenido a Lake Motors");
       render();
     } catch (error) {
       toast(error.message);
@@ -3276,6 +3373,20 @@ function bind() {
     tr.addEventListener("click", e => {
       if (e.target.closest("button, a")) return;
       openVehiclePreview(tr.dataset.vehicleRow);
+    });
+  });
+
+  document.querySelectorAll("[data-quote-row]").forEach(tr => {
+    tr.addEventListener("click", e => {
+      if (e.target.closest("button, a")) return;
+      openQuotePreview(tr.dataset.quoteRow);
+    });
+  });
+
+  document.querySelectorAll("[data-consign-row]").forEach(tr => {
+    tr.addEventListener("click", e => {
+      if (e.target.closest("button, a")) return;
+      openConsignPreview(tr.dataset.consignRow);
     });
   });
 
@@ -4200,13 +4311,13 @@ function openSaleReport(saleId) {
   const client = sale.clienteId  ? (state.clients  || []).find(x => x.id === sale.clienteId)  : null;
   const cuotas = getSaleCuotas(saleId);
   const cfg    = state.settings || {};
-  const agencia = cfg.businessName || publicConfig.businessName || "Sote Auto";
+  const agencia = cfg.businessName || publicConfig.businessName || "Lake Motors";
   const moneda  = sale.moneda || "ARS";
   const fmt = (val) => `${moneda} ${Number(val || 0).toLocaleString("es-AR", { maximumFractionDigits: 0 })}`;
   const clean = (s) => (s || "").replace(/[^a-zA-Z0-9ÁÉÍÓÚáéíóúÑñ]/g, "_").replace(/_+/g, "_").replace(/^_|_$/g, "");
 
   const DARK  = [11, 17, 32];
-  const BLUE  = [42, 120, 214];
+  const BLUE  = [204, 17, 17];
   const LIGHT = [248, 250, 253];
   const GRAY  = [98, 108, 126];
   const LGRAY = [210, 216, 226];
@@ -4221,9 +4332,8 @@ function openSaleReport(saleId) {
   doc.setFillColor(...DARK).rect(0, 0, W, hdrH, "F");
   doc.setFillColor(...BLUE).rect(0, 0, W, 2.5, "F");
   let logoLoaded = false;
-  if (cfg.logoDataUrl) {
-    try { doc.addImage(cfg.logoDataUrl, undefined, M, 7, 34, 16, undefined, "FAST"); logoLoaded = true; } catch (_) {}
-  }
+  const _pdfLogoS = cfg.logoDataUrl || defaultLogoDataUrl;
+  if (_pdfLogoS) { try { doc.addImage(_pdfLogoS, undefined, M, 5, 26, 26, undefined, "FAST"); logoLoaded = true; } catch (_) {} }
   if (!logoLoaded) {
     doc.setFont("helvetica", "bold").setFontSize(17).setTextColor(...WHITE);
     doc.text(agencia, M, 20);
@@ -4446,13 +4556,13 @@ function generateQuotePDF(quoteId) {
   const vehicle = quote.vehiculoId ? (state.vehicles || []).find(v => v.id === quote.vehiculoId) : null;
   const client  = quote.clienteId  ? (state.clients  || []).find(c => c.id === quote.clienteId)  : null;
   const cfg = state.settings || {};
-  const agencyName = cfg.businessName || publicConfig.businessName || "Sote Auto";
+  const agencyName = cfg.businessName || publicConfig.businessName || "Lake Motors";
   const moneda = quote.moneda || "ARS";
   const fmt = (v) => `${moneda} ${Number(v || 0).toLocaleString("es-AR", { maximumFractionDigits: 0 })}`;
 
   // Palette
   const DARK  = [11, 17, 32];      // #0b1120
-  const BLUE  = [42, 120, 214];    // #2a78d6
+  const BLUE  = [204, 17, 17];     // #cc1111 Lake Motors red
   const LIGHT = [248, 250, 253];   // soft page bg
   const GRAY  = [98, 108, 126];
   const LGRAY = [210, 216, 226];
@@ -4471,9 +4581,8 @@ function generateQuotePDF(quoteId) {
 
   // Logo or agency name
   let logoLoaded = false;
-  if (cfg.logoDataUrl) {
-    try { doc.addImage(cfg.logoDataUrl, undefined, M, 7, 34, 16, undefined, "FAST"); logoLoaded = true; } catch (_) {}
-  }
+  const _pdfLogoQQ = cfg.logoDataUrl || defaultLogoDataUrl;
+  if (_pdfLogoQQ) { try { doc.addImage(_pdfLogoQQ, undefined, M, 5, 26, 26, undefined, "FAST"); logoLoaded = true; } catch (_) {} }
   if (!logoLoaded) {
     doc.setFont("helvetica", "bold").setFontSize(17).setTextColor(...WHITE);
     doc.text(agencyName, M, 20);
