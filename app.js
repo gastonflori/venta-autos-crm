@@ -507,8 +507,8 @@ function stat(label, value, note) {
   return `<section class="card stat"><span>${label}</span><strong>${value}</strong><small>${note}</small></section>`;
 }
 
-function tablePage(key, title, columns, embedded = false, moduleId = "") {
-  const rows = filtered(state[key] || []);
+function tablePage(key, title, columns, embedded = false, moduleId = "", rowsOverride = null) {
+  const rows = filtered(rowsOverride !== null ? rowsOverride : (state[key] || []));
   const flows = flowsForModule(moduleId);
   return `
     <section class="card">
@@ -575,19 +575,76 @@ function genericSectionPage(moduleId) {
     return '<section class="card"><div class="card-head"><h2>Modulo en preparacion</h2></div><div class="card-body"><p class="muted">Esta seccion esta lista para conectarse.</p></div></section>';
   }
   const allRows = state[def.key] || [];
-  const rows = filtered(allRows);
-  const moneyTotal = totalForRows(allRows);
+  const activeRows = moduleId === "stock"
+    ? allRows.filter(v => !/^Vendido$/i.test(v.estado || ""))
+    : allRows;
+  const rows = filtered(activeRows);
+  const moneyTotal = totalForRows(activeRows);
   const cols = moduleId === "stock" ? vehicleColumns() : moduleId === "consignaciones" ? consignacionColumns() : moduleId === "clientes" ? clientListColumns() : genericColumns(moduleId);
   return `
     <div class="grid stats module-stats">
-      ${stat("Registros", allRows.length, "Total del modulo")}
+      ${stat("Registros", activeRows.length, "Vehiculos en stock")}
       ${stat("Visibles", rows.length, query ? "Resultado filtrado" : "Sin filtro activo")}
-      ${stat("Pendientes", pendingRows(allRows), "Requieren seguimiento")}
+      ${stat("Pendientes", pendingRows(activeRows), "Requieren seguimiento")}
       ${stat("Monto", moneyTotal ? money(moneyTotal) : "-", "Valores asociados")}
     </div>
     <div style="margin-top:16px">
-      ${tablePage(def.key, def.title, cols, false, moduleId)}
+      ${tablePage(def.key, def.title, cols, false, moduleId, moduleId === "stock" ? activeRows : null)}
     </div>
+    ${moduleId === "stock" ? stockHistorial() : ""}
+  `;
+}
+
+function stockHistorial() {
+  const soldVehicles = (state.vehicles || []).filter(v => /^Vendido$/i.test(v.estado || ""));
+  if (!soldVehicles.length) return "";
+  const rows = soldVehicles.map(v => {
+    const nombre = `${v.marca || ""} ${v.modelo || ""}${v.version ? " " + v.version : ""}`.trim();
+    const sale = (state.sales || []).find(s =>
+      (s.vehiculoId && s.vehiculoId === v.id) ||
+      (!s.vehiculoId && s.vehiculo && s.vehiculo.toLowerCase().trim() === nombre.toLowerCase())
+    );
+    const thumb = v.fotos?.length
+      ? `<img class="row-thumb" src="${escapeHtml(v.fotos[0])}" alt="foto">`
+      : `<div class="row-thumb-placeholder"></div>`;
+    const precio = sale ? money(sale.monto || v.precio) : money(v.precio);
+    const cliente = sale ? escapeHtml(sale.cliente || "—") : "—";
+    let fecha = "—";
+    if (sale?.fecha) {
+      try { fecha = new Date(sale.fecha + "T12:00:00").toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" }); } catch (_) {}
+    }
+    const formaPago = sale?.formaPago ? `<span class="pill info">${escapeHtml(sale.formaPago)}</span>` : `<span class="muted">—</span>`;
+    const vendedor = sale ? escapeHtml(sale.vendedor || "—") : "—";
+    return `<tr data-vehicle-row="${escapeHtml(v.id)}" style="cursor:pointer">
+      <td style="width:60px">${thumb}</td>
+      <td><strong>${escapeHtml(nombre)}</strong>${v.dominio ? `<br><span class="muted">${escapeHtml(v.dominio)}</span>` : ""}</td>
+      <td><span class="muted">${escapeHtml(String(v.anio || "—"))} · ${Number(v.km || 0).toLocaleString("es-AR")} km</span></td>
+      <td>${precio}</td>
+      <td>${cliente}</td>
+      <td>${fecha}</td>
+      <td>${formaPago}</td>
+      <td>${vendedor}</td>
+      <td><span class="pill crit">Vendido</span></td>
+    </tr>`;
+  }).join("");
+  return `
+    <section class="card" style="margin-top:24px">
+      <div class="card-head">
+        <h2>Historial de vehiculos</h2>
+        <span class="badge muted">${soldVehicles.length} vendido${soldVehicles.length !== 1 ? "s" : ""}</span>
+      </div>
+      <div class="card-body" style="padding:0">
+        <div style="overflow-x:auto">
+          <table>
+            <thead><tr>
+              <th></th><th>Vehiculo</th><th>Año / KM</th><th>Precio</th>
+              <th>Cliente</th><th>Fecha</th><th>Forma de pago</th><th>Vendedor</th><th>Estado</th>
+            </tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>
+      </div>
+    </section>
   `;
 }
 
@@ -2629,7 +2686,7 @@ function pill(value) {
     "Cancelado": "crit", "Cancelada": "crit", "Vencido": "crit", "Vencida": "crit", "Critico": "crit",
     "Baja": "crit", "Rechazado": "crit", "Suspendido": "crit",
     // estados de cotizacion y expediente tecnico
-    "Vendido": "ok", "Sin seguro": "warn", "Por vencer": "warn",
+    "Vendido": "crit", "Sin seguro": "warn", "Por vencer": "warn",
     // tipos de expediente
     "Tramite": "info", "Vehiculo": "ok",
     // info — azul (default)
