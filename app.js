@@ -619,7 +619,7 @@ function tablePage(key, title, columns, embedded = false, moduleId = "", rowsOve
         <table>
           <thead><tr>${columns.map(c => `<th>${c.label}</th>`).join("")}<th></th></tr></thead>
           <tbody>
-            ${rows.length ? rows.map(row => `<tr${key === "clients" ? ` data-client-row="${escapeHtml(row.id)}" class="clickable-row"` : key === "vehicles" ? ` data-vehicle-row="${escapeHtml(row.id)}" class="clickable-row"` : key === "quotes" ? ` data-quote-row="${escapeHtml(row.id)}" class="clickable-row"` : key === "consignments" ? ` data-consign-row="${escapeHtml(row.id)}" class="clickable-row"` : row._montoEditado ? ` style="border-left:3px solid var(--crit)"` : ""}>${columns.map(c => `<td>${c.render ? c.render(row[c.key], row) : escapeHtml(row[c.key] ?? "")}</td>`).join("")}<td class="record-actions">${flows.map(([flow, label]) => `<button class="icon-btn" data-module-flow="${flow}:${key}:${row.id}" title="${escapeHtml(label)}">${escapeHtml(label.split(" ").map(w => w[0]).join("").slice(0,2).toUpperCase())}</button>`).join("")}${moduleId === "cotizaciones" ? `<button class="icon-btn" data-quote-pdf="${escapeHtml(row.id)}" title="Descargar PDF" style="font-weight:700;color:var(--accent)">PDF</button>` : ""}${moduleId === "stock" && (row.numeroMotor || row.estadoChapa || row.reporteRobo || row.numeroVin) ? `<button class="icon-btn" data-vehicle-peritaje="${escapeHtml(row.id)}" title="Informe peritaje" style="font-weight:700;color:var(--accent)">PDF</button>` : ""}${moduleId === "consignaciones" ? `<button class="icon-btn" data-peritaje-pdf="${escapeHtml(row.id)}" title="Descargar informe peritaje" style="font-weight:700;color:var(--accent)">PDF</button><button class="icon-btn" data-consign-exp="${escapeHtml(row.id)}" title="Expediente tecnico">ET</button>` : ""}${key === "files" && row.tipo === "Vehiculo" ? `<button class="icon-btn" data-file-exp="${escapeHtml(row.id)}" title="Ver expediente">ET</button>` : ""}<button class="icon-btn" data-edit="${key}:${row.id}" title="Editar">E</button><button class="icon-btn" data-delete="${key}:${row.id}" title="Eliminar">X</button></td></tr>`).join("") : `<tr><td colspan="${columns.length + 1}" class="empty">No hay registros para mostrar.</td></tr>`}
+            ${rows.length ? rows.map(row => `<tr${key === "clients" ? ` data-client-row="${escapeHtml(row.id)}" class="clickable-row"` : key === "vehicles" ? ` data-vehicle-row="${escapeHtml(row.id)}" class="clickable-row"` : key === "quotes" ? ` data-quote-row="${escapeHtml(row.id)}" class="clickable-row"` : key === "consignments" ? ` data-consign-row="${escapeHtml(row.id)}" class="clickable-row"` : (key === "sales" || key === "mySales") ? ` data-sale-row="${escapeHtml(row.id)}" class="clickable-row"` : row._montoEditado ? ` style="border-left:3px solid var(--crit)"` : ""}>${columns.map(c => `<td>${c.render ? c.render(row[c.key], row) : escapeHtml(row[c.key] ?? "")}</td>`).join("")}<td class="record-actions">${flows.map(([flow, label]) => `<button class="icon-btn" data-module-flow="${flow}:${key}:${row.id}" title="${escapeHtml(label)}">${escapeHtml(label.split(" ").map(w => w[0]).join("").slice(0,2).toUpperCase())}</button>`).join("")}${moduleId === "cotizaciones" ? `<button class="icon-btn" data-quote-pdf="${escapeHtml(row.id)}" title="Descargar PDF" style="font-weight:700;color:var(--accent)">PDF</button>` : ""}${moduleId === "stock" && (row.numeroMotor || row.estadoChapa || row.reporteRobo || row.numeroVin) ? `<button class="icon-btn" data-vehicle-peritaje="${escapeHtml(row.id)}" title="Informe peritaje" style="font-weight:700;color:var(--accent)">PDF</button>` : ""}${moduleId === "consignaciones" ? `<button class="icon-btn" data-peritaje-pdf="${escapeHtml(row.id)}" title="Descargar informe peritaje" style="font-weight:700;color:var(--accent)">PDF</button><button class="icon-btn" data-consign-exp="${escapeHtml(row.id)}" title="Expediente tecnico">ET</button>` : ""}${key === "files" && row.tipo === "Vehiculo" ? `<button class="icon-btn" data-file-exp="${escapeHtml(row.id)}" title="Ver expediente">ET</button>` : ""}<button class="icon-btn" data-edit="${key}:${row.id}" title="Editar">E</button><button class="icon-btn" data-delete="${key}:${row.id}" title="Eliminar">X</button></td></tr>`).join("") : `<tr><td colspan="${columns.length + 1}" class="empty">No hay registros para mostrar.</td></tr>`}
           </tbody>
         </table>
       </div>
@@ -976,7 +976,7 @@ function generatePeritajePDF(consignmentId, _override = null) {
   const fmt = (v) => `$ ${Math.round(Number(v||0)).toLocaleString("es-AR")}`;
 
   const DARK=[11,17,32], BLUE=[42,100,180], RED=[192,15,15], LIGHT=[248,250,253], GRAY=[98,108,126], LGRAY=[210,216,226], WHITE=[255,255,255];
-  const GREEN=[22,163,74], RED=[220,60,60], ORANGE=[234,88,12];
+  const GREEN=[22,163,74], ERED=[220,60,60], ORANGE=[234,88,12];
 
   const doc = new JsPDF({ unit:"mm", format:"a4" });
   const W=210, H=297, M=14;
@@ -1048,7 +1048,7 @@ function generatePeritajePDF(consignmentId, _override = null) {
   const stateColor = (val, ok="Si", warn="Sin registro", crit="No") => {
     if (!val || val==="Sin verificar") return GRAY;
     if (val===ok||val==="Sin registro"||val==="Completa"||val==="Excelente"||val==="Bueno"||val==="Si"||val==="Activa") return GREEN;
-    if (val==="Con alerta"||val==="Con gravamen"||val==="Con antecedentes"||val==="Con limitacion"||val==="Con detalles"||val==="Vencido") return RED;
+    if (val==="Con alerta"||val==="Con gravamen"||val==="Con antecedentes"||val==="Con limitacion"||val==="Con detalles"||val==="Vencido") return ERED;
     if (val==="No"||val==="Incompleta"||val==="Regular"||val==="Cambiar") return ORANGE;
     return DARK;
   };
@@ -1938,6 +1938,63 @@ function openConsignPreview(id) {
             <button class="btn ghost" data-close>Cerrar</button>
             <button class="btn ghost" data-edit="consignments:${escapeHtml(id)}">Editar</button>
             <button class="btn primary-action" data-peritaje-pdf="${escapeHtml(id)}">PDF Peritaje</button>
+          </div>
+        </div>
+      </section>
+    </div>
+  `);
+  bindModal();
+}
+
+function openSalePreview(id) {
+  const s = (state.sales || []).find(x => x.id === id) || (state.mySales || []).find(x => x.id === id);
+  if (!s) return;
+  const vehicle = s.vehiculoId ? (state.vehicles || []).find(v => v.id === s.vehiculoId) : null;
+  const client = s.clienteId ? (state.clients || []).find(c => c.id === s.clienteId) : null;
+  const photos = vehicle?.fotos || s.fotos || [];
+  const galleryHtml = photos.length
+    ? `<div class="vp-gallery">${photos.map((src, i) => `<img src="${escapeHtml(src)}" alt="Foto ${i+1}">`).join("")}</div>`
+    : "";
+  const row = (label, val) => val ? `<div class="vp-spec"><span>${escapeHtml(label)}</span><strong>${escapeHtml(String(val))}</strong></div>` : "";
+
+  const cuotasHtml = (() => {
+    if (s.formaPago !== "Cuotas" || !s.cuotas?.length) return "";
+    const total = s.cuotas.length;
+    const pagadas = s.cuotas.filter(c => c.estado === "Confirmado").length;
+    return `<div class="vp-spec"><span>Cuotas</span><strong>${pagadas}/${total} pagadas</strong></div>`;
+  })();
+
+  const expedienteBtn = vehicle?.numeroVin || vehicle?.numeroMotor || vehicle?.estadoChapa
+    ? `<button class="btn ghost" data-vehicle-peritaje="${escapeHtml(vehicle.id)}">Expediente Tecnico</button>`
+    : "";
+
+  document.body.insertAdjacentHTML("beforeend", `
+    <div class="modal-backdrop" data-modal>
+      <section class="modal vp-modal">
+        <div class="modal-head">
+          <div>
+            <h2>${escapeHtml(s.vehiculo || "Venta")}</h2>
+            <p>${escapeHtml(s.cliente || client?.nombre || "—")} &middot; ${escapeHtml(s.etapa || "—")} &middot; ${escapeHtml(s.moneda || "ARS")}</p>
+          </div>
+          <button class="icon-btn" data-close>X</button>
+        </div>
+        ${galleryHtml}
+        <div class="vp-body">
+          <div class="vp-specs">
+            <div class="vp-spec price-spec"><span>Monto</span><strong>${money(s.monto)}</strong></div>
+            <div class="vp-spec"><span>Estado</span><strong>${pill(s.estado || "—")}</strong></div>
+            ${row("Forma de pago", s.formaPago)}
+            ${cuotasHtml}
+            ${s.sena && Number(s.sena) > 0 ? `<div class="vp-spec"><span>Seña</span><strong>${money(s.sena)}</strong></div>` : ""}
+            ${row("Vendedor", s.vendedor)}
+            ${row("Telefono cliente", s.telefono || client?.telefono)}
+            ${row("Proximo paso", s.proximo)}
+            ${s.notas ? `<div class="vp-spec vp-spec-full"><span>Notas</span><strong>${escapeHtml(s.notas)}</strong></div>` : ""}
+          </div>
+          <div class="modal-actions">
+            <button class="btn ghost" data-close>Cerrar</button>
+            ${expedienteBtn}
+            <button class="btn ghost" data-edit="sales:${escapeHtml(id)}">Editar</button>
           </div>
         </div>
       </section>
@@ -3422,6 +3479,13 @@ function bind() {
     });
   });
 
+  document.querySelectorAll("[data-sale-row]").forEach(tr => {
+    tr.addEventListener("click", e => {
+      if (e.target.closest("button, a")) return;
+      openSalePreview(tr.dataset.saleRow);
+    });
+  });
+
   document.querySelectorAll("[data-quick-action]").forEach(btn => btn.addEventListener("click", () => handleQuickAction(btn.dataset.quickAction)));
 
   document.querySelectorAll("[data-action='search']").forEach(inputEl => inputEl.addEventListener("input", e => {
@@ -4736,7 +4800,7 @@ function generateQuotePDF(quoteId) {
   if (hasBoni) {
     doc.setFont("helvetica", "normal").setFontSize(10).setTextColor(...GRAY);
     doc.text("Bonificacion:", M + 5, py);
-    doc.setFont("helvetica", "normal").setFontSize(10).setTextColor([34, 139, 34]);
+    doc.setFont("helvetica", "normal").setFontSize(10).setTextColor(34, 139, 34);
     doc.text(`- ${fmt(quote.bonificacion)}`, W - M - 5, py, { align: "right" }); py += 7;
   }
   if (hasList || hasBoni) {
