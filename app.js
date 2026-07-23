@@ -1,6 +1,28 @@
 const THEME_KEY = "autos-crm-theme";
 
 let defaultLogoDataUrl = "";
+let defaultLogoPdfDataUrl = "";
+
+function _buildPdfLogo(src) {
+  if (!src) { defaultLogoPdfDataUrl = ""; return; }
+  try {
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const maxW = 120, maxH = 40;
+        const scale = Math.min(maxW / img.width, maxH / img.height, 1);
+        const w = Math.max(1, Math.round(img.width * scale));
+        const h = Math.max(1, Math.round(img.height * scale));
+        const c = document.createElement("canvas");
+        c.width = w; c.height = h;
+        c.getContext("2d").drawImage(img, 0, 0, w, h);
+        defaultLogoPdfDataUrl = c.toDataURL("image/jpeg", 0.88);
+      } catch (_) { defaultLogoPdfDataUrl = ""; }
+    };
+    img.onerror = () => { defaultLogoPdfDataUrl = ""; };
+    img.src = src;
+  } catch (_) { defaultLogoPdfDataUrl = ""; }
+}
 
 let state = null;
 let authUser = null;
@@ -45,7 +67,7 @@ async function api(path, options = {}) {
 async function boot() {
   setTheme();
   fetch("/data/vehiculos-ar.json").then(r => r.json()).then(data => { catalogoVehiculos = data; }).catch(() => {});
-  fetch("/logo.png").then(r => r.blob()).then(blob => new Promise(res => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.readAsDataURL(blob); })).then(d => { defaultLogoDataUrl = d; }).catch(() => {});
+  fetch("/logo.png").then(r => r.blob()).then(blob => new Promise(res => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.readAsDataURL(blob); })).then(d => { defaultLogoDataUrl = d; _buildPdfLogo(d); }).catch(() => {});
   try {
     publicConfig = await api("/api/public-config");
   } catch {
@@ -70,6 +92,7 @@ async function loadState() {
   if (changed) {
     await api("/api/state", { method: "PUT", body: JSON.stringify({ state }) }).catch(() => {});
   }
+  _buildPdfLogo(state?.settings?.logoDataUrl || defaultLogoDataUrl);
 }
 const sectionData = {
   calendario: { key: "calendarItems", title: "Calendario", item: "evento", fields: [["fecha", "Fecha", "date"], ["hora", "Hora"], ["tipo", "Tipo"], ["cliente", "Cliente"], ["vehiculo", "Vehiculo"], ["estado", "Estado"]], columns: [["fecha", "Fecha"], ["hora", "Hora"], ["tipo", "Tipo"], ["cliente", "Cliente"], ["vehiculo", "Vehiculo"], ["estado", "Estado"]] },
@@ -955,7 +978,7 @@ function generatePeritajePDF(consignmentId, _override = null) {
   doc.setFillColor(...DARK).rect(0,0,W,hdrH,"F");
   doc.setFillColor(...BLUE).rect(0,0,W,2.5,"F");
   let logoLoaded=false;
-  const _pdfLogo = cfg.logoDataUrl || defaultLogoDataUrl; if (_pdfLogo) { try { doc.addImage(_pdfLogo,undefined,M,5,26,26,undefined,"FAST"); logoLoaded=true; } catch(_){} }
+  if (defaultLogoPdfDataUrl) { try { doc.addImage(defaultLogoPdfDataUrl,"JPEG",M,6,24,24,undefined,"FAST"); logoLoaded=true; } catch(_e){} }
   if (!logoLoaded) { doc.setFont("helvetica","bold").setFontSize(17).setTextColor(...WHITE); doc.text(agencia,M,20); }
   [cfg.phone,cfg.email,cfg.address].filter(Boolean).forEach((l,i) => {
     doc.setFont("helvetica","normal").setFontSize(7.5).setTextColor(180,195,220);
@@ -1126,7 +1149,7 @@ function generateClientStatementPDF(clientId) {
   doc.setFillColor(...DARK).rect(0,0,W,hdrH,"F");
   doc.setFillColor(...BLUE).rect(0,0,W,2.5,"F");
   let logoLoaded = false;
-  const _pdfLogo = cfg.logoDataUrl || defaultLogoDataUrl; if (_pdfLogo) { try { doc.addImage(_pdfLogo,undefined,M,5,26,26,undefined,"FAST"); logoLoaded=true; } catch(_){} }
+  if (defaultLogoPdfDataUrl) { try { doc.addImage(defaultLogoPdfDataUrl,"JPEG",M,6,24,24,undefined,"FAST"); logoLoaded=true; } catch(_e){} }
   if (!logoLoaded) { doc.setFont("helvetica","bold").setFontSize(17).setTextColor(...WHITE); doc.text(agencia,M,20); }
   [cfg.phone,cfg.email,cfg.address].filter(Boolean).forEach((l,i) => { doc.setFont("helvetica","normal").setFontSize(7.5).setTextColor(180,195,220); doc.text(l,W-M,12+i*4.8,{align:"right"}); });
   doc.setFont("helvetica","bold").setFontSize(8).setTextColor(...BLUE);
@@ -1225,7 +1248,7 @@ function generatePaymentReceiptPDF(clientId, rowIdx) {
   doc.setFillColor(...DARK).rect(0,0,W,hdrH,"F");
   doc.setFillColor(...BLUE).rect(0,0,W,2.5,"F");
   let ll=false;
-  const _pdfLogoR = cfg.logoDataUrl || defaultLogoDataUrl; if (_pdfLogoR) { try { doc.addImage(_pdfLogoR,undefined,M,5,26,26,undefined,"FAST"); ll=true; } catch(_){} }
+  if (defaultLogoPdfDataUrl) { try { doc.addImage(defaultLogoPdfDataUrl,"JPEG",M,6,24,24,undefined,"FAST"); ll=true; } catch(_e){} }
   if (!ll) { doc.setFont("helvetica","bold").setFontSize(17).setTextColor(...WHITE); doc.text(agencia,M,20); }
   [cfg.phone,cfg.email].filter(Boolean).forEach((l,i) => { doc.setFont("helvetica","normal").setFontSize(7.5).setTextColor(180,195,220); doc.text(l,W-M,12+i*4.8,{align:"right"}); });
   const recNum = String(Date.now()).slice(-6);
@@ -1274,7 +1297,7 @@ function generatePaymentReceiptPDF(clientId, rowIdx) {
   // Saldo tras este movimiento
   doc.setFont("helvetica","normal").setFontSize(9).setTextColor(...GRAY);
   doc.text(`Saldo pendiente de la cuenta tras este movimiento:`, M, y);
-  doc.setFont("helvetica","bold").setFontSize(11).setTextColor(saldoPendiente>0?[220,60,60]:[22,163,74]);
+  doc.setFont("helvetica","bold").setFontSize(11).setTextColor(...(saldoPendiente>0?[220,60,60]:[22,163,74]));
   doc.text(`${saldoPendiente>0?"-":"+"}${fmt(Math.abs(saldoPendiente))}`, W-M, y, {align:"right"});
 
   // Pie
@@ -3528,6 +3551,7 @@ function bind() {
     reader.onload = async () => {
       state.settings = { ...(state.settings || {}), logoDataUrl: String(reader.result || "") };
       publicConfig = { ...publicConfig, logoDataUrl: state.settings.logoDataUrl, businessName: state.settings.businessName || publicConfig.businessName || "" };
+      _buildPdfLogo(state.settings.logoDataUrl);
       addAudit("Logo actualizado");
       await saveState("Logo guardado");
       render();
@@ -3538,6 +3562,7 @@ function bind() {
   document.querySelector("[data-action='logo-remove']")?.addEventListener("click", async () => {
     state.settings = { ...(state.settings || {}), logoDataUrl: "" };
     publicConfig = { ...publicConfig, logoDataUrl: "" };
+    _buildPdfLogo(defaultLogoDataUrl);
     addAudit("Logo eliminado");
     await saveState("Logo eliminado");
     render();
@@ -4332,8 +4357,7 @@ function openSaleReport(saleId) {
   doc.setFillColor(...DARK).rect(0, 0, W, hdrH, "F");
   doc.setFillColor(...BLUE).rect(0, 0, W, 2.5, "F");
   let logoLoaded = false;
-  const _pdfLogoS = cfg.logoDataUrl || defaultLogoDataUrl;
-  if (_pdfLogoS) { try { doc.addImage(_pdfLogoS, undefined, M, 5, 26, 26, undefined, "FAST"); logoLoaded = true; } catch (_) {} }
+  if (defaultLogoPdfDataUrl) { try { doc.addImage(defaultLogoPdfDataUrl, "JPEG", M, 6, 24, 24, undefined, "FAST"); logoLoaded = true; } catch (_e) {} }
   if (!logoLoaded) {
     doc.setFont("helvetica", "bold").setFontSize(17).setTextColor(...WHITE);
     doc.text(agencia, M, 20);
@@ -4581,8 +4605,7 @@ function generateQuotePDF(quoteId) {
 
   // Logo or agency name
   let logoLoaded = false;
-  const _pdfLogoQQ = cfg.logoDataUrl || defaultLogoDataUrl;
-  if (_pdfLogoQQ) { try { doc.addImage(_pdfLogoQQ, undefined, M, 5, 26, 26, undefined, "FAST"); logoLoaded = true; } catch (_) {} }
+  if (defaultLogoPdfDataUrl) { try { doc.addImage(defaultLogoPdfDataUrl, "JPEG", M, 6, 24, 24, undefined, "FAST"); logoLoaded = true; } catch (_e) {} }
   if (!logoLoaded) {
     doc.setFont("helvetica", "bold").setFontSize(17).setTextColor(...WHITE);
     doc.text(agencyName, M, 20);
