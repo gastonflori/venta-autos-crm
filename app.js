@@ -3034,6 +3034,12 @@ function closeSaleEffects(sale) {
   if (sale.vehiculoId) {
     const v = (state.vehicles || []).find(x => x.id === sale.vehiculoId);
     if (v) v.estado = "Vendido";
+  } else if (sale.vehiculo) {
+    const vByName = (state.vehicles || []).find(x =>
+      x.estado !== "Vendido" &&
+      `${x.marca || ""} ${x.modelo || ""}${x.version ? " " + x.version : ""}`.trim().toLowerCase() === sale.vehiculo.toLowerCase()
+    );
+    if (vByName) { vByName.estado = "Vendido"; sale.vehiculoId = vByName.id; }
   }
 
   const saldoYaEnTesoreria = (state.treasury || []).some(t => (t.saleRef === sale.id || t.saleId === sale.id) && /saldo/i.test(t.concepto || ""));
