@@ -427,7 +427,7 @@ function shell() {
       <aside class="sidebar">
         <div class="brand">
           ${logo}
-          <div><strong>${escapeHtml(state.settings?.businessName || "Lake Motors")}</strong><span>Agencia automotor</span></div>
+          <div><strong>${escapeHtml(state.settings?.businessName || "Lake Motors")}</strong><span>Concesionaria de vehiculos</span></div>
         </div>
         <nav class="nav">
           ${modules.map(m => `<button class="${m.id === currentModule ? "active" : ""}" data-module="${m.id}" title="${m.label}"><span class="ico">${m.icon}</span><span class="label">${m.label}</span></button>`).join("")}
