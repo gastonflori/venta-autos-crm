@@ -9,14 +9,17 @@ function _buildPdfLogo(src) {
     const img = new Image();
     img.onload = () => {
       try {
-        const maxW = 120, maxH = 40;
-        const scale = Math.min(maxW / img.width, maxH / img.height, 1);
+        const maxSize = 280;
+        const scale = Math.min(maxSize / img.width, maxSize / img.height, 1);
         const w = Math.max(1, Math.round(img.width * scale));
         const h = Math.max(1, Math.round(img.height * scale));
         const c = document.createElement("canvas");
         c.width = w; c.height = h;
-        c.getContext("2d").drawImage(img, 0, 0, w, h);
-        defaultLogoPdfDataUrl = c.toDataURL("image/jpeg", 0.88);
+        const ctx = c.getContext("2d");
+        ctx.fillStyle = "#0b1120"; // fondo oscuro = header del PDF
+        ctx.fillRect(0, 0, w, h);
+        ctx.drawImage(img, 0, 0, w, h);
+        defaultLogoPdfDataUrl = c.toDataURL("image/png"); // PNG preserva calidad del logo
       } catch (_) { defaultLogoPdfDataUrl = ""; }
     };
     img.onerror = () => { defaultLogoPdfDataUrl = ""; };
@@ -972,7 +975,7 @@ function generatePeritajePDF(consignmentId, _override = null) {
   const safe = (v) => String(v || "—");
   const fmt = (v) => `$ ${Math.round(Number(v||0)).toLocaleString("es-AR")}`;
 
-  const DARK=[11,17,32], BLUE=[204,17,17], LIGHT=[248,250,253], GRAY=[98,108,126], LGRAY=[210,216,226], WHITE=[255,255,255];
+  const DARK=[11,17,32], BLUE=[42,100,180], RED=[192,15,15], LIGHT=[248,250,253], GRAY=[98,108,126], LGRAY=[210,216,226], WHITE=[255,255,255];
   const GREEN=[22,163,74], RED=[220,60,60], ORANGE=[234,88,12];
 
   const doc = new JsPDF({ unit:"mm", format:"a4" });
@@ -982,9 +985,9 @@ function generatePeritajePDF(consignmentId, _override = null) {
   // ─── HEADER ───────────────────────────────────────────────────────────────
   const hdrH=36;
   doc.setFillColor(...DARK).rect(0,0,W,hdrH,"F");
-  doc.setFillColor(...BLUE).rect(0,0,W,2.5,"F");
+  doc.setFillColor(...RED).rect(0,0,W,2.5,"F");
   let logoLoaded=false;
-  if (defaultLogoPdfDataUrl) { try { doc.addImage(defaultLogoPdfDataUrl,"JPEG",M,6,24,24,undefined,"FAST"); logoLoaded=true; } catch(_e){} }
+  if (defaultLogoPdfDataUrl) { try { doc.addImage(defaultLogoPdfDataUrl,"PNG",M,3,30,30,undefined,"FAST"); logoLoaded=true; } catch(_e){} }
   if (!logoLoaded) { doc.setFont("helvetica","bold").setFontSize(17).setTextColor(...WHITE); doc.text(agencia,M,20); }
   [cfg.phone,cfg.email,cfg.address].filter(Boolean).forEach((l,i) => {
     doc.setFont("helvetica","normal").setFontSize(7.5).setTextColor(180,195,220);
@@ -1124,7 +1127,7 @@ function generatePeritajePDF(consignmentId, _override = null) {
   // ─── PIE ──────────────────────────────────────────────────────────────────
   const footerY=H-14;
   doc.setFillColor(...DARK).rect(0,footerY-8,W,22,"F");
-  doc.setFillColor(...BLUE).rect(0,footerY-8,W,1.5,"F");
+  doc.setFillColor(...RED).rect(0,footerY-8,W,1.5,"F");
   doc.setFont("helvetica","bold").setFontSize(7.5).setTextColor(...WHITE); doc.text(`${agencia}  ·  Informe de Peritaje Vehicular`,M,footerY+3);
   doc.setFont("helvetica","normal").setFontSize(7.5).setTextColor(160,185,220);
   doc.text(new Date().toLocaleDateString("es-AR"), W-M, footerY+3, {align:"right"});
@@ -1144,7 +1147,7 @@ function generateClientStatementPDF(clientId) {
   const agencia = cfg.businessName || publicConfig.businessName || "Lake Motors";
   const clean = (s) => (s || "").replace(/[^a-zA-Z0-9ÁÉÍÓÚáéíóúÑñ]/g, "_").replace(/_+/g, "_").replace(/^_|_$/g, "");
 
-  const DARK = [11,17,32], BLUE = [204,17,17], LIGHT = [248,250,253], GRAY = [98,108,126], LGRAY = [210,216,226], WHITE = [255,255,255];
+  const DARK = [11,17,32], BLUE = [42,100,180], RED=[192,15,15], LIGHT = [248,250,253], GRAY = [98,108,126], LGRAY = [210,216,226], WHITE = [255,255,255];
   const fmt = (v) => `$ ${Math.round(Number(v||0)).toLocaleString("es-AR")}`;
   const doc = new JsPDF({ unit: "mm", format: "a4" });
   const W = 210, H = 297, M = 14;
@@ -1153,9 +1156,9 @@ function generateClientStatementPDF(clientId) {
   // Header
   const hdrH = 36;
   doc.setFillColor(...DARK).rect(0,0,W,hdrH,"F");
-  doc.setFillColor(...BLUE).rect(0,0,W,2.5,"F");
+  doc.setFillColor(...RED).rect(0,0,W,2.5,"F");
   let logoLoaded = false;
-  if (defaultLogoPdfDataUrl) { try { doc.addImage(defaultLogoPdfDataUrl,"JPEG",M,6,24,24,undefined,"FAST"); logoLoaded=true; } catch(_e){} }
+  if (defaultLogoPdfDataUrl) { try { doc.addImage(defaultLogoPdfDataUrl,"PNG",M,3,30,30,undefined,"FAST"); logoLoaded=true; } catch(_e){} }
   if (!logoLoaded) { doc.setFont("helvetica","bold").setFontSize(17).setTextColor(...WHITE); doc.text(agencia,M,20); }
   [cfg.phone,cfg.email,cfg.address].filter(Boolean).forEach((l,i) => { doc.setFont("helvetica","normal").setFontSize(7.5).setTextColor(180,195,220); doc.text(l,W-M,12+i*4.8,{align:"right"}); });
   doc.setFont("helvetica","bold").setFontSize(8).setTextColor(...BLUE);
@@ -1177,7 +1180,7 @@ function generateClientStatementPDF(clientId) {
   const cardH = 8 + cardLines.length * 5.5;
   doc.setFillColor(...LIGHT).roundedRect(M,y,W-2*M,cardH,2,2,"F");
   doc.setDrawColor(...LGRAY).setLineWidth(0.25).roundedRect(M,y,W-2*M,cardH,2,2,"S");
-  doc.setFillColor(...BLUE).rect(M,y,2.5,cardH,"F");
+  doc.setFillColor(...RED).rect(M,y,2.5,cardH,"F");
   doc.setFont("helvetica","bold").setFontSize(7).setTextColor(...BLUE); doc.text("CLIENTE", M+5, y+5);
   doc.setFont("helvetica","bold").setFontSize(11).setTextColor(...DARK); doc.text(client.nombre, M+5, y+10.5);
   let cy = y+10.5;
@@ -1187,7 +1190,7 @@ function generateClientStatementPDF(clientId) {
   // Resumen saldo
   const summaryH = 18;
   doc.setFillColor(...DARK).roundedRect(M,y,W-2*M,summaryH,2,2,"F");
-  doc.setFillColor(...BLUE).rect(M,y,4,summaryH,"F");
+  doc.setFillColor(...RED).rect(M,y,4,summaryH,"F");
   const thirds = (W-2*M)/3;
   [[`Total adeudado`, totalAdeudado, [160,185,220]], [`Total pagado`, totalPagado, [100,210,130]], [`Saldo pendiente`, saldoPendiente, saldoPendiente>0?[220,90,90]:[100,210,130]]].forEach(([lbl,val,col],i) => {
     const bx = M + i*thirds;
@@ -1222,7 +1225,7 @@ function generateClientStatementPDF(clientId) {
   // Pie
   const footerY = H-14;
   doc.setFillColor(...DARK).rect(0,footerY-8,W,22,"F");
-  doc.setFillColor(...BLUE).rect(0,footerY-8,W,1.5,"F");
+  doc.setFillColor(...RED).rect(0,footerY-8,W,1.5,"F");
   doc.setFont("helvetica","normal").setFontSize(7.5).setTextColor(160,185,220);
   doc.text(`${agencia}  ·  Estado de cuenta corriente`, W-M, footerY+3, {align:"right"});
 
@@ -1243,7 +1246,7 @@ function generatePaymentReceiptPDF(clientId, rowIdx) {
   const agencia = cfg.businessName || publicConfig.businessName || "Lake Motors";
   const clean = (s) => (s||"").replace(/[^a-zA-Z0-9ÁÉÍÓÚáéíóúÑñ]/g,"_").replace(/_+/g,"_").replace(/^_|_$/g,"");
 
-  const DARK=[11,17,32], BLUE=[204,17,17], LIGHT=[248,250,253], GRAY=[98,108,126], LGRAY=[210,216,226], WHITE=[255,255,255];
+  const DARK=[11,17,32], BLUE=[42,100,180], RED=[192,15,15], LIGHT=[248,250,253], GRAY=[98,108,126], LGRAY=[210,216,226], WHITE=[255,255,255];
   const fmt = (v) => `$ ${Math.round(Number(v||0)).toLocaleString("es-AR")}`;
   const doc = new JsPDF({ unit:"mm", format:"a4" });
   const W=210, H=297, M=14;
@@ -1252,9 +1255,9 @@ function generatePaymentReceiptPDF(clientId, rowIdx) {
   // Header
   const hdrH=36;
   doc.setFillColor(...DARK).rect(0,0,W,hdrH,"F");
-  doc.setFillColor(...BLUE).rect(0,0,W,2.5,"F");
+  doc.setFillColor(...RED).rect(0,0,W,2.5,"F");
   let ll=false;
-  if (defaultLogoPdfDataUrl) { try { doc.addImage(defaultLogoPdfDataUrl,"JPEG",M,6,24,24,undefined,"FAST"); ll=true; } catch(_e){} }
+  if (defaultLogoPdfDataUrl) { try { doc.addImage(defaultLogoPdfDataUrl,"PNG",M,3,30,30,undefined,"FAST"); ll=true; } catch(_e){} }
   if (!ll) { doc.setFont("helvetica","bold").setFontSize(17).setTextColor(...WHITE); doc.text(agencia,M,20); }
   [cfg.phone,cfg.email].filter(Boolean).forEach((l,i) => { doc.setFont("helvetica","normal").setFontSize(7.5).setTextColor(180,195,220); doc.text(l,W-M,12+i*4.8,{align:"right"}); });
   const recNum = String(Date.now()).slice(-6);
@@ -1276,7 +1279,7 @@ function generatePaymentReceiptPDF(clientId, rowIdx) {
   const cardH=8+cardLines.length*5.5;
   doc.setFillColor(...LIGHT).roundedRect(M,y,W-2*M,cardH,2,2,"F");
   doc.setDrawColor(...LGRAY).setLineWidth(0.25).roundedRect(M,y,W-2*M,cardH,2,2,"S");
-  doc.setFillColor(...BLUE).rect(M,y,2.5,cardH,"F");
+  doc.setFillColor(...RED).rect(M,y,2.5,cardH,"F");
   doc.setFont("helvetica","bold").setFontSize(7).setTextColor(...BLUE); doc.text("CLIENTE",M+5,y+5);
   doc.setFont("helvetica","bold").setFontSize(11).setTextColor(...DARK); doc.text(client.nombre,M+5,y+10.5);
   let ry=y+10.5;
@@ -1309,7 +1312,7 @@ function generatePaymentReceiptPDF(clientId, rowIdx) {
   // Pie
   const footerY=H-14;
   doc.setFillColor(...DARK).rect(0,footerY-8,W,22,"F");
-  doc.setFillColor(...BLUE).rect(0,footerY-8,W,1.5,"F");
+  doc.setFillColor(...RED).rect(0,footerY-8,W,1.5,"F");
   doc.setFont("helvetica","normal").setFontSize(7.5).setTextColor(160,185,220);
   doc.text(`${agencia}  ·  Recibo de pago`, W-M, footerY+3, {align:"right"});
 
@@ -4348,7 +4351,8 @@ function openSaleReport(saleId) {
   const clean = (s) => (s || "").replace(/[^a-zA-Z0-9ÁÉÍÓÚáéíóúÑñ]/g, "_").replace(/_+/g, "_").replace(/^_|_$/g, "");
 
   const DARK  = [11, 17, 32];
-  const BLUE  = [204, 17, 17];
+  const BLUE  = [42, 100, 180];
+  const RED   = [192, 15, 15];
   const LIGHT = [248, 250, 253];
   const GRAY  = [98, 108, 126];
   const LGRAY = [210, 216, 226];
@@ -4361,9 +4365,9 @@ function openSaleReport(saleId) {
   // ─── HEADER ─────────────────────────────────────────────────────────────────
   const hdrH = 36;
   doc.setFillColor(...DARK).rect(0, 0, W, hdrH, "F");
-  doc.setFillColor(...BLUE).rect(0, 0, W, 2.5, "F");
+  doc.setFillColor(...RED).rect(0, 0, W, 2.5, "F");
   let logoLoaded = false;
-  if (defaultLogoPdfDataUrl) { try { doc.addImage(defaultLogoPdfDataUrl, "JPEG", M, 6, 24, 24, undefined, "FAST"); logoLoaded = true; } catch (_e) {} }
+  if (defaultLogoPdfDataUrl) { try { doc.addImage(defaultLogoPdfDataUrl, "PNG", M, 3, 30, 30, undefined, "FAST"); logoLoaded = true; } catch (_e) {} }
   if (!logoLoaded) {
     doc.setFont("helvetica", "bold").setFontSize(17).setTextColor(...WHITE);
     doc.text(agencia, M, 20);
@@ -4592,7 +4596,8 @@ function generateQuotePDF(quoteId) {
 
   // Palette
   const DARK  = [11, 17, 32];      // #0b1120
-  const BLUE  = [204, 17, 17];     // #cc1111 Lake Motors red
+  const BLUE  = [42, 100, 180];
+  const RED   = [192, 15, 15];    // Lake Motors red (accent line only)
   const LIGHT = [248, 250, 253];   // soft page bg
   const GRAY  = [98, 108, 126];
   const LGRAY = [210, 216, 226];
@@ -4607,11 +4612,11 @@ function generateQuotePDF(quoteId) {
   const hdrH = 36;
   doc.setFillColor(...DARK).rect(0, 0, W, hdrH, "F");
   // Accent line on top
-  doc.setFillColor(...BLUE).rect(0, 0, W, 2.5, "F");
+  doc.setFillColor(...RED).rect(0, 0, W, 2.5, "F");
 
   // Logo or agency name
   let logoLoaded = false;
-  if (defaultLogoPdfDataUrl) { try { doc.addImage(defaultLogoPdfDataUrl, "JPEG", M, 6, 24, 24, undefined, "FAST"); logoLoaded = true; } catch (_e) {} }
+  if (defaultLogoPdfDataUrl) { try { doc.addImage(defaultLogoPdfDataUrl, "PNG", M, 3, 30, 30, undefined, "FAST"); logoLoaded = true; } catch (_e) {} }
   if (!logoLoaded) {
     doc.setFont("helvetica", "bold").setFontSize(17).setTextColor(...WHITE);
     doc.text(agencyName, M, 20);
