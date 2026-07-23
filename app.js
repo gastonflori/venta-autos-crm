@@ -21,6 +21,7 @@ const modules = [
   { id: "clientes", label: "Clientes", icon: "C", subtitle: "Leads, compradores y seguimiento comercial" },
   { id: "ventas", label: "Ventas", icon: "V", subtitle: "Pipeline comercial por etapa" },
   { id: "cotizaciones", label: "Cotizaciones", icon: "CO", subtitle: "Presupuestos y ofertas enviadas" },
+  { id: "consignaciones", label: "Consignaciones", icon: "CS", subtitle: "Unidades tomadas en consignacion" },
   { id: "tesoreria", label: "Tesoreria", icon: "T", subtitle: "Caja, bancos y saldos" },
   { id: "finanzas", label: "Finanzas", icon: "$", subtitle: "Ingresos, egresos y caja" },
   { id: "configuracion", label: "Configuracion", icon: "*", subtitle: "Preferencias de agencia y cuenta" },
@@ -521,7 +522,7 @@ function tablePage(key, title, columns, embedded = false, moduleId = "", rowsOve
         <table>
           <thead><tr>${columns.map(c => `<th>${c.label}</th>`).join("")}<th></th></tr></thead>
           <tbody>
-            ${rows.length ? rows.map(row => `<tr${key === "clients" ? ` data-client-row="${escapeHtml(row.id)}" class="clickable-row"` : key === "vehicles" ? ` data-vehicle-row="${escapeHtml(row.id)}" class="clickable-row"` : row._montoEditado ? ` style="border-left:3px solid var(--crit)"` : ""}>${columns.map(c => `<td>${c.render ? c.render(row[c.key], row) : escapeHtml(row[c.key] ?? "")}</td>`).join("")}<td class="record-actions">${flows.map(([flow, label]) => `<button class="icon-btn" data-module-flow="${flow}:${key}:${row.id}" title="${escapeHtml(label)}">${escapeHtml(label.split(" ").map(w => w[0]).join("").slice(0,2).toUpperCase())}</button>`).join("")}${moduleId === "cotizaciones" ? `<button class="icon-btn" data-quote-pdf="${escapeHtml(row.id)}" title="Descargar PDF" style="font-weight:700;color:var(--accent)">PDF</button>` : ""}${moduleId === "consignaciones" ? `<button class="icon-btn" data-consign-exp="${escapeHtml(row.id)}" title="Expediente tecnico">ET</button>` : ""}${key === "files" && row.tipo === "Vehiculo" ? `<button class="icon-btn" data-file-exp="${escapeHtml(row.id)}" title="Ver expediente">ET</button>` : ""}<button class="icon-btn" data-edit="${key}:${row.id}" title="Editar">E</button><button class="icon-btn" data-delete="${key}:${row.id}" title="Eliminar">X</button></td></tr>`).join("") : `<tr><td colspan="${columns.length + 1}" class="empty">No hay registros para mostrar.</td></tr>`}
+            ${rows.length ? rows.map(row => `<tr${key === "clients" ? ` data-client-row="${escapeHtml(row.id)}" class="clickable-row"` : key === "vehicles" ? ` data-vehicle-row="${escapeHtml(row.id)}" class="clickable-row"` : row._montoEditado ? ` style="border-left:3px solid var(--crit)"` : ""}>${columns.map(c => `<td>${c.render ? c.render(row[c.key], row) : escapeHtml(row[c.key] ?? "")}</td>`).join("")}<td class="record-actions">${flows.map(([flow, label]) => `<button class="icon-btn" data-module-flow="${flow}:${key}:${row.id}" title="${escapeHtml(label)}">${escapeHtml(label.split(" ").map(w => w[0]).join("").slice(0,2).toUpperCase())}</button>`).join("")}${moduleId === "cotizaciones" ? `<button class="icon-btn" data-quote-pdf="${escapeHtml(row.id)}" title="Descargar PDF" style="font-weight:700;color:var(--accent)">PDF</button>` : ""}${moduleId === "consignaciones" ? `<button class="icon-btn" data-peritaje-pdf="${escapeHtml(row.id)}" title="Descargar informe peritaje" style="font-weight:700;color:var(--accent)">PDF</button><button class="icon-btn" data-consign-exp="${escapeHtml(row.id)}" title="Expediente tecnico">ET</button>` : ""}${key === "files" && row.tipo === "Vehiculo" ? `<button class="icon-btn" data-file-exp="${escapeHtml(row.id)}" title="Ver expediente">ET</button>` : ""}<button class="icon-btn" data-edit="${key}:${row.id}" title="Editar">E</button><button class="icon-btn" data-delete="${key}:${row.id}" title="Eliminar">X</button></td></tr>`).join("") : `<tr><td colspan="${columns.length + 1}" class="empty">No hay registros para mostrar.</td></tr>`}
           </tbody>
         </table>
       </div>
@@ -845,6 +846,179 @@ function clientProfileCuenta(client) {
   `;
 }
 
+function generatePeritajePDF(consignmentId) {
+  try {
+  const JsPDF = window.jspdf?.jsPDF;
+  if (!JsPDF) return toast("No se pudo generar el PDF. Verificá tu conexion a internet.");
+  const cs = (state.consignments || []).find(c => c.id === consignmentId);
+  if (!cs) return toast("Consignacion no encontrada.");
+  const cfg = state.settings || {};
+  const agencia = cfg.businessName || publicConfig.businessName || "Sote Auto";
+  const clean = (s) => (s || "").replace(/[^a-zA-Z0-9ÁÉÍÓÚáéíóúÑñ]/g, "_").replace(/_+/g, "_").replace(/^_|_$/g, "");
+  const safe = (v) => String(v || "—");
+  const fmt = (v) => `$ ${Math.round(Number(v||0)).toLocaleString("es-AR")}`;
+
+  const DARK=[11,17,32], BLUE=[42,120,214], LIGHT=[248,250,253], GRAY=[98,108,126], LGRAY=[210,216,226], WHITE=[255,255,255];
+  const GREEN=[22,163,74], RED=[220,60,60], ORANGE=[234,88,12];
+
+  const doc = new JsPDF({ unit:"mm", format:"a4" });
+  const W=210, H=297, M=14;
+  let y=0;
+
+  // ─── HEADER ───────────────────────────────────────────────────────────────
+  const hdrH=36;
+  doc.setFillColor(...DARK).rect(0,0,W,hdrH,"F");
+  doc.setFillColor(...BLUE).rect(0,0,W,2.5,"F");
+  let logoLoaded=false;
+  if (cfg.logoDataUrl) { try { doc.addImage(cfg.logoDataUrl,undefined,M,7,34,16,undefined,"FAST"); logoLoaded=true; } catch(_){} }
+  if (!logoLoaded) { doc.setFont("helvetica","bold").setFontSize(17).setTextColor(...WHITE); doc.text(agencia,M,20); }
+  [cfg.phone,cfg.email,cfg.address].filter(Boolean).forEach((l,i) => {
+    doc.setFont("helvetica","normal").setFontSize(7.5).setTextColor(180,195,220);
+    doc.text(l,W-M,12+i*4.8,{align:"right"});
+  });
+  doc.setFont("helvetica","bold").setFontSize(8).setTextColor(...BLUE);
+  doc.text("PERITAJE VEHICULAR", W-M, hdrH-7, {align:"right"});
+  y=hdrH+10;
+
+  // ─── TITULO ───────────────────────────────────────────────────────────────
+  doc.setFont("helvetica","bold").setFontSize(22).setTextColor(...DARK);
+  doc.text("INFORME DE PERITAJE VEHICULAR", M, y); y+=3;
+  doc.setFont("helvetica","normal").setFontSize(8.5).setTextColor(...GRAY);
+  doc.text(`Emitido el ${new Date().toLocaleDateString("es-AR",{day:"2-digit",month:"long",year:"numeric"})}`, M, y+5);
+  y+=12;
+  doc.setDrawColor(...BLUE).setLineWidth(0.5).line(M,y,M+50,y);
+  doc.setDrawColor(...LGRAY).setLineWidth(0.3).line(M+50,y,W-M,y);
+  y+=8;
+
+  // ─── CARD: TITULAR + VEHICULO ─────────────────────────────────────────────
+  const colW=(W-2*M-6)/2;
+  const tLines=[cs.titular||"—", cs.telefono&&`Tel: ${cs.telefono}`].filter(Boolean);
+  const vNombre=`${cs.marca||""} ${cs.modelo||""}${cs.version?" "+cs.version:""}`.trim()||"—";
+  const vLines=[vNombre, cs.dominio&&`Dominio: ${cs.dominio}`, cs.anio&&`Año: ${cs.anio}`, cs.km&&`KM: ${Number(cs.km||0).toLocaleString("es-AR")}`, cs.precioPretendido&&`Precio pretendido: ${fmt(cs.precioPretendido)}`].filter(Boolean);
+  const maxLines=Math.max(tLines.length, vLines.length);
+  const cH=8+maxLines*5.5+2;
+  [[M, tLines,"TITULAR",...BLUE],[M+colW+6, vLines,"VEHICULO",...BLUE]].forEach(([bx,lines,ttl,...col]) => {
+    doc.setFillColor(...LIGHT).roundedRect(bx,y,colW,cH,2,2,"F");
+    doc.setDrawColor(...LGRAY).setLineWidth(0.25).roundedRect(bx,y,colW,cH,2,2,"S");
+    doc.setFillColor(BLUE[0],BLUE[1],BLUE[2]).rect(bx,y,2.5,cH,"F");
+    doc.setFont("helvetica","bold").setFontSize(7).setTextColor(BLUE[0],BLUE[1],BLUE[2]); doc.text(ttl,bx+5,y+5);
+    let iy=y+10.5;
+    lines.forEach((l,i) => {
+      doc.setFont("helvetica",i===0?"bold":"normal").setFontSize(i===0?9:8.5).setTextColor(...(i===0?DARK:GRAY));
+      doc.text(l,bx+5,iy); iy+=5.5;
+    });
+  });
+  y+=cH+8;
+
+  // ─── helper: sección con filas clave/valor ────────────────────────────────
+  const section = (title, num, pairs) => {
+    if (y+12+pairs.length*6.5>268) { doc.addPage(); y=18; }
+    doc.setFillColor(...DARK).roundedRect(M,y,W-2*M,8,1,1,"F");
+    doc.setFont("helvetica","bold").setFontSize(8).setTextColor(...BLUE); doc.text(`${num}.`,M+4,y+5.5);
+    doc.setFont("helvetica","bold").setFontSize(8).setTextColor(...WHITE); doc.text(title,M+12,y+5.5);
+    y+=8;
+    pairs.forEach(([lbl,val,col],i) => {
+      if (y+6.5>268) { doc.addPage(); y=18; }
+      if (i%2===0) doc.setFillColor(...LIGHT).rect(M,y,W-2*M,6.5,"F");
+      doc.setFont("helvetica","normal").setFontSize(8.5).setTextColor(...GRAY); doc.text(lbl,M+4,y+4.5);
+      const c=col||DARK;
+      doc.setFont("helvetica","bold").setFontSize(8.5).setTextColor(...c); doc.text(safe(val),W-M-4,y+4.5,{align:"right"});
+      y+=6.5;
+    });
+    y+=6;
+  };
+
+  const stateColor = (val, ok="Si", warn="Sin registro", crit="No") => {
+    if (!val || val==="Sin verificar") return GRAY;
+    if (val===ok||val==="Sin registro"||val==="Completa"||val==="Excelente"||val==="Bueno"||val==="Si"||val==="Activa") return GREEN;
+    if (val==="Con alerta"||val==="Con gravamen"||val==="Con antecedentes"||val==="Con limitacion"||val==="Con detalles"||val==="Vencido") return RED;
+    if (val==="No"||val==="Incompleta"||val==="Regular"||val==="Cambiar") return ORANGE;
+    return DARK;
+  };
+
+  // ─── 1. IDENTIFICACION ────────────────────────────────────────────────────
+  section("IDENTIFICACION DEL VEHICULO", "1", [
+    ["N° Motor", cs.numeroMotor],
+    ["N° Chasis", cs.numeroChasis],
+    ["N° VIN", cs.numeroVin],
+    ["Coincide con documentacion", cs.coincideDocumentacion, stateColor(cs.coincideDocumentacion,"Si","Sin verificar","No")]
+  ]);
+
+  // ─── 2. IMPRONTAS ─────────────────────────────────────────────────────────
+  section("TOMA DE IMPRONTAS", "2", [
+    ["Improntas tomadas (motor/chasis/VIN)", cs.improntasTomadas, stateColor(cs.improntasTomadas,"Si")]
+  ]);
+
+  // ─── 3. REVISION FISICA ───────────────────────────────────────────────────
+  section("REVISION FISICA Y ESTRUCTURAL", "3", [
+    ["Estado de chapa y pintura", cs.estadoChapa, stateColor(cs.estadoChapa,"Excelente")],
+    ["Detalle de chapa", cs.detalleChapa||"Sin observaciones"],
+    ["Danos estructurales", cs.danosEstructurales, stateColor(cs.danosEstructurales,"No","Si","Si")],
+    ["Detalle danos", cs.detalleDanosEstructurales||"Sin observaciones"],
+    ["Modificaciones no autorizadas", cs.modificacionesNoAutorizadas, stateColor(cs.modificacionesNoAutorizadas,"No","Si","Si")],
+    ["Nivel de combustible", cs.nivelCombustible||"—"],
+    ["Cubierta Del. Izq.", cs.cubiertaDelIzq, stateColor(cs.cubiertaDelIzq,"Buena","Regular","Cambiar")],
+    ["Cubierta Del. Der.", cs.cubiertaDelDer, stateColor(cs.cubiertaDelDer,"Buena","Regular","Cambiar")],
+    ["Cubierta Tras. Izq.", cs.cubiertaTraIzq, stateColor(cs.cubiertaTraIzq,"Buena","Regular","Cambiar")],
+    ["Cubierta Tras. Der.", cs.cubiertaTraDer, stateColor(cs.cubiertaTraDer,"Buena","Regular","Cambiar")],
+    ["Rueda de auxilio", cs.auxilio, stateColor(cs.auxilio,"Si","Usada","No")],
+    ["Cantidad de llaves", cs.cantidadLlaves||"—"],
+    ["Estado mecanico", cs.estadoMecanico||"Sin observaciones"]
+  ]);
+
+  // ─── 4. BASES DE DATOS ────────────────────────────────────────────────────
+  section("COMPARACION CON BASES DE DATOS", "4", [
+    ["Reporte de robo", cs.reporteRobo, stateColor(cs.reporteRobo,"Sin registro","Sin verificar","Con alerta")],
+    ["Embargo / Prenda", cs.embargoPrenda, stateColor(cs.embargoPrenda,"Sin registro","Sin verificar","Con gravamen")],
+    ["Siniestros anteriores", cs.siniestrosAnteriores, stateColor(cs.siniestrosAnteriores,"Sin registro","Sin verificar","Con antecedentes")],
+    ["Detalle siniestros", cs.detalleSiniestros||"Sin observaciones"],
+    ["Limitaciones a la propiedad", cs.limitacionesPropiedad, stateColor(cs.limitacionesPropiedad,"Sin registro","Sin verificar","Con limitacion")]
+  ]);
+
+  // ─── 5. DOCUMENTACION ─────────────────────────────────────────────────────
+  section("DOCUMENTACION Y ACCESORIOS", "5", [
+    ["Documentacion (titulo/cedula)", cs.documentacion, stateColor(cs.documentacion,"Completa","Sin verificar","Incompleta")],
+    ["VTV vigente", cs.vtvVigente, stateColor(cs.vtvVigente,"Si","No aplica","No")],
+    ["Seguro vigente", cs.seguroVigente, stateColor(cs.seguroVigente,"Si")],
+    ["Matafuego", cs.matafuego, stateColor(cs.matafuego,"Si","Vencido","No")],
+    ["Balizas / triangulos", cs.balizas, stateColor(cs.balizas,"Si")],
+    ["Llave de ruedas y gato", cs.llaveRuedaGato, stateColor(cs.llaveRuedaGato,"Si")]
+  ]);
+
+  // ─── NOTAS ────────────────────────────────────────────────────────────────
+  if (cs.notas) {
+    if (y+20>268) { doc.addPage(); y=18; }
+    doc.setFont("helvetica","bold").setFontSize(7.5).setTextColor(...GRAY); doc.text("OBSERVACIONES GENERALES",M,y); y+=5;
+    doc.setFont("helvetica","normal").setFontSize(8.5).setTextColor(...DARK);
+    const lines=doc.splitTextToSize(cs.notas, W-2*M);
+    if (y+lines.length*4.5>268) { doc.addPage(); y=18; }
+    doc.text(lines,M,y); y+=lines.length*4.5+8;
+  }
+
+  // ─── FOTOS ────────────────────────────────────────────────────────────────
+  const fotos = (cs.fotos || []).slice(0,2);
+  if (fotos.length) {
+    if (y+65>268) { doc.addPage(); y=18; }
+    doc.setFont("helvetica","bold").setFontSize(7.5).setTextColor(...GRAY); doc.text("FOTOS DEL VEHICULO",M,y); y+=5;
+    const imgW=(W-2*M-(fotos.length-1)*5)/fotos.length;
+    fotos.forEach((src,i) => {
+      try { doc.addImage(src,undefined,M+i*(imgW+5),y,imgW,imgW*0.67,undefined,"FAST"); } catch(_) {}
+    });
+    y+=imgW*0.67+8;
+  }
+
+  // ─── PIE ──────────────────────────────────────────────────────────────────
+  const footerY=H-14;
+  doc.setFillColor(...DARK).rect(0,footerY-8,W,22,"F");
+  doc.setFillColor(...BLUE).rect(0,footerY-8,W,1.5,"F");
+  doc.setFont("helvetica","bold").setFontSize(7.5).setTextColor(...WHITE); doc.text(`${agencia}  ·  Informe de Peritaje Vehicular`,M,footerY+3);
+  doc.setFont("helvetica","normal").setFontSize(7.5).setTextColor(160,185,220);
+  doc.text(new Date().toLocaleDateString("es-AR"), W-M, footerY+3, {align:"right"});
+
+  doc.save(`Peritaje-${clean(vNombre)}-${clean(cs.dominio||"")}.pdf`);
+  } catch(e) { toast("No se pudo generar el PDF: "+(e.message||"error desconocido")); }
+}
+
 function generateClientStatementPDF(clientId) {
   try {
   const JsPDF = window.jspdf?.jsPDF;
@@ -857,6 +1031,7 @@ function generateClientStatementPDF(clientId) {
   const clean = (s) => (s || "").replace(/[^a-zA-Z0-9ÁÉÍÓÚáéíóúÑñ]/g, "_").replace(/_+/g, "_").replace(/^_|_$/g, "");
 
   const DARK = [11,17,32], BLUE = [42,120,214], LIGHT = [248,250,253], GRAY = [98,108,126], LGRAY = [210,216,226], WHITE = [255,255,255];
+  const fmt = (v) => `$ ${Math.round(Number(v||0)).toLocaleString("es-AR")}`;
   const doc = new JsPDF({ unit: "mm", format: "a4" });
   const W = 210, H = 297, M = 14;
   let y = 0;
@@ -904,7 +1079,7 @@ function generateClientStatementPDF(clientId) {
     const bx = M + i*thirds;
     doc.setFont("helvetica","normal").setFontSize(7).setTextColor(160,185,220); doc.text(lbl.toUpperCase(), bx+6, y+6);
     const sign = i===2 ? (val>0?"-":"+") : "";
-    doc.setFont("helvetica","bold").setFontSize(12).setTextColor(...col); doc.text(`${sign}${money(Math.abs(val))}`, bx+6, y+14);
+    doc.setFont("helvetica","bold").setFontSize(12).setTextColor(...col); doc.text(`${sign}${fmt(Math.abs(val))}`, bx+6, y+14);
   });
   y += summaryH + 10;
 
@@ -922,7 +1097,7 @@ function generateClientStatementPDF(clientId) {
       doc.setDrawColor(...LGRAY).setLineWidth(0.1).rect(M,y,W-2*M,rowH,"S");
       cx = M+3;
       const concepto = doc.splitTextToSize(r.concepto||"",colWs[1]-3)[0]||"";
-      [r.fecha||"—",concepto,r.tipo||"",money(r.monto),r.origen||""].forEach((val,i) => {
+      [r.fecha||"—",concepto,r.tipo||"",fmt(r.monto),r.origen||""].forEach((val,i) => {
         const col = i===2 ? (/Ingreso/i.test(r.tipo)?[22,163,74]:/Cargo|Egreso/i.test(r.tipo)?[220,60,60]:GRAY) : DARK;
         doc.setFont("helvetica","normal").setFontSize(8).setTextColor(...col); doc.text(val,cx,y+5); cx+=colWs[i];
       });
@@ -955,6 +1130,7 @@ function generatePaymentReceiptPDF(clientId, rowIdx) {
   const clean = (s) => (s||"").replace(/[^a-zA-Z0-9ÁÉÍÓÚáéíóúÑñ]/g,"_").replace(/_+/g,"_").replace(/^_|_$/g,"");
 
   const DARK=[11,17,32], BLUE=[42,120,214], LIGHT=[248,250,253], GRAY=[98,108,126], LGRAY=[210,216,226], WHITE=[255,255,255];
+  const fmt = (v) => `$ ${Math.round(Number(v||0)).toLocaleString("es-AR")}`;
   const doc = new JsPDF({ unit:"mm", format:"a4" });
   const W=210, H=297, M=14;
   let y=0;
@@ -1007,14 +1183,14 @@ function generatePaymentReceiptPDF(clientId, rowIdx) {
   doc.setFillColor(...DARK).roundedRect(M+2,finalBoxY,W-2*M-4,13,1.5,1.5,"F");
   doc.setFillColor(...BLUE).roundedRect(M+2,finalBoxY,4,13,1.5,1.5,"F");
   doc.setFont("helvetica","bold").setFontSize(9).setTextColor(160,185,220); doc.text("MONTO",M+9,finalBoxY+8.5);
-  doc.setFont("helvetica","bold").setFontSize(16).setTextColor(...WHITE); doc.text(money(r.monto),W-M-6,finalBoxY+8.5,{align:"right"});
+  doc.setFont("helvetica","bold").setFontSize(16).setTextColor(...WHITE); doc.text(fmt(r.monto),W-M-6,finalBoxY+8.5,{align:"right"});
   y+=detH+10;
 
   // Saldo tras este movimiento
   doc.setFont("helvetica","normal").setFontSize(9).setTextColor(...GRAY);
   doc.text(`Saldo pendiente de la cuenta tras este movimiento:`, M, y);
   doc.setFont("helvetica","bold").setFontSize(11).setTextColor(saldoPendiente>0?[220,60,60]:[22,163,74]);
-  doc.text(`${saldoPendiente>0?"-":"+"}${money(Math.abs(saldoPendiente))}`, W-M, y, {align:"right"});
+  doc.text(`${saldoPendiente>0?"-":"+"}${fmt(Math.abs(saldoPendiente))}`, W-M, y, {align:"right"});
 
   // Pie
   const footerY=H-14;
@@ -2148,7 +2324,7 @@ function formFor(key, row = {}) {
   }
   if (key === "consignments") {
     _vehiclePhotosBuf = (row.fotos || []).slice();
-    return groupedFormWithLinks(key, fields, row) + vehiclePhotoSection(row);
+    return consignmentForm(row);
   }
   if (key === "quotes") {
     _vehiclePhotosBuf = (row.fotos || []).slice();
@@ -2480,6 +2656,133 @@ function clientDocForm(row = {}) {
   `;
 }
 
+function consignmentForm(row = {}) {
+  const clientOptions = [`<option value="">— Titular no vinculado —</option>`]
+    .concat((state.clients || []).map(c =>
+      `<option value="${escapeHtml(c.id)}" ${c.id === (row.clienteId || "") ? "selected" : ""} data-name="${escapeHtml(c.nombre)}" data-phone="${escapeHtml(c.telefono || "")}">${escapeHtml(c.nombre)} · ${escapeHtml(c.telefono || "")}</option>`
+    )).join("");
+
+  const sel = (name, label, opts, val) =>
+    fieldControl({ name, label, type: "select", options: opts, value: val !== undefined && val !== null && val !== "" ? val : (row[name] ?? opts[0]) });
+  const inp = (name, label, extra = {}) =>
+    fieldControl({ name, label, value: row[name] ?? "", ...extra });
+  const mon = (name, label) =>
+    fieldControl({ name, label, type: "money", value: row[name] ?? "" });
+  const area = (name, label, val, placeholder = "") =>
+    fieldControl({ name, label, type: "textarea", value: val ?? "", placeholder, wide: true });
+
+  const marcaListId = `list-marca-cs-${Math.random().toString(36).slice(2)}`;
+  const modeloListId = `list-modelo-cs-${Math.random().toString(36).slice(2)}`;
+  const marcaOpts = Object.keys(catalogoVehiculos).sort().map(m => `<option value="${escapeHtml(m)}"></option>`).join("");
+  const modeloOpts = (catalogoVehiculos[row.marca || ""] || []).map(m => `<option value="${escapeHtml(m)}"></option>`).join("");
+
+  const cubiertaLabels = [["cubiertaDelIzq","Del. Izq."],["cubiertaDelDer","Del. Der."],["cubiertaTraIzq","Tras. Izq."],["cubiertaTraDer","Tras. Der."]];
+  const cubiertasHtml = cubiertaLabels.map(([name, lbl]) => {
+    const val = row[name] || "Buena";
+    return `<div class="field"><label>Cubierta ${escapeHtml(lbl)}</label><select name="${name}">${["Buena","Regular","Cambiar"].map(o => `<option${val===o?" selected":""}>${o}</option>`).join("")}</select></div>`;
+  }).join("");
+
+  return `
+    <fieldset class="form-section">
+      <legend><span>C</span>TITULAR Y VEHICULO</legend>
+      <div class="field full">
+        <label>Cliente vinculado (opcional)</label>
+        <select name="clienteId" data-client-link>${clientOptions}</select>
+        <small>Autocompleta nombre y telefono</small>
+      </div>
+      <div class="form-grid">
+        ${inp("titular", "Nombre del titular *", { type: "datalist", options: clientNames(), placeholder: "Nombre y apellido", required: true })}
+        ${inp("telefono", "Telefono", { type: "datalist", options: (state?.clients || []).map(c => c.telefono).filter(Boolean), placeholder: "+54 11 5555 5555" })}
+        <div class="field"><label>Marca *</label><input name="marca" list="${marcaListId}" value="${escapeHtml(row.marca || "")}" data-marca-input placeholder="Ej. Toyota" required><datalist id="${marcaListId}">${marcaOpts}</datalist></div>
+        <div class="field"><label>Modelo</label><input name="modelo" list="${modeloListId}" value="${escapeHtml(row.modelo || "")}" data-modelo-input placeholder="Ej. Corolla XEI"><datalist id="${modeloListId}">${modeloOpts}</datalist></div>
+        ${inp("version", "Version / Trim", { placeholder: "Ej. 1.8 XEI AT" })}
+        ${inp("dominio", "Dominio", { placeholder: "AE000AA" })}
+        ${inp("anio", "Año", { type: "number", placeholder: String(new Date().getFullYear()) })}
+        ${inp("km", "Kilometros", { type: "number", placeholder: "50000" })}
+      </div>
+    </fieldset>
+
+    <fieldset class="form-section">
+      <legend><span>$</span>DATOS ECONOMICOS</legend>
+      <div class="form-grid">
+        ${mon("precioPretendido", "Precio que pretende el titular")}
+        ${mon("comision", "Comision de agencia")}
+        ${inp("vence", "Fecha limite consignacion", { type: "date" })}
+        ${sel("estado", "Estado", ["Activa", "Vendida", "Devuelta", "Vencida"], row.estado)}
+      </div>
+    </fieldset>
+
+    <fieldset class="form-section">
+      <legend><span>1</span>PERITAJE — 1. Identificacion del vehiculo</legend>
+      <div class="form-grid">
+        ${inp("numeroMotor", "N° Motor", { placeholder: "Ej. F18A1-1234567" })}
+        ${inp("numeroChasis", "N° Chasis", { placeholder: "Ej. 9BWZZZ377VT004251" })}
+        ${inp("numeroVin", "N° VIN", { placeholder: "17 caracteres" })}
+        ${sel("coincideDocumentacion", "Coincide con titulo / cedula", ["Sin verificar", "Si", "No"], row.coincideDocumentacion)}
+      </div>
+    </fieldset>
+
+    <fieldset class="form-section">
+      <legend><span>2</span>PERITAJE — 2. Toma de improntas</legend>
+      <div class="form-grid">
+        ${sel("improntasTomadas", "Improntas tomadas (motor/chasis/VIN)", ["No", "Si"], row.improntasTomadas)}
+      </div>
+      <p class="muted" style="margin:8px 16px 12px;font-size:12px">La evidencia fotografica de las improntas se puede cargar en la seccion de fotos mas abajo.</p>
+    </fieldset>
+
+    <fieldset class="form-section">
+      <legend><span>3</span>PERITAJE — 3. Revision fisica y estructural</legend>
+      <div class="form-grid">
+        ${sel("estadoChapa", "Estado de chapa y pintura", ["Excelente", "Bueno", "Regular", "Con detalles"], row.estadoChapa)}
+        ${area("detalleChapa", "Detalle de chapa (golpes, rayones, zonas)", row.detalleChapa, "Ej. Rayones puerta trasera izq., golpe paragolpes delantero")}
+        ${sel("danosEstructurales", "Danos estructurales evidentes", ["No", "Si"], row.danosEstructurales)}
+        ${area("detalleDanosEstructurales", "Detalle de danos estructurales", row.detalleDanosEstructurales, "Descripcion de danos y zonas afectadas")}
+        ${sel("modificacionesNoAutorizadas", "Modificaciones no autorizadas", ["No", "Si"], row.modificacionesNoAutorizadas)}
+        ${sel("nivelCombustible", "Nivel de combustible", ["Vacio", "Reserva", "1/4", "1/2", "3/4", "Lleno"], row.nivelCombustible)}
+      </div>
+      <div class="form-grid" style="margin-top:4px">
+        ${cubiertasHtml}
+        ${sel("auxilio", "Rueda de auxilio", ["Si", "No", "Usada"], row.auxilio)}
+        ${inp("cantidadLlaves", "Cantidad de llaves", { type: "number", placeholder: "2" })}
+      </div>
+      ${area("estadoMecanico", "Estado mecanico (motor, caja, frenos, suspension)", row.estadoMecanico, "Estado general del motor, caja de cambios, frenos, suspension")}
+    </fieldset>
+
+    <fieldset class="form-section">
+      <legend><span>4</span>PERITAJE — 4. Comparacion con bases de datos</legend>
+      <div class="form-grid">
+        ${sel("reporteRobo", "Reporte de robo", ["Sin verificar", "Sin registro", "Con alerta"], row.reporteRobo)}
+        ${sel("embargoPrenda", "Embargo / Prenda", ["Sin verificar", "Sin registro", "Con gravamen"], row.embargoPrenda)}
+        ${sel("siniestrosAnteriores", "Siniestros anteriores", ["Sin verificar", "Sin registro", "Con antecedentes"], row.siniestrosAnteriores)}
+        ${area("detalleSiniestros", "Detalle de siniestros", row.detalleSiniestros, "Descripcion de antecedentes de siniestros")}
+        ${sel("limitacionesPropiedad", "Limitaciones a la propiedad", ["Sin verificar", "Sin registro", "Con limitacion"], row.limitacionesPropiedad)}
+      </div>
+      <p class="muted" style="margin:8px 16px 12px;font-size:12px">Datos de consulta al Registro de la Propiedad Automotor u otra fuente externa — la app no lo hace automatico.</p>
+    </fieldset>
+
+    <fieldset class="form-section">
+      <legend><span>5</span>PERITAJE — 5. Documentacion y accesorios</legend>
+      <div class="form-grid">
+        ${sel("documentacion", "Documentacion (titulo / cedula)", ["Sin verificar", "Completa", "Incompleta"], row.documentacion)}
+        ${sel("vtvVigente", "VTV vigente", ["Sin verificar", "Si", "No", "No aplica"], row.vtvVigente)}
+        ${sel("seguroVigente", "Seguro vigente", ["Si", "No"], row.seguroVigente)}
+        ${sel("matafuego", "Matafuego", ["Si", "No", "Vencido"], row.matafuego)}
+        ${sel("balizas", "Balizas / triangulos", ["Si", "No"], row.balizas)}
+        ${sel("llaveRuedaGato", "Llave de ruedas y gato", ["Si", "No"], row.llaveRuedaGato)}
+      </div>
+    </fieldset>
+
+    ${vehiclePhotoSection(row)}
+
+    <fieldset class="form-section">
+      <legend><span>-</span>OBSERVACIONES GENERALES</legend>
+      <div class="form-grid">
+        ${area("notas", "Notas generales", row.notas, "Condiciones particulares, acuerdos, estado general o cualquier informacion adicional")}
+      </div>
+    </fieldset>
+  `;
+}
+
 function orderForm(row = {}) {
   const clientValue = row.clienteId || "";
   const clientOptions = [`<option value="">— Cliente nuevo / no vinculado —</option>`]
@@ -2570,7 +2873,24 @@ function fieldConfig(name, moduleKey = "") {
     presupuesto: { type: "money" },
     margen: { type: "money" },
     precioLista: { type: "money" },
-    bonificacion: { type: "money" }
+    bonificacion: { type: "money" },
+    coincideDocumentacion: { type: "select", options: ["Sin verificar", "Si", "No"] },
+    improntasTomadas: { type: "select", options: ["No", "Si"] },
+    estadoChapa: { type: "select", options: ["Excelente", "Bueno", "Regular", "Con detalles"] },
+    danosEstructurales: { type: "select", options: ["No", "Si"] },
+    modificacionesNoAutorizadas: { type: "select", options: ["No", "Si"] },
+    nivelCombustible: { type: "select", options: ["Vacio", "Reserva", "1/4", "1/2", "3/4", "Lleno"] },
+    auxilio: { type: "select", options: ["Si", "No", "Usada"] },
+    reporteRobo: { type: "select", options: ["Sin verificar", "Sin registro", "Con alerta"] },
+    embargoPrenda: { type: "select", options: ["Sin verificar", "Sin registro", "Con gravamen"] },
+    siniestrosAnteriores: { type: "select", options: ["Sin verificar", "Sin registro", "Con antecedentes"] },
+    limitacionesPropiedad: { type: "select", options: ["Sin verificar", "Sin registro", "Con limitacion"] },
+    documentacion: { type: "select", options: ["Sin verificar", "Completa", "Incompleta"] },
+    vtvVigente: { type: "select", options: ["Sin verificar", "Si", "No", "No aplica"] },
+    seguroVigente: { type: "select", options: ["Si", "No"] },
+    matafuego: { type: "select", options: ["Si", "No", "Vencido"] },
+    balizas: { type: "select", options: ["Si", "No"] },
+    llaveRuedaGato: { type: "select", options: ["Si", "No"] }
   };
   const relationFields = {
     cliente: { type: "datalist", options: clientNames() },
@@ -2633,7 +2953,8 @@ function statusOptions(moduleKey) {
     paperwork: ["Pendiente", "En curso", "Listo", "Observado"],
     messages: ["Borrador", "Listo para enviar", "Programado", "Enviado"],
     orders: ["Activo", "Buscando", "Pausado", "Con match", "Cerrado"],
-    quotes: ["Activo", "Vendido", "Vencida", "Cancelada"]
+    quotes: ["Activo", "Vendido", "Vencida", "Cancelada"],
+    consignments: ["Activa", "Vendida", "Devuelta", "Vencida"]
   };
   return map[moduleKey] || ["Pendiente", "Activo", "En curso", "Hecho", "Cancelado"];
 }
@@ -2834,6 +3155,7 @@ function bind() {
   document.querySelectorAll("[data-mark-cuota]").forEach(btn => btn.addEventListener("click", () => markNextCuota(btn.dataset.markCuota)));
   document.querySelectorAll("[data-pay-cuota]").forEach(btn => btn.addEventListener("click", () => payCuota(btn.dataset.payCuota)));
   document.querySelectorAll("[data-quote-pdf]").forEach(btn => btn.addEventListener("click", () => generateQuotePDF(btn.dataset.quotePdf)));
+  document.querySelectorAll("[data-peritaje-pdf]").forEach(btn => btn.addEventListener("click", () => generatePeritajePDF(btn.dataset.peritajePdf)));
   document.querySelectorAll("[data-client-statement]").forEach(btn => btn.addEventListener("click", () => generateClientStatementPDF(btn.dataset.clientStatement)));
   document.querySelectorAll("[data-payment-receipt]").forEach(btn => btn.addEventListener("click", () => {
     const [clientId, idx] = btn.dataset.paymentReceipt.split(":");
@@ -2942,7 +3264,7 @@ function bindModal() {
         const id = e.target.dataset.id;
         const item = Object.fromEntries(new FormData(e.target).entries());
         Object.keys(item).forEach(k => {
-          if (/^(anio|anioDesde|anioHasta|km|precio|margen|monto|sena|anticipo|cantCuotas|montoCuota|precioPretendido|comision|costo|presupuesto|puntaje|dias|precioLista|bonificacion)$/.test(k)) item[k] = Number(item[k]);
+          if (/^(anio|anioDesde|anioHasta|km|precio|margen|monto|sena|anticipo|cantCuotas|montoCuota|precioPretendido|comision|costo|presupuesto|puntaje|dias|precioLista|bonificacion|cantidadLlaves)$/.test(k)) item[k] = Number(item[k]);
         });
         const prevSale = (id && key === "sales") ? (state[key].find(x => x.id === id)) : null;
         const prevEtapa = prevSale?.etapa || null;
