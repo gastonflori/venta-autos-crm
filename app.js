@@ -755,17 +755,19 @@ function clientProfileCuenta(client) {
         <h2>Cuenta corriente</h2>
         <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
           ${headerMetrics}
+          <button class="btn ghost" data-client-statement="${escapeHtml(cId)}" title="Descargar PDF del estado de cuenta">PDF cuenta</button>
           <button class="btn" data-quick-action="client-payment:${escapeHtml(cId)}">+ Registrar pago</button>
         </div>
       </div>
       ${!all.length ? emptyState : `<div style="overflow:auto">
         <table>
-          <thead><tr><th>Fecha</th><th>Concepto</th><th>Tipo</th><th>Monto</th><th>Origen</th><th>Saldo acum.</th></tr></thead>
+          <thead><tr><th>Fecha</th><th>Concepto</th><th>Tipo</th><th>Monto</th><th>Origen</th><th>Saldo acum.</th><th></th></tr></thead>
           <tbody>
-            ${rows.map(r => {
+            ${rows.map((r, idx) => {
               const isVencida = r.tipo === "Cobro pendiente" && r.fecha && r.fecha < today && !/Confirmado|Pagado/i.test(r.estado);
               const tipoPill = isVencida ? `<span class="pill crit">Vencida</span>` : pill(r.tipo);
               const montoClass = /Ingreso/i.test(r.tipo) ? "cuenta-ingreso" : /Cargo|Egreso/i.test(r.tipo) ? "cuenta-egreso" : "";
+              const reciboBtn = /Ingreso|Egreso/i.test(r.tipo) ? `<button class="icon-btn" data-payment-receipt="${escapeHtml(cId)}:${idx}" title="Descargar recibo">PDF</button>` : "";
               return `<tr>
               <td>${escapeHtml(r.fecha)}</td>
               <td>${escapeHtml(r.concepto)}</td>
@@ -773,6 +775,7 @@ function clientProfileCuenta(client) {
               <td class="${montoClass}">${money(r.monto)}</td>
               <td><span class="pill info">${escapeHtml(r.origen)}</span></td>
               <td style="font-weight:700;color:${r.balance >= 0 ? "var(--ok)" : "var(--crit)"}">${r.balance >= 0 ? "+" : "-"}${money(Math.abs(r.balance))}</td>
+              <td>${reciboBtn}</td>
             </tr>`;
             }).join("")}
           </tbody>
@@ -780,6 +783,188 @@ function clientProfileCuenta(client) {
       </div>`}
     </section>
   `;
+}
+
+function generateClientStatementPDF(clientId) {
+  try {
+  const JsPDF = window.jspdf?.jsPDF;
+  if (!JsPDF) return toast("No se pudo generar el PDF.");
+  const client = (state.clients || []).find(c => c.id === clientId);
+  if (!client) return;
+  const { rows, totalAdeudado, totalPagado, saldoPendiente } = getClientAccountMovements(client);
+  const cfg = state.settings || {};
+  const agencia = cfg.businessName || publicConfig.businessName || "Sote Auto";
+  const clean = (s) => (s || "").replace(/[^a-zA-Z0-9ÁÉÍÓÚáéíóúÑñ]/g, "_").replace(/_+/g, "_").replace(/^_|_$/g, "");
+
+  const DARK = [11,17,32], BLUE = [42,120,214], LIGHT = [248,250,253], GRAY = [98,108,126], LGRAY = [210,216,226], WHITE = [255,255,255];
+  const doc = new JsPDF({ unit: "mm", format: "a4" });
+  const W = 210, H = 297, M = 14;
+  let y = 0;
+
+  // Header
+  const hdrH = 36;
+  doc.setFillColor(...DARK).rect(0,0,W,hdrH,"F");
+  doc.setFillColor(...BLUE).rect(0,0,W,2.5,"F");
+  let logoLoaded = false;
+  if (cfg.logoDataUrl) { try { doc.addImage(cfg.logoDataUrl,undefined,M,7,34,16,undefined,"FAST"); logoLoaded=true; } catch(_){} }
+  if (!logoLoaded) { doc.setFont("helvetica","bold").setFontSize(17).setTextColor(...WHITE); doc.text(agencia,M,20); }
+  [cfg.phone,cfg.email,cfg.address].filter(Boolean).forEach((l,i) => { doc.setFont("helvetica","normal").setFontSize(7.5).setTextColor(180,195,220); doc.text(l,W-M,12+i*4.8,{align:"right"}); });
+  doc.setFont("helvetica","bold").setFontSize(8).setTextColor(...BLUE);
+  doc.text("ESTADO DE CUENTA", W-M, hdrH-7, {align:"right"});
+  y = hdrH + 10;
+
+  // Titulo
+  doc.setFont("helvetica","bold").setFontSize(22).setTextColor(...DARK);
+  doc.text("ESTADO DE CUENTA", M, y); y += 3;
+  doc.setFont("helvetica","normal").setFontSize(8.5).setTextColor(...GRAY);
+  doc.text(`Generado el ${new Date().toLocaleDateString("es-AR",{day:"2-digit",month:"long",year:"numeric"})}`, M, y+5);
+  y += 12;
+  doc.setDrawColor(...BLUE).setLineWidth(0.5).line(M,y,M+40,y);
+  doc.setDrawColor(...LGRAY).setLineWidth(0.3).line(M+40,y,W-M,y);
+  y += 8;
+
+  // Cliente card
+  const cardLines = [client.nombre, client.telefono && `Tel: ${client.telefono}`, client.email && `Email: ${client.email}`, client.dni && `DNI/CUIT: ${client.dni}`].filter(Boolean);
+  const cardH = 8 + cardLines.length * 5.5;
+  doc.setFillColor(...LIGHT).roundedRect(M,y,W-2*M,cardH,2,2,"F");
+  doc.setDrawColor(...LGRAY).setLineWidth(0.25).roundedRect(M,y,W-2*M,cardH,2,2,"S");
+  doc.setFillColor(...BLUE).rect(M,y,2.5,cardH,"F");
+  doc.setFont("helvetica","bold").setFontSize(7).setTextColor(...BLUE); doc.text("CLIENTE", M+5, y+5);
+  doc.setFont("helvetica","bold").setFontSize(11).setTextColor(...DARK); doc.text(client.nombre, M+5, y+10.5);
+  let cy = y+10.5;
+  [client.telefono && `Tel: ${client.telefono}`, client.email && `Email: ${client.email}`, client.dni && `DNI/CUIT: ${client.dni}`].filter(Boolean).forEach(l => { cy+=5.5; doc.setFont("helvetica","normal").setFontSize(8.5).setTextColor(...GRAY); doc.text(l,M+5,cy); });
+  y += cardH + 8;
+
+  // Resumen saldo
+  const summaryH = 18;
+  doc.setFillColor(...DARK).roundedRect(M,y,W-2*M,summaryH,2,2,"F");
+  doc.setFillColor(...BLUE).rect(M,y,4,summaryH,"F");
+  const thirds = (W-2*M)/3;
+  [[`Total adeudado`, totalAdeudado, [160,185,220]], [`Total pagado`, totalPagado, [100,210,130]], [`Saldo pendiente`, saldoPendiente, saldoPendiente>0?[220,90,90]:[100,210,130]]].forEach(([lbl,val,col],i) => {
+    const bx = M + i*thirds;
+    doc.setFont("helvetica","normal").setFontSize(7).setTextColor(160,185,220); doc.text(lbl.toUpperCase(), bx+6, y+6);
+    const sign = i===2 ? (val>0?"-":"+") : "";
+    doc.setFont("helvetica","bold").setFontSize(12).setTextColor(...col); doc.text(`${sign}${money(Math.abs(val))}`, bx+6, y+14);
+  });
+  y += summaryH + 10;
+
+  // Tabla de movimientos
+  if (rows.length) {
+    doc.setFont("helvetica","bold").setFontSize(7.5).setTextColor(...GRAY); doc.text("MOVIMIENTOS", M, y); y += 6;
+    const colWs = [22,80,28,30,26], hdrs = ["Fecha","Concepto","Tipo","Monto","Origen"], rowH = 7;
+    doc.setFillColor(...DARK).roundedRect(M,y,W-2*M,rowH,1,1,"F");
+    let cx = M+3;
+    hdrs.forEach((h,i) => { doc.setFont("helvetica","bold").setFontSize(7.5).setTextColor(...WHITE); doc.text(h,cx,y+5); cx+=colWs[i]; });
+    y += rowH;
+    rows.forEach((r,idx) => {
+      if (y+rowH>268) { doc.addPage(); y=18; }
+      if (idx%2===0) doc.setFillColor(...LIGHT).rect(M,y,W-2*M,rowH,"F");
+      doc.setDrawColor(...LGRAY).setLineWidth(0.1).rect(M,y,W-2*M,rowH,"S");
+      cx = M+3;
+      const concepto = doc.splitTextToSize(r.concepto||"",colWs[1]-3)[0]||"";
+      [r.fecha||"—",concepto,r.tipo||"",money(r.monto),r.origen||""].forEach((val,i) => {
+        const col = i===2 ? (/Ingreso/i.test(r.tipo)?[22,163,74]:/Cargo|Egreso/i.test(r.tipo)?[220,60,60]:GRAY) : DARK;
+        doc.setFont("helvetica","normal").setFontSize(8).setTextColor(...col); doc.text(val,cx,y+5); cx+=colWs[i];
+      });
+      y += rowH;
+    });
+  }
+
+  // Pie
+  const footerY = H-14;
+  doc.setFillColor(...DARK).rect(0,footerY-8,W,22,"F");
+  doc.setFillColor(...BLUE).rect(0,footerY-8,W,1.5,"F");
+  doc.setFont("helvetica","normal").setFontSize(7.5).setTextColor(160,185,220);
+  doc.text(`${agencia}  ·  Estado de cuenta corriente`, W-M, footerY+3, {align:"right"});
+
+  doc.save(`EstadoCuenta-${clean(client.nombre)}.pdf`);
+  } catch(e) { toast("No se pudo generar el PDF: "+(e.message||"error")); }
+}
+
+function generatePaymentReceiptPDF(clientId, rowIdx) {
+  try {
+  const JsPDF = window.jspdf?.jsPDF;
+  if (!JsPDF) return toast("No se pudo generar el PDF.");
+  const client = (state.clients || []).find(c => c.id === clientId);
+  if (!client) return;
+  const { rows, saldoPendiente } = getClientAccountMovements(client);
+  const r = rows[rowIdx];
+  if (!r) return toast("Movimiento no encontrado.");
+  const cfg = state.settings || {};
+  const agencia = cfg.businessName || publicConfig.businessName || "Sote Auto";
+  const clean = (s) => (s||"").replace(/[^a-zA-Z0-9ÁÉÍÓÚáéíóúÑñ]/g,"_").replace(/_+/g,"_").replace(/^_|_$/g,"");
+
+  const DARK=[11,17,32], BLUE=[42,120,214], LIGHT=[248,250,253], GRAY=[98,108,126], LGRAY=[210,216,226], WHITE=[255,255,255];
+  const doc = new JsPDF({ unit:"mm", format:"a4" });
+  const W=210, H=297, M=14;
+  let y=0;
+
+  // Header
+  const hdrH=36;
+  doc.setFillColor(...DARK).rect(0,0,W,hdrH,"F");
+  doc.setFillColor(...BLUE).rect(0,0,W,2.5,"F");
+  let ll=false;
+  if (cfg.logoDataUrl) { try { doc.addImage(cfg.logoDataUrl,undefined,M,7,34,16,undefined,"FAST"); ll=true; } catch(_){} }
+  if (!ll) { doc.setFont("helvetica","bold").setFontSize(17).setTextColor(...WHITE); doc.text(agencia,M,20); }
+  [cfg.phone,cfg.email].filter(Boolean).forEach((l,i) => { doc.setFont("helvetica","normal").setFontSize(7.5).setTextColor(180,195,220); doc.text(l,W-M,12+i*4.8,{align:"right"}); });
+  const recNum = String(Date.now()).slice(-6);
+  doc.setFont("helvetica","bold").setFontSize(8).setTextColor(...BLUE);
+  doc.text(`RECIBO  #${recNum}`, W-M, hdrH-7, {align:"right"});
+  y = hdrH+10;
+
+  // Titulo
+  doc.setFont("helvetica","bold").setFontSize(26).setTextColor(...DARK); doc.text("RECIBO DE PAGO", M, y); y+=3;
+  const fechaDoc = r.fecha ? new Date(r.fecha+"T12:00:00").toLocaleDateString("es-AR",{day:"2-digit",month:"long",year:"numeric"}) : new Date().toLocaleDateString("es-AR",{day:"2-digit",month:"long",year:"numeric"});
+  doc.setFont("helvetica","normal").setFontSize(8.5).setTextColor(...GRAY); doc.text(`Fecha: ${fechaDoc}`, M, y+5);
+  y+=12;
+  doc.setDrawColor(...BLUE).setLineWidth(0.5).line(M,y,M+40,y);
+  doc.setDrawColor(...LGRAY).setLineWidth(0.3).line(M+40,y,W-M,y);
+  y+=8;
+
+  // Cliente card
+  const cardLines=[client.nombre, client.telefono&&`Tel: ${client.telefono}`, client.email&&`Email: ${client.email}`, client.dni&&`DNI/CUIT: ${client.dni}`].filter(Boolean);
+  const cardH=8+cardLines.length*5.5;
+  doc.setFillColor(...LIGHT).roundedRect(M,y,W-2*M,cardH,2,2,"F");
+  doc.setDrawColor(...LGRAY).setLineWidth(0.25).roundedRect(M,y,W-2*M,cardH,2,2,"S");
+  doc.setFillColor(...BLUE).rect(M,y,2.5,cardH,"F");
+  doc.setFont("helvetica","bold").setFontSize(7).setTextColor(...BLUE); doc.text("CLIENTE",M+5,y+5);
+  doc.setFont("helvetica","bold").setFontSize(11).setTextColor(...DARK); doc.text(client.nombre,M+5,y+10.5);
+  let ry=y+10.5;
+  [client.telefono&&`Tel: ${client.telefono}`, client.email&&`Email: ${client.email}`, client.dni&&`DNI/CUIT: ${client.dni}`].filter(Boolean).forEach(l=>{ry+=5.5;doc.setFont("helvetica","normal").setFontSize(8.5).setTextColor(...GRAY);doc.text(l,M+5,ry);});
+  y+=cardH+8;
+
+  // Detalle del pago
+  const detH = 10 + 4*7 + 14;
+  doc.setFillColor(...LIGHT).roundedRect(M,y,W-2*M,detH,2,2,"F");
+  doc.setDrawColor(...LGRAY).setLineWidth(0.25).roundedRect(M,y,W-2*M,detH,2,2,"S");
+  let dy=y+7;
+  doc.setFont("helvetica","bold").setFontSize(7.5).setTextColor(...GRAY); doc.text("DETALLE DEL PAGO",M+5,dy); dy+=7;
+  [["Concepto",r.concepto||"—"],["Tipo",r.tipo||"—"],["Origen",r.origen||"—"]].forEach(([lbl,val])=>{
+    doc.setFont("helvetica","normal").setFontSize(9.5).setTextColor(...GRAY); doc.text(lbl+":",M+5,dy);
+    doc.setFont("helvetica","bold").setFontSize(9.5).setTextColor(...DARK); doc.text(val,W-M-5,dy,{align:"right"}); dy+=6.5;
+  });
+  const finalBoxY=y+detH-14;
+  doc.setFillColor(...DARK).roundedRect(M+2,finalBoxY,W-2*M-4,13,1.5,1.5,"F");
+  doc.setFillColor(...BLUE).roundedRect(M+2,finalBoxY,4,13,1.5,1.5,"F");
+  doc.setFont("helvetica","bold").setFontSize(9).setTextColor(160,185,220); doc.text("MONTO",M+9,finalBoxY+8.5);
+  doc.setFont("helvetica","bold").setFontSize(16).setTextColor(...WHITE); doc.text(money(r.monto),W-M-6,finalBoxY+8.5,{align:"right"});
+  y+=detH+10;
+
+  // Saldo tras este movimiento
+  doc.setFont("helvetica","normal").setFontSize(9).setTextColor(...GRAY);
+  doc.text(`Saldo pendiente de la cuenta tras este movimiento:`, M, y);
+  doc.setFont("helvetica","bold").setFontSize(11).setTextColor(saldoPendiente>0?[220,60,60]:[22,163,74]);
+  doc.text(`${saldoPendiente>0?"-":"+"}${money(Math.abs(saldoPendiente))}`, W-M, y, {align:"right"});
+
+  // Pie
+  const footerY=H-14;
+  doc.setFillColor(...DARK).rect(0,footerY-8,W,22,"F");
+  doc.setFillColor(...BLUE).rect(0,footerY-8,W,1.5,"F");
+  doc.setFont("helvetica","normal").setFontSize(7.5).setTextColor(160,185,220);
+  doc.text(`${agencia}  ·  Recibo de pago`, W-M, footerY+3, {align:"right"});
+
+  doc.save(`Recibo-${clean(client.nombre)}-${r.fecha||"sinFecha"}.pdf`);
+  } catch(e) { toast("No se pudo generar el PDF: "+(e.message||"error")); }
 }
 
 function clientProfileCuotasPendientes(client) {
@@ -975,6 +1160,16 @@ function openPagoClienteModal(clientId) {
   const client = (state.clients || []).find(c => c.id === clientId);
   if (!client) return;
   const today = todayKey();
+  const { totalAdeudado, totalPagado, saldoPendiente, rows: mvRows } = getClientAccountMovements(client);
+  const balanceBanner = mvRows.length ? `
+    <div style="display:flex;gap:24px;align-items:center;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:10px 16px;margin:0 0 4px">
+      <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;flex-shrink:0">Estado de cuenta</div>
+      <div style="display:flex;gap:20px;flex-wrap:wrap;align-items:center">
+        <div><div style="font-size:10px;color:var(--muted)">Adeudado</div><div style="font-weight:700;font-size:14px">${money(totalAdeudado)}</div></div>
+        <div><div style="font-size:10px;color:var(--muted)">Pagado</div><div style="font-weight:700;font-size:14px;color:var(--ok)">${money(totalPagado)}</div></div>
+        <div><div style="font-size:10px;color:var(--muted)">Saldo pendiente</div><div style="font-weight:700;font-size:15px;color:${saldoPendiente > 0 ? "var(--crit)" : "var(--ok)"}">${saldoPendiente > 0 ? "-" : "+"}${money(Math.abs(saldoPendiente))}</div></div>
+      </div>
+    </div>` : "";
   document.body.insertAdjacentHTML("beforeend", `
     <div class="modal-backdrop" data-modal>
       <section class="modal">
@@ -982,6 +1177,7 @@ function openPagoClienteModal(clientId) {
           <div><h2>Registrar pago</h2><p>Movimiento en cuenta corriente de ${escapeHtml(client.nombre)}</p></div>
           <button class="icon-btn" data-close>X</button>
         </div>
+        ${balanceBanner}
         <form data-save="treasury" data-id="">
           <input type="hidden" name="clienteId" value="${escapeHtml(clientId)}">
           <input type="hidden" name="cliente" value="${escapeHtml(client.nombre)}">
@@ -2578,6 +2774,11 @@ function bind() {
   document.querySelectorAll("[data-mark-cuota]").forEach(btn => btn.addEventListener("click", () => markNextCuota(btn.dataset.markCuota)));
   document.querySelectorAll("[data-pay-cuota]").forEach(btn => btn.addEventListener("click", () => payCuota(btn.dataset.payCuota)));
   document.querySelectorAll("[data-quote-pdf]").forEach(btn => btn.addEventListener("click", () => generateQuotePDF(btn.dataset.quotePdf)));
+  document.querySelectorAll("[data-client-statement]").forEach(btn => btn.addEventListener("click", () => generateClientStatementPDF(btn.dataset.clientStatement)));
+  document.querySelectorAll("[data-payment-receipt]").forEach(btn => btn.addEventListener("click", () => {
+    const [clientId, idx] = btn.dataset.paymentReceipt.split(":");
+    generatePaymentReceiptPDF(clientId, Number(idx));
+  }));
   document.querySelectorAll("[data-marca-input]").forEach(marcaInput => {
     function syncModelos() {
       const marca = marcaInput.value.trim();
@@ -3358,92 +3559,205 @@ function onNewSaleCreated(item, sale) {
 }
 
 function openSaleReport(saleId) {
+  try {
+  const JsPDF = window.jspdf?.jsPDF;
+  if (!JsPDF) return toast("No se pudo generar el PDF. Verificá tu conexión a internet.");
+
   const sale = (state.sales || []).find(s => s.id === saleId);
   if (!sale) return toast("Venta no encontrada.");
-  const v = sale.vehiculoId ? (state.vehicles || []).find(x => x.id === sale.vehiculoId) : null;
-  const client = sale.clienteId ? (state.clients || []).find(x => x.id === sale.clienteId) : null;
+
+  const v      = sale.vehiculoId ? (state.vehicles || []).find(x => x.id === sale.vehiculoId) : null;
+  const client = sale.clienteId  ? (state.clients  || []).find(x => x.id === sale.clienteId)  : null;
   const cuotas = getSaleCuotas(saleId);
-  const agencia = state.settings?.businessName || publicConfig.businessName || "Sote Auto";
-  const thumb = v?.fotos?.[0] ? `<img src="${escapeHtml(v.fotos[0])}" style="max-width:180px;border-radius:6px;margin:8px 0">` : "";
-  const vehiculoDesc = v ? `${v.marca || ""} ${v.modelo || ""} ${v.version || ""}`.trim() : (sale.vehiculo || "—");
-  const anticipo = Number(sale.anticipo || sale.sena || 0);
+  const cfg    = state.settings || {};
+  const agencia = cfg.businessName || publicConfig.businessName || "Sote Auto";
+  const moneda  = sale.moneda || "ARS";
+  const fmt = (val) => `${moneda} ${Number(val || 0).toLocaleString("es-AR", { maximumFractionDigits: 0 })}`;
+  const clean = (s) => (s || "").replace(/[^a-zA-Z0-9ÁÉÍÓÚáéíóúÑñ]/g, "_").replace(/_+/g, "_").replace(/^_|_$/g, "");
+
+  const DARK  = [11, 17, 32];
+  const BLUE  = [42, 120, 214];
+  const LIGHT = [248, 250, 253];
+  const GRAY  = [98, 108, 126];
+  const LGRAY = [210, 216, 226];
+  const WHITE = [255, 255, 255];
+
+  const doc = new JsPDF({ unit: "mm", format: "a4" });
+  const W = 210, H = 297, M = 14;
+  let y = 0;
+
+  // ─── HEADER ─────────────────────────────────────────────────────────────────
+  const hdrH = 36;
+  doc.setFillColor(...DARK).rect(0, 0, W, hdrH, "F");
+  doc.setFillColor(...BLUE).rect(0, 0, W, 2.5, "F");
+  let logoLoaded = false;
+  if (cfg.logoDataUrl) {
+    try { doc.addImage(cfg.logoDataUrl, undefined, M, 7, 34, 16, undefined, "FAST"); logoLoaded = true; } catch (_) {}
+  }
+  if (!logoLoaded) {
+    doc.setFont("helvetica", "bold").setFontSize(17).setTextColor(...WHITE);
+    doc.text(agencia, M, 20);
+  }
+  const contactLines = [cfg.phone, cfg.email, cfg.address].filter(Boolean);
+  doc.setFont("helvetica", "normal").setFontSize(7.5).setTextColor(180, 195, 220);
+  contactLines.forEach((line, i) => doc.text(line, W - M, 12 + i * 4.8, { align: "right" }));
+  const saleNum = saleId.replace(/\D/g, "").slice(-6).padStart(6, "0") || "000001";
+  doc.setFont("helvetica", "bold").setFontSize(8).setTextColor(...BLUE);
+  doc.text(`VENTA  #${saleNum}`, W - M, hdrH - 7, { align: "right" });
+  y = hdrH + 10;
+
+  // ─── TITULO ──────────────────────────────────────────────────────────────────
+  doc.setFont("helvetica", "bold").setFontSize(26).setTextColor(...DARK);
+  doc.text("COMPROBANTE DE VENTA", M, y);
+  y += 3;
+  const fechaDoc = sale.fecha
+    ? new Date(sale.fecha + "T12:00:00").toLocaleDateString("es-AR", { day: "2-digit", month: "long", year: "numeric" })
+    : new Date().toLocaleDateString("es-AR", { day: "2-digit", month: "long", year: "numeric" });
+  doc.setFont("helvetica", "normal").setFontSize(8.5).setTextColor(...GRAY);
+  doc.text(`Fecha de operacion: ${fechaDoc}`, M, y + 5);
+  doc.setFont("helvetica", "bold").setFontSize(8.5).setTextColor(...BLUE);
+  doc.text(`Etapa: ${sale.etapa || "—"}`, W - M, y + 5, { align: "right" });
+  y += 12;
+  doc.setDrawColor(...BLUE).setLineWidth(0.5).line(M, y, M + 40, y);
+  doc.setDrawColor(...LGRAY).setLineWidth(0.3).line(M + 40, y, W - M, y);
+  y += 8;
+
+  // ─── CLIENTE + VEHICULO ──────────────────────────────────────────────────────
+  const colW = (W - 2 * M - 6) / 2;
+  const colR = M + colW + 6;
+  const clientName  = client?.nombre   || sale.cliente || "—";
+  const clientPhone = client?.telefono || "";
+  const clientEmail = client?.email    || "";
+  const clientDni   = client?.dni      || "";
+  const clientLines = [clientName, clientPhone && `Tel: ${clientPhone}`, clientEmail && `Email: ${clientEmail}`, clientDni && `DNI/CUIT: ${clientDni}`].filter(Boolean);
+  const cardH = 8 + clientLines.length * 5.5;
+
+  doc.setFillColor(...LIGHT).roundedRect(M, y, colW, cardH, 2, 2, "F");
+  doc.setDrawColor(...LGRAY).setLineWidth(0.25).roundedRect(M, y, colW, cardH, 2, 2, "S");
+  doc.setFillColor(...BLUE).rect(M, y, 2.5, cardH, "F");
+  doc.setFont("helvetica", "bold").setFontSize(7).setTextColor(...BLUE);
+  doc.text("CLIENTE", M + 5, y + 5);
+  doc.setFont("helvetica", "bold").setFontSize(10.5).setTextColor(...DARK);
+  doc.text(clientName, M + 5, y + 10.5);
+  doc.setFont("helvetica", "normal").setFontSize(8.5).setTextColor(...GRAY);
+  let cy = y + 10.5;
+  if (clientPhone) { cy += 5.5; doc.text(`Tel: ${clientPhone}`, M + 5, cy); }
+  if (clientEmail) { cy += 5.5; doc.text(`Email: ${clientEmail}`, M + 5, cy); }
+  if (clientDni)   { cy += 5.5; doc.text(`DNI/CUIT: ${clientDni}`, M + 5, cy); }
+
+  const vLabel   = v ? `${v.marca || ""} ${v.modelo || ""} ${v.version || ""}`.replace(/ +/g, " ").trim() : (sale.vehiculo || "—");
+  const vAnio    = v?.anio ? String(v.anio) : "";
+  const vKm      = v?.km   ? `${Number(v.km).toLocaleString("es-AR")} km` : "";
+  const vDominio = v?.dominio || "";
+  const fotos    = v?.fotos || [];
+
+  doc.setFillColor(...LIGHT).roundedRect(colR, y, colW, cardH, 2, 2, "F");
+  doc.setDrawColor(...LGRAY).setLineWidth(0.25).roundedRect(colR, y, colW, cardH, 2, 2, "S");
+  doc.setFillColor(...DARK).rect(colR, y, 2.5, cardH, "F");
+  doc.setFont("helvetica", "bold").setFontSize(7).setTextColor(...DARK);
+  doc.text("VEHICULO", colR + 5, y + 5);
+  doc.setFont("helvetica", "bold").setFontSize(10.5).setTextColor(...DARK);
+  const vLabelLines = doc.splitTextToSize(vLabel, colW - 8);
+  doc.text(vLabelLines, colR + 5, y + 10.5);
+  doc.setFont("helvetica", "normal").setFontSize(8).setTextColor(...GRAY);
+  const vspec = [vAnio, vKm, vDominio].filter(Boolean).join("  ·  ");
+  if (vspec) doc.text(vspec, colR + 5, y + 10.5 + 5 * vLabelLines.length);
+  y += cardH + 8;
+
+  // ─── FOTOS ───────────────────────────────────────────────────────────────────
+  if (fotos.length > 0) {
+    const count = Math.min(fotos.length, 3);
+    const photoW = (W - 2 * M - 3 * (count - 1)) / count;
+    const photoH = photoW * 0.62;
+    if (y + photoH > 255) { doc.addPage(); y = 18; }
+    for (let i = 0; i < count; i++) {
+      try { doc.addImage(fotos[i], undefined, M + i * (photoW + 3), y, photoW, photoH, undefined, "MEDIUM"); } catch (_) {}
+    }
+    y += photoH + 8;
+  }
+
+  // ─── CONDICIONES ─────────────────────────────────────────────────────────────
+  if (y + 50 > 270) { doc.addPage(); y = 18; }
+  const anticipo  = Number(sale.anticipo || sale.sena || 0);
   const totalCuotas = Number(sale.cantCuotas || 0);
-
-  const cuotasHtml = totalCuotas > 0 && sale.formaPago === "Cuotas" ? `
-    <h4 style="margin:16px 0 8px;font-size:13px;text-transform:uppercase;color:#666">Detalle de cuotas</h4>
-    <table style="width:100%;border-collapse:collapse;font-size:13px">
-      <thead><tr style="background:#f0f0f0">
-        <th style="padding:6px 8px;text-align:left;border:1px solid #ddd">N°</th>
-        <th style="padding:6px 8px;text-align:left;border:1px solid #ddd">Vencimiento</th>
-        <th style="padding:6px 8px;text-align:right;border:1px solid #ddd">Monto</th>
-        <th style="padding:6px 8px;text-align:left;border:1px solid #ddd">Estado</th>
-      </tr></thead>
-      <tbody>${cuotas.map(c => `<tr>
-        <td style="padding:5px 8px;border:1px solid #ddd">${c.numeroCuota || "—"}</td>
-        <td style="padding:5px 8px;border:1px solid #ddd">${c.vence || "—"}</td>
-        <td style="padding:5px 8px;text-align:right;border:1px solid #ddd">${money(c.monto)}</td>
-        <td style="padding:5px 8px;border:1px solid #ddd">${c.estado || "—"}</td>
-      </tr>`).join("")}</tbody>
-    </table>` : "";
-
-  const reportHtml = `
-    <div style="font-family:Georgia,serif;color:#111;padding:8px">
-      <div style="text-align:center;border-bottom:2px solid #111;padding-bottom:12px;margin-bottom:16px">
-        <h2 style="margin:0;font-size:20px">${escapeHtml(agencia)}</h2>
-        <p style="margin:4px 0;font-size:12px;color:#666">Comprobante de operación — ${escapeHtml(sale.fecha || new Date().toLocaleDateString("es-AR"))}</p>
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:16px">
-        <div>
-          <p style="margin:0 0 6px;font-size:11px;text-transform:uppercase;color:#888;font-family:sans-serif">Vehículo</p>
-          ${thumb}
-          <p style="margin:4px 0;font-size:15px"><strong>${escapeHtml(vehiculoDesc)}</strong></p>
-          ${v?.dominio ? `<p style="margin:3px 0;font-size:13px">Dominio: <strong>${escapeHtml(v.dominio)}</strong></p>` : ""}
-          ${v?.anio ? `<p style="margin:3px 0;font-size:13px">Año: ${escapeHtml(String(v.anio))}</p>` : ""}
-          ${v?.km ? `<p style="margin:3px 0;font-size:13px">Km: ${Number(v.km).toLocaleString("es-AR")}</p>` : ""}
-        </div>
-        <div>
-          <p style="margin:0 0 6px;font-size:11px;text-transform:uppercase;color:#888;font-family:sans-serif">Cliente</p>
-          <p style="margin:4px 0;font-size:15px"><strong>${escapeHtml(client?.nombre || sale.cliente || "—")}</strong></p>
-          ${client?.telefono ? `<p style="margin:3px 0;font-size:13px">Tel: ${escapeHtml(client.telefono)}</p>` : ""}
-          ${client?.email ? `<p style="margin:3px 0;font-size:13px">Email: ${escapeHtml(client.email)}</p>` : ""}
-          ${client?.dni ? `<p style="margin:3px 0;font-size:13px">DNI/CUIT: ${escapeHtml(client.dni)}</p>` : ""}
-        </div>
-      </div>
-      <div style="border:1px solid #ddd;border-radius:4px;padding:14px;margin-bottom:16px;font-size:13px">
-        <p style="margin:0 0 8px;font-size:11px;text-transform:uppercase;color:#888;font-family:sans-serif">Condiciones de la operación</p>
-        <p style="margin:4px 0">Precio acordado: <strong>${money(sale.monto)} ${escapeHtml(sale.moneda || "ARS")}</strong></p>
-        <p style="margin:4px 0">Forma de pago: <strong>${escapeHtml(sale.formaPago || "—")}</strong></p>
-        ${anticipo > 0 ? `<p style="margin:4px 0">Anticipo entregado: <strong>${money(anticipo)}</strong>${sale.medioAnticipo ? ` (${escapeHtml(sale.medioAnticipo)})` : ""}</p>` : ""}
-        ${sale.formaPago === "Cuotas" && totalCuotas > 0 ? `<p style="margin:4px 0">Plan: <strong>${totalCuotas} cuotas de ${money(sale.montoCuota)}</strong></p>` : ""}
-        <p style="margin:4px 0">Vendedor: ${escapeHtml(sale.vendedor || "—")}</p>
-        <p style="margin:4px 0">Fecha de operación: ${escapeHtml(sale.fecha || "—")}</p>
-        <p style="margin:4px 0">Etapa: ${escapeHtml(sale.etapa || "—")}</p>
-        ${sale.notas ? `<p style="margin:4px 0;color:#555"><em>${escapeHtml(sale.notas)}</em></p>` : ""}
-      </div>
-      ${cuotasHtml}
-      <div style="text-align:center;margin-top:20px;font-size:11px;color:#aaa;font-family:sans-serif">Generado por Sote CRM · ${escapeHtml(agencia)}</div>
-    </div>
-  `;
-
-  document.body.insertAdjacentHTML("beforeend", `
-    <div class="modal-backdrop" data-modal>
-      <section class="modal" style="max-width:680px;max-height:88vh;overflow-y:auto">
-        <div class="modal-head">
-          <div><h2>Informe de venta</h2><p>${escapeHtml(vehiculoDesc)}</p></div>
-          <div style="display:flex;gap:8px;align-items:center">
-            <button class="btn ghost" onclick="window.print()">Imprimir</button>
-            <button class="icon-btn" data-close>X</button>
-          </div>
-        </div>
-        <div style="padding:16px">${reportHtml}</div>
-      </section>
-    </div>
-  `);
-  document.querySelectorAll("[data-close]").forEach(btn => {
-    if (btn.dataset.bound) return;
-    btn.dataset.bound = "true";
-    btn.addEventListener("click", () => btn.closest("[data-modal]")?.remove());
+  const condLines = [
+    ["Vendedor", sale.vendedor || "—"],
+    ["Forma de pago", sale.formaPago || "—"],
+    ...(anticipo > 0 ? [["Anticipo / Seña", `${fmt(anticipo)}${sale.medioAnticipo ? " — " + sale.medioAnticipo : ""}`]] : []),
+    ...(sale.formaPago === "Cuotas" && totalCuotas > 0 ? [["Plan", `${totalCuotas} cuotas de ${fmt(sale.montoCuota)}`]] : []),
+  ];
+  const condCardH = 12 + condLines.length * 6.5 + 14;
+  doc.setFillColor(...LIGHT).roundedRect(M, y, W - 2 * M, condCardH, 2, 2, "F");
+  doc.setDrawColor(...LGRAY).setLineWidth(0.25).roundedRect(M, y, W - 2 * M, condCardH, 2, 2, "S");
+  let py = y + 7;
+  doc.setFont("helvetica", "bold").setFontSize(7.5).setTextColor(...GRAY);
+  doc.text("CONDICIONES DE LA OPERACION", M + 5, py); py += 7;
+  condLines.forEach(([label, val]) => {
+    doc.setFont("helvetica", "normal").setFontSize(9.5).setTextColor(...GRAY);
+    doc.text(label + ":", M + 5, py);
+    doc.setFont("helvetica", "bold").setFontSize(9.5).setTextColor(...DARK);
+    doc.text(String(val), W - M - 5, py, { align: "right" });
+    py += 6.5;
   });
+  const finalBoxY = y + condCardH - 14;
+  doc.setFillColor(...DARK).roundedRect(M + 2, finalBoxY, W - 2 * M - 4, 13, 1.5, 1.5, "F");
+  doc.setFillColor(...BLUE).roundedRect(M + 2, finalBoxY, 4, 13, 1.5, 1.5, "F");
+  doc.setFont("helvetica", "bold").setFontSize(9).setTextColor(160, 185, 220);
+  doc.text("PRECIO ACORDADO", M + 9, finalBoxY + 8.5);
+  doc.setFont("helvetica", "bold").setFontSize(16).setTextColor(...WHITE);
+  doc.text(fmt(sale.monto), W - M - 6, finalBoxY + 8.5, { align: "right" });
+  y += condCardH + 8;
+
+  // ─── CUOTAS ──────────────────────────────────────────────────────────────────
+  if (cuotas.length > 0 && sale.formaPago === "Cuotas") {
+    if (y + 20 > 260) { doc.addPage(); y = 18; }
+    doc.setFont("helvetica", "bold").setFontSize(7.5).setTextColor(...GRAY);
+    doc.text("DETALLE DE CUOTAS", M, y); y += 6;
+    const colWs = [16, 48, 50, 40];
+    const hdrs  = ["N°", "Vencimiento", "Monto", "Estado"];
+    const rowH  = 7;
+    doc.setFillColor(...DARK).roundedRect(M, y, W - 2 * M, rowH, 1, 1, "F");
+    let cx = M + 3;
+    hdrs.forEach((h, i) => { doc.setFont("helvetica", "bold").setFontSize(7.5).setTextColor(...WHITE); doc.text(h, cx, y + 5); cx += colWs[i]; });
+    y += rowH;
+    cuotas.forEach((c, idx) => {
+      if (y + rowH > 268) { doc.addPage(); y = 18; }
+      if (idx % 2 === 0) doc.setFillColor(...LIGHT).rect(M, y, W - 2 * M, rowH, "F");
+      doc.setDrawColor(...LGRAY).setLineWidth(0.1).rect(M, y, W - 2 * M, rowH, "S");
+      cx = M + 3;
+      [String(c.numeroCuota || "—"), c.vence || "—", fmt(c.monto), c.estado || "—"].forEach((val, i) => {
+        doc.setFont("helvetica", "normal").setFontSize(8).setTextColor(...DARK);
+        doc.text(val, cx, y + 5); cx += colWs[i];
+      });
+      y += rowH;
+    });
+    y += 8;
+  }
+
+  // ─── NOTAS ───────────────────────────────────────────────────────────────────
+  if (sale.notas) {
+    if (y + 20 > 270) { doc.addPage(); y = 18; }
+    doc.setFont("helvetica", "bold").setFontSize(7.5).setTextColor(...GRAY);
+    doc.text("OBSERVACIONES", M, y); y += 5;
+    doc.setFont("helvetica", "normal").setFontSize(8.5).setTextColor(...DARK);
+    const lines = doc.splitTextToSize(sale.notas, W - 2 * M);
+    if (y + lines.length * 4.5 > 268) { doc.addPage(); y = 18; }
+    doc.text(lines, M, y);
+  }
+
+  // ─── PIE ─────────────────────────────────────────────────────────────────────
+  const footerY = H - 14;
+  doc.setFillColor(...DARK).rect(0, footerY - 8, W, 22, "F");
+  doc.setFillColor(...BLUE).rect(0, footerY - 8, W, 1.5, "F");
+  if (sale.vendedor) {
+    doc.setFont("helvetica", "bold").setFontSize(7.5).setTextColor(...WHITE);
+    doc.text(`Asesor: ${sale.vendedor}`, M, footerY + 3);
+  }
+  doc.setFont("helvetica", "normal").setFontSize(7.5).setTextColor(160, 185, 220);
+  doc.text(`${agencia}  ·  Comprobante de venta`, W - M, footerY + 3, { align: "right" });
+
+  doc.save(`Venta-${clean(clientName)}-${clean(vLabel || sale.vehiculo)}.pdf`);
+  } catch (e) { toast("No se pudo generar el PDF: " + (e.message || "error desconocido")); }
 }
 
 async function payCuota(cuotaId) {
