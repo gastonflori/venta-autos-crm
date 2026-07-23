@@ -552,6 +552,23 @@ function consignacionColumns() {
   ];
 }
 
+function clientListColumns() {
+  return [
+    ...genericColumns("clientes"),
+    {
+      key: "cuentaCorriente",
+      label: "Cta. Corriente",
+      render: (_, r) => {
+        const { saldoPendiente, rows } = getClientAccountMovements(r);
+        if (!rows.length) return `<span class="pill">Sin deudas</span>`;
+        return saldoPendiente > 0
+          ? `<span class="pill crit">Debe</span>`
+          : `<span class="pill ok">Al dia</span>`;
+      }
+    }
+  ];
+}
+
 function genericSectionPage(moduleId) {
   const def = sectionData[moduleId];
   if (!def) {
@@ -560,7 +577,7 @@ function genericSectionPage(moduleId) {
   const allRows = state[def.key] || [];
   const rows = filtered(allRows);
   const moneyTotal = totalForRows(allRows);
-  const cols = moduleId === "stock" ? vehicleColumns() : moduleId === "consignaciones" ? consignacionColumns() : genericColumns(moduleId);
+  const cols = moduleId === "stock" ? vehicleColumns() : moduleId === "consignaciones" ? consignacionColumns() : moduleId === "clientes" ? clientListColumns() : genericColumns(moduleId);
   return `
     <div class="grid stats module-stats">
       ${stat("Registros", allRows.length, "Total del modulo")}
@@ -696,18 +713,20 @@ function matchesClienteRecord(record, client) {
   return cName.length > 0 && rName === cName;
 }
 
-function clientProfileCuenta(client) {
-  const cId = client.id || "";
-
-  const today = todayKey();
+function getClientAccountMovements(client) {
   const financeRows = (state.finance || []).filter(r => matchesClienteRecord(r, client)).map(r => ({ fecha: r.fecha || "", concepto: r.concepto || "", tipo: r.tipo || "Ingreso", monto: Number(r.monto || 0), origen: "Finanzas", estado: r.estado || "" }));
   const treasuryRows = (state.treasury || []).filter(r => matchesClienteRecord(r, client)).map(r => ({ fecha: r.fecha || "", concepto: r.concepto || "", tipo: r.tipo || "Ingreso", monto: Number(r.monto || 0), origen: "Tesoreria", estado: r.estado || "" }));
   const collectionRows = (state.collections || []).filter(r => matchesClienteRecord(r, client)).map(r => ({ fecha: r.vence || "", concepto: r.concepto || "Cobro", tipo: "Cobro pendiente", monto: Number(r.monto || 0), origen: "Cobros", estado: r.estado || "" }));
-  const all = [...financeRows, ...treasuryRows, ...collectionRows].sort((a, b) => a.fecha.localeCompare(b.fecha));
-  const emptyState = `<div class="card-body"><p class="muted">Sin movimientos registrados para este cliente.</p></div>`;
-  const totalAdeudado = all.filter(r => /Cargo/i.test(r.tipo)).reduce((s, r) => s + r.monto, 0);
-  const totalPagado = all.filter(r => /Ingreso/i.test(r.tipo)).reduce((s, r) => s + r.monto, 0);
+  const rows = [...financeRows, ...treasuryRows, ...collectionRows].sort((a, b) => a.fecha.localeCompare(b.fecha));
+  const totalAdeudado = rows.filter(r => /Cargo/i.test(r.tipo)).reduce((s, r) => s + r.monto, 0);
+  const totalPagado = rows.filter(r => /Ingreso/i.test(r.tipo)).reduce((s, r) => s + r.monto, 0);
   const saldoPendiente = totalAdeudado - totalPagado;
+  return { rows, totalAdeudado, totalPagado, saldoPendiente };
+}
+
+function clientProfileCuenta(client) {
+  const { rows: all, totalAdeudado, totalPagado, saldoPendiente } = getClientAccountMovements(client);
+  const emptyState = `<div class="card-body"><p class="muted">Sin movimientos registrados para este cliente.</p></div>`;
   let balance = 0;
   const rows = all.map(r => {
     balance += /Ingreso/i.test(r.tipo) ? r.monto : /Egreso|Cargo/i.test(r.tipo) ? -r.monto : 0;
