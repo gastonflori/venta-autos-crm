@@ -521,7 +521,7 @@ function tablePage(key, title, columns, embedded = false, moduleId = "") {
         <table>
           <thead><tr>${columns.map(c => `<th>${c.label}</th>`).join("")}<th></th></tr></thead>
           <tbody>
-            ${rows.length ? rows.map(row => `<tr${key === "clients" ? ` data-client-row="${escapeHtml(row.id)}" class="clickable-row"` : key === "vehicles" ? ` data-vehicle-row="${escapeHtml(row.id)}" class="clickable-row"` : ""}>${columns.map(c => `<td>${c.render ? c.render(row[c.key], row) : escapeHtml(row[c.key])}</td>`).join("")}<td class="record-actions">${flows.map(([flow, label]) => `<button class="icon-btn" data-module-flow="${flow}:${key}:${row.id}" title="${escapeHtml(label)}">${escapeHtml(label.split(" ").map(w => w[0]).join("").slice(0,2).toUpperCase())}</button>`).join("")}${moduleId === "cotizaciones" ? `<button class="icon-btn" data-quote-pdf="${escapeHtml(row.id)}" title="Descargar PDF" style="font-weight:700;color:var(--accent)">PDF</button>` : ""}${moduleId === "consignaciones" ? `<button class="icon-btn" data-consign-exp="${escapeHtml(row.id)}" title="Expediente tecnico">ET</button>` : ""}${key === "files" && row.tipo === "Vehiculo" ? `<button class="icon-btn" data-file-exp="${escapeHtml(row.id)}" title="Ver expediente">ET</button>` : ""}<button class="icon-btn" data-edit="${key}:${row.id}" title="Editar">E</button><button class="icon-btn" data-delete="${key}:${row.id}" title="Eliminar">X</button></td></tr>`).join("") : `<tr><td colspan="${columns.length + 1}" class="empty">No hay registros para mostrar.</td></tr>`}
+            ${rows.length ? rows.map(row => `<tr${key === "clients" ? ` data-client-row="${escapeHtml(row.id)}" class="clickable-row"` : key === "vehicles" ? ` data-vehicle-row="${escapeHtml(row.id)}" class="clickable-row"` : row._montoEditado ? ` style="border-left:3px solid var(--crit)"` : ""}>${columns.map(c => `<td>${c.render ? c.render(row[c.key], row) : escapeHtml(row[c.key] ?? "")}</td>`).join("")}<td class="record-actions">${flows.map(([flow, label]) => `<button class="icon-btn" data-module-flow="${flow}:${key}:${row.id}" title="${escapeHtml(label)}">${escapeHtml(label.split(" ").map(w => w[0]).join("").slice(0,2).toUpperCase())}</button>`).join("")}${moduleId === "cotizaciones" ? `<button class="icon-btn" data-quote-pdf="${escapeHtml(row.id)}" title="Descargar PDF" style="font-weight:700;color:var(--accent)">PDF</button>` : ""}${moduleId === "consignaciones" ? `<button class="icon-btn" data-consign-exp="${escapeHtml(row.id)}" title="Expediente tecnico">ET</button>` : ""}${key === "files" && row.tipo === "Vehiculo" ? `<button class="icon-btn" data-file-exp="${escapeHtml(row.id)}" title="Ver expediente">ET</button>` : ""}<button class="icon-btn" data-edit="${key}:${row.id}" title="Editar">E</button><button class="icon-btn" data-delete="${key}:${row.id}" title="Eliminar">X</button></td></tr>`).join("") : `<tr><td colspan="${columns.length + 1}" class="empty">No hay registros para mostrar.</td></tr>`}
           </tbody>
         </table>
       </div>
@@ -714,9 +714,9 @@ function matchesClienteRecord(record, client) {
 }
 
 function getClientAccountMovements(client) {
-  const financeRows = (state.finance || []).filter(r => matchesClienteRecord(r, client)).map(r => ({ fecha: r.fecha || "", concepto: r.concepto || "", tipo: r.tipo || "Ingreso", monto: Number(r.monto || 0), origen: "Finanzas", estado: r.estado || "" }));
-  const treasuryRows = (state.treasury || []).filter(r => matchesClienteRecord(r, client)).map(r => ({ fecha: r.fecha || "", concepto: r.concepto || "", tipo: r.tipo || "Ingreso", monto: Number(r.monto || 0), origen: "Tesoreria", estado: r.estado || "" }));
-  const collectionRows = (state.collections || []).filter(r => matchesClienteRecord(r, client)).map(r => ({ fecha: r.vence || "", concepto: r.concepto || "Cobro", tipo: "Cobro pendiente", monto: Number(r.monto || 0), origen: "Cobros", estado: r.estado || "" }));
+  const financeRows = (state.finance || []).filter(r => matchesClienteRecord(r, client)).map(r => ({ fecha: r.fecha || "", concepto: r.concepto || "", tipo: r.tipo || "Ingreso", monto: Number(r.monto || 0), origen: "Finanzas", estado: r.estado || "", _source: "finance", _sourceId: r.id, _montoEditado: false }));
+  const treasuryRows = (state.treasury || []).filter(r => matchesClienteRecord(r, client)).map(r => ({ fecha: r.fecha || "", concepto: r.concepto || "", tipo: r.tipo || "Ingreso", monto: Number(r.monto || 0), origen: "Tesoreria", estado: r.estado || "", _source: "treasury", _sourceId: r.id, _montoEditado: r._montoEditado || false, _montoOriginal: r._montoOriginal, _montoEditadoPor: r._montoEditadoPor }));
+  const collectionRows = (state.collections || []).filter(r => matchesClienteRecord(r, client)).map(r => ({ fecha: r.vence || "", concepto: r.concepto || "Cobro", tipo: "Cobro pendiente", monto: Number(r.monto || 0), origen: "Cobros", estado: r.estado || "", _source: "collections", _sourceId: r.id, _montoEditado: false }));
   const rows = [...financeRows, ...treasuryRows, ...collectionRows].sort((a, b) => a.fecha.localeCompare(b.fecha));
   const totalAdeudado = rows.filter(r => /Cargo/i.test(r.tipo)).reduce((s, r) => s + r.monto, 0);
   const totalPagado = rows.filter(r => /Ingreso/i.test(r.tipo)).reduce((s, r) => s + r.monto, 0);
@@ -768,14 +768,17 @@ function clientProfileCuenta(client) {
               const tipoPill = isVencida ? `<span class="pill crit">Vencida</span>` : pill(r.tipo);
               const montoClass = /Ingreso/i.test(r.tipo) ? "cuenta-ingreso" : /Cargo|Egreso/i.test(r.tipo) ? "cuenta-egreso" : "";
               const reciboBtn = /Ingreso|Egreso/i.test(r.tipo) ? `<button class="icon-btn" data-payment-receipt="${escapeHtml(cId)}:${idx}" title="Descargar recibo">PDF</button>` : "";
-              return `<tr>
+              const editBtn = r._source === "treasury" && r._sourceId ? `<button class="icon-btn" data-edit="treasury:${escapeHtml(r._sourceId)}" title="Editar pago">E</button>` : "";
+              const montoEditadoStyle = r._montoEditado ? ' style="color:var(--crit);font-weight:700"' : ` class="${montoClass}"`;
+              const montoEditadoFlag = r._montoEditado ? ` <span class="pill crit" title="Monto editado desde ${money(r._montoOriginal)} por ${escapeHtml(r._montoEditadoPor||"—")}">!</span>` : "";
+              return `<tr${r._montoEditado ? ' style="border-left:3px solid var(--crit)"' : ''}>
               <td>${escapeHtml(r.fecha)}</td>
               <td>${escapeHtml(r.concepto)}</td>
               <td>${tipoPill}</td>
-              <td class="${montoClass}">${money(r.monto)}</td>
+              <td${montoEditadoStyle}>${money(r.monto)}${montoEditadoFlag}</td>
               <td><span class="pill info">${escapeHtml(r.origen)}</span></td>
               <td style="font-weight:700;color:${r.balance >= 0 ? "var(--ok)" : "var(--crit)"}">${r.balance >= 0 ? "+" : "-"}${money(Math.abs(r.balance))}</td>
-              <td>${reciboBtn}</td>
+              <td style="white-space:nowrap">${editBtn}${reciboBtn}</td>
             </tr>`;
             }).join("")}
           </tbody>
@@ -2893,6 +2896,16 @@ function bindModal() {
           const vSel = e.target.querySelector("[data-sales-vehicle]");
           if (cSel?.value) item.cliente = cSel.selectedOptions[0]?.dataset.nombre || item.cliente || "";
           if (vSel?.value) item.vehiculo = vSel.selectedOptions[0]?.dataset.nombre || item.vehiculo || "";
+        }
+        if (key === "treasury" && id) {
+          const prevTrx = (state.treasury || []).find(x => x.id === id);
+          if (prevTrx && Number(prevTrx.monto) !== Number(item.monto)) {
+            item._montoEditado = true;
+            item._montoOriginal = Number(prevTrx.monto);
+            item._montoEditadoPor = authUser?.name || "desconocido";
+            item._montoEditadoEn = todayKey();
+            addAudit(`⚠ Monto editado en Tesoreria — "${item.concepto || prevTrx.concepto}": ${money(Number(prevTrx.monto))} → ${money(Number(item.monto))} (por ${authUser?.name || "desconocido"})`);
+          }
         }
         if (!Array.isArray(state[key])) state[key] = [];
         if (id) {
